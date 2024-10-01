@@ -104,7 +104,7 @@ pub fn mint_split_proof_data(
 
     // compute the new supply
     let new_supply = current_decyptable_supply
-        .checked_add(decryptable_to_current_diff)
+        .checked_sub(decryptable_to_current_diff)
         .ok_or(TokenProofGenerationError::IllegalAmountBitLength)?
         .checked_add(mint_amount)
         .ok_or(TokenProofGenerationError::IllegalAmountBitLength)?;

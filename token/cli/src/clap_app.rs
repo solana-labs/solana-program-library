@@ -2848,9 +2848,18 @@ pub fn app<'a, 'b>(
                         .value_name("CONFIDENTIAL_SUPPLY_KEYPAIR")
                         .takes_value(true)
                         .help(
-                            "The confidential supply encryption keypair used to decrypt the supply. \
+                            "The confidential supply encryption keypair used to decrypt ElGamalCiphertext supply. \
                               Either the authority or the confidential-supply-keypair have \
                               to be specified in order for the supply to be decrypted."
+                        )
+                )
+                .arg(
+                    Arg::with_name("confidential_supply_aes_key")
+                        .long("confidential-supply-aes-key")
+                        .value_name("CONFIDENTIAL_SUPPLY_AES_KEY")
+                        .takes_value(true)
+                        .help(
+                            "The aes key used to decrypt the decryptable portion of the confidential supply."
                         )
                 )
                 .nonce_args(true)
@@ -2886,6 +2895,16 @@ pub fn app<'a, 'b>(
                         .required(true)
                         .help(
                             "The current confidential supply encryption keypair."
+                        )
+                )
+                .arg(
+                    Arg::with_name("supply_aes_key")
+                        .long("supply-aes-key")
+                        .value_name("SUPPLY_AES_KEY")
+                        .takes_value(true)
+                        .required(true)
+                        .help(
+                            "The aes key to decrypt the decryptable confidential supply."
                         )
                 )
                 .arg(

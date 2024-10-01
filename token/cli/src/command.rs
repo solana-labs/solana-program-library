@@ -4828,10 +4828,18 @@ pub async fn process_command<'a>(
 
                 ElGamalKeypair::new_from_signer(&*auth_signer, b"").unwrap()
             };
+            let aes_key = if arg_matches.is_present("confidential_supply_aes_key") {
+                aes_key_of(arg_matches, "confidential_supply_aes_key").unwrap()
+            } else {
+                let (auth_signer, _auth) =
+                    config.signer_or_default(arg_matches, "authority", &mut wallet_manager);
+
+                AeKey::new_from_signer(&*auth_signer, b"").unwrap()
+            };
 
             let token_cl = token_client_from_config(config, &token, None)?;
             let supply = token_cl
-                .confidential_supply(&elgamal_keypair)
+                .confidential_supply(&elgamal_keypair, &aes_key)
                 .await
                 .map_err(|e| format!("Could not fetch confidential supply for {token}: {e}",))?;
 
@@ -4843,6 +4851,7 @@ pub async fn process_command<'a>(
                 .unwrap();
             let cur_elgamal_keypair =
                 elgamal_keypair_of(arg_matches, "current_supply_keypair").unwrap();
+            let supply_aes_key = aes_key_of(arg_matches, "supply_aes_key").unwrap();
             let new_elgamal_keypair =
                 elgamal_keypair_of(arg_matches, "new_supply_keypair").unwrap();
             let (auth_signer, auth) =
@@ -4855,8 +4864,9 @@ pub async fn process_command<'a>(
                         .rotate_supply_elgamal(
                             &auth,
                             &cur_elgamal_keypair,
+                            &supply_aes_key,
                             &new_elgamal_keypair,
-                            &[auth_signer],
+                            &[&auth_signer],
                         )
                         .await?,
                     false,

@@ -59,7 +59,7 @@ use {
             encryption::{
                 auth_encryption::{AeCiphertext, AeKey},
                 elgamal::{ElGamalCiphertext, ElGamalKeypair, ElGamalPubkey, ElGamalSecretKey},
-                pod::elgamal::PodElGamalPubkey,
+                pod::{auth_encryption::PodAeCiphertext, elgamal::PodElGamalPubkey},
             },
             zk_elgamal_proof_program::{
                 self,
@@ -3598,23 +3598,46 @@ where
     pub async fn confidential_supply(
         &self,
         supply_elgamal_keypair: &ElGamalKeypair,
+        supply_aes_key: &AeKey,
     ) -> Result<u64, TokenError> {
         let mint = self.get_mint_info().await?;
         let confidential_mint_burn_ext = mint.get_extension::<ConfidentialMintBurn>()?;
 
-        // Currently only correctly displays supplies until u32::MAX,
-        // the supply ciphertext will still be correct after, but it
-        // can't be decrypted here until a corresponding decryption
-        // method is added to the solana-zk-token-sdk
-        Ok(supply_elgamal_keypair
+        let current_decyptable_supply =
+            if confidential_mint_burn_ext.decryptable_supply != PodAeCiphertext::default() {
+                // decrypt the current supply
+                let decryptable_supply: AeCiphertext = confidential_mint_burn_ext
+                    .decryptable_supply
+                    .try_into()
+                    .map_err(|_| TokenError::AccountDecryption)?;
+                decryptable_supply
+                    .decrypt(supply_aes_key)
+                    .ok_or(TokenError::AccountDecryption)?
+            } else {
+                0
+            };
+
+        // get the difference between the supply ciphertext and the decryptable supply
+        // explanation see https://github.com/solana-labs/solana-program-library/pull/6881#issuecomment-2385579058
+        let decryptable_supply_ciphertext = supply_elgamal_keypair
+            .pubkey()
+            .encrypt(current_decyptable_supply);
+        let current_supply: ElGamalCiphertext = confidential_mint_burn_ext
+                .confidential_supply
+                .try_into()
+                .map_err(|_| TokenError::AccountDecryption)?;
+        let ct_decryptable_to_current_diff = decryptable_supply_ciphertext - current_supply;
+        let decryptable_to_current_diff = supply_elgamal_keypair
             .secret()
-            .decrypt_u32(
-                &TryInto::<ElGamalCiphertext>::try_into(
-                    confidential_mint_burn_ext.confidential_supply,
-                )
-                .map_err(|_| TokenError::Program(ProgramError::InvalidAccountData))?,
-            )
-            .unwrap_or_default())
+            .decrypt_u32(&ct_decryptable_to_current_diff)
+            .ok_or(TokenError::AccountDecryption)?;
+
+        // compute the total supply
+        current_decyptable_supply
+            .checked_sub(decryptable_to_current_diff)
+            .ok_or(TokenError::TokenProgramError(String::from(
+                "Confidential supply underflow",
+            )))
     }
 
     pub async fn supply_elgamal_pubkey(&self) -> TokenResult<Option<ElGamalPubkey>> {
@@ -3633,6 +3656,7 @@ where
         &self,
         authority: &Pubkey,
         supply_elgamal_keypair: &ElGamalKeypair,
+        supply_aes_key: &AeKey,
         new_supply_elgamal_keypair: &ElGamalKeypair,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
@@ -3641,7 +3665,7 @@ where
 
         let mint = self.get_mint_info().await?;
         let extension_state = mint.get_extension::<ConfidentialMintBurn>()?;
-        let current_supply = self.confidential_supply(supply_elgamal_keypair).await?;
+        let current_supply = self.confidential_supply(supply_elgamal_keypair, supply_aes_key).await?;
 
         self.process_ixs(
             &confidential_mint_burn::instruction::rotate_supply_elgamal(

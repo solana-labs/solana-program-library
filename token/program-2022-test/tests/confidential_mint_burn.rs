@@ -16,7 +16,6 @@ use {
             },
             BaseStateWithExtensions,
         },
-        proof::ProofLocation,
         solana_zk_sdk::encryption::{
             auth_encryption::AeKey, elgamal::*, pod::elgamal::PodElGamalPubkey,
         },
@@ -112,7 +111,7 @@ async fn test_confidential_mint() {
 
     assert_eq!(
         token
-            .confidential_supply(&auditor_elgamal_keypair,)
+            .confidential_supply(&auditor_elgamal_keypair, &supply_aes_key)
             .await
             .unwrap(),
         MINT_AMOUNT
@@ -159,7 +158,7 @@ async fn test_confidential_burn() {
 
     assert_eq!(
         token
-            .confidential_supply(&auditor_elgamal_keypair,)
+            .confidential_supply(&auditor_elgamal_keypair, &supply_aes_key)
             .await
             .unwrap(),
         MINT_AMOUNT
@@ -313,7 +312,7 @@ async fn test_confidential_burn() {
 
     assert_eq!(
         token
-            .confidential_supply(&auditor_elgamal_keypair,)
+            .confidential_supply(&auditor_elgamal_keypair, &supply_aes_key)
             .await
             .unwrap(),
         MINT_AMOUNT - BURN_AMOUNT,
@@ -360,7 +359,7 @@ async fn test_rotate_supply_elgamal() {
 
     assert_eq!(
         token
-            .confidential_supply(&auditor_elgamal_keypair,)
+            .confidential_supply(&auditor_elgamal_keypair, &supply_aes_key)
             .await
             .unwrap(),
         MINT_AMOUNT
@@ -371,6 +370,7 @@ async fn test_rotate_supply_elgamal() {
         .rotate_supply_elgamal(
             &authority.pubkey(),
             &auditor_elgamal_keypair,
+            &supply_aes_key,
             &new_supply_elgamal_keypair,
             &[authority],
         )
@@ -379,7 +379,7 @@ async fn test_rotate_supply_elgamal() {
 
     assert_eq!(
         token
-            .confidential_supply(&new_supply_elgamal_keypair)
+            .confidential_supply(&new_supply_elgamal_keypair, &supply_aes_key)
             .await
             .unwrap(),
         MINT_AMOUNT
