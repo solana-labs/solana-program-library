@@ -3623,9 +3623,9 @@ where
             .pubkey()
             .encrypt(current_decyptable_supply);
         let current_supply: ElGamalCiphertext = confidential_mint_burn_ext
-                .confidential_supply
-                .try_into()
-                .map_err(|_| TokenError::AccountDecryption)?;
+            .confidential_supply
+            .try_into()
+            .map_err(|_| TokenError::AccountDecryption)?;
         let ct_decryptable_to_current_diff = decryptable_supply_ciphertext - current_supply;
         let decryptable_to_current_diff = supply_elgamal_keypair
             .secret()
@@ -3665,7 +3665,9 @@ where
 
         let mint = self.get_mint_info().await?;
         let extension_state = mint.get_extension::<ConfidentialMintBurn>()?;
-        let current_supply = self.confidential_supply(supply_elgamal_keypair, supply_aes_key).await?;
+        let current_supply = self
+            .confidential_supply(supply_elgamal_keypair, supply_aes_key)
+            .await?;
 
         self.process_ixs(
             &confidential_mint_burn::instruction::rotate_supply_elgamal(
