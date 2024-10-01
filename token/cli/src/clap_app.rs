@@ -859,30 +859,6 @@ pub fn app<'a, 'b>(
                         .takes_value(false)
                         .help("Enables group member configurations in the mint. The mint authority must initialize the member."),
                 )
-                .arg(
-                    Arg::with_name("enable_confidential_mint_burn")
-                        .long("enable-confidential-mint-burn")
-                        .takes_value(false)
-                        .help(
-                            "Enables minting of new tokens into confidential balance and burning of tokens directly from the confidential balance"
-                        ),
-                )
-                .arg(
-                    Arg::with_name("auditor_pubkey")
-                        .long("auditor-pubkey")
-                        .value_name("AUDITOR_PUBKEY")
-                        .takes_value(true)
-                        .help(
-                            "The auditor encryption public key for mints with the confidential \
-                            transfer extension enabled. The corresponding private key for \
-                            this auditor public key can be used to decrypt all confidential \
-                            transfers involving tokens from this mint. Currently, the auditor \
-                            public key can only be specified as a direct *base64* encoding of \
-                            an ElGamal public key. More methods of specifying the auditor public \
-                            key will be supported in a future version. To disable auditability \
-                            feature for the token, use \"none\"."
-                        )
-                )
                 .nonce_args(true)
                 .arg(memo_arg())
         )

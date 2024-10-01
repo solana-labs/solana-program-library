@@ -69,8 +69,7 @@ use {
         token::{ComputeUnitLimit, ExtensionInitializationParams, ProofAccount, Token},
     },
     spl_token_confidential_transfer_proof_generation::{
-        transfer::TransferProofData,
-        withdraw::WithdrawProofData,
+        transfer::TransferProofData, withdraw::WithdrawProofData,
     },
     spl_token_group_interface::state::TokenGroup,
     spl_token_metadata_interface::state::{Field, TokenMetadata},
@@ -256,7 +255,6 @@ async fn command_create_token(
     enable_group: bool,
     enable_member: bool,
     bulk_signers: Vec<Arc<dyn Signer>>,
-    auditor_pubkey: ElGamalPubkeyOrNone,
 ) -> CommandResult {
     println_display(
         config,
@@ -316,7 +314,7 @@ async fn command_create_token(
         extensions.push(ExtensionInitializationParams::ConfidentialTransferMint {
             authority: Some(authority),
             auto_approve_new_accounts: auto_approve,
-            auditor_elgamal_pubkey: auditor_pubkey.into(),
+            auditor_elgamal_pubkey: None,
         });
         if transfer_fee.is_some() {
             // Deriving ElGamal key from default signer. Custom ElGamal keys
@@ -3234,7 +3232,7 @@ enum ConfidentialInstructionType {
 }
 
 #[allow(clippy::too_many_arguments)]
-async fn command_deposit_withdraw_mint_confidential_tokens(
+async fn command_deposit_withdraw_confidential_tokens(
     config: &Config<'_>,
     token_pubkey: Pubkey,
     owner: Pubkey,
@@ -3568,9 +3566,6 @@ pub async fn process_command<'a>(
                 .value_of("enable_confidential_transfers")
                 .map(|b| b == "auto");
 
-            let auditor_elgamal_pubkey =
-                elgamal_pubkey_or_none(arg_matches, "auditor_pubkey").unwrap();
-
             command_create_token(
                 config,
                 decimals,
@@ -3593,7 +3588,6 @@ pub async fn process_command<'a>(
                 arg_matches.is_present("enable_group"),
                 arg_matches.is_present("enable_member"),
                 bulk_signers,
-                auditor_elgamal_pubkey,
             )
             .await
         }
@@ -4583,7 +4577,7 @@ pub async fn process_command<'a>(
                 push_signer_with_dedup(owner_signer, &mut bulk_signers);
             }
 
-            command_deposit_withdraw_mint_confidential_tokens(
+            command_deposit_withdraw_confidential_tokens(
                 config,
                 token,
                 owner,

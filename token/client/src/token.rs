@@ -29,7 +29,6 @@ use {
     },
     spl_record::state::RecordData,
     spl_token_2022::{
-        error::TokenError as Token2022Error,
         extension::{
             confidential_transfer::{
                 self,
@@ -38,7 +37,7 @@ use {
                     WithdrawAccountInfo,
                 },
                 instruction::{ProofContextState, ZkProofData},
-                ConfidentialTransferAccount, ConfidentialTransferMint, DecryptableBalance,
+                ConfidentialTransferAccount, DecryptableBalance,
             },
             confidential_transfer_fee::{
                 self, account_info::WithheldTokensInfo, ConfidentialTransferFeeAmount,
@@ -110,14 +109,8 @@ pub enum TokenError {
     MissingDecimals,
     #[error("decimals specified, but incorrect")]
     InvalidDecimals,
-    #[error("TokenProgramError: {0}")]
-    TokenProgramError(String),
 }
-impl From<Token2022Error> for TokenError {
-    fn from(e: Token2022Error) -> Self {
-        Self::TokenProgramError(e.to_string())
-    }
-}
+
 impl PartialEq for TokenError {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
@@ -3434,26 +3427,6 @@ where
             group_update_authority,
         ));
         self.process_ixs(&instructions, signing_keypairs).await
-    }
-
-    pub async fn auditor_elgamal_pubkey(&self) -> TokenResult<Option<ElGamalPubkey>> {
-        Ok(Into::<Option<PodElGamalPubkey>>::into(
-            self.get_mint_info()
-                .await?
-                .get_extension::<ConfidentialTransferMint>()?
-                .auditor_elgamal_pubkey,
-        )
-        .map(|pk| TryInto::<ElGamalPubkey>::try_into(pk).unwrap()))
-    }
-
-    pub async fn account_elgamal_pubkey(&self, account: &Pubkey) -> TokenResult<ElGamalPubkey> {
-        TryInto::<ElGamalPubkey>::try_into(
-            self.get_account_info(account)
-                .await?
-                .get_extension::<ConfidentialTransferAccount>()?
-                .elgamal_pubkey,
-        )
-        .map_err(|_| TokenError::Program(ProgramError::InvalidAccountData))
     }
 }
 
