@@ -42,17 +42,6 @@ impl From<GroupedElGamalCiphertext<3>> for MintBurnAmountCiphertext {
     }
 }
 
-/// Trait to retrieve auditor amounts from proof context information
-#[cfg(feature = "zk-ops")]
-pub trait AuditableProofContextInfo {
-    /// Return the low 16 bits of the amount to be audited
-    fn auditor_amount_lo(&self) -> Result<PodElGamalCiphertext, ProgramError>;
-    /// Return the high 32 bits of the amount to be audited
-    fn auditor_amount_hi(&self) -> Result<PodElGamalCiphertext, ProgramError>;
-    /// Return the auditors ElGamal public key
-    fn auditor_pubkey(&self) -> &PodElGamalPubkey;
-}
-
 /// The proof context information needed to process a [Transfer] instruction.
 #[cfg(feature = "zk-ops")]
 pub struct MintProofContextInfo {
@@ -66,25 +55,6 @@ pub struct MintProofContextInfo {
     pub ciphertext_lo: MintBurnAmountCiphertext,
     /// Ciphertext containing the high 32 bits of the mint amount
     pub ciphertext_hi: MintBurnAmountCiphertext,
-}
-
-#[cfg(feature = "zk-ops")]
-impl AuditableProofContextInfo for MintProofContextInfo {
-    fn auditor_amount_lo(&self) -> Result<PodElGamalCiphertext, ProgramError> {
-        self.ciphertext_lo
-            .0
-            .try_extract_ciphertext(1)
-            .map_err(|_| ProgramError::InvalidAccountData)
-    }
-    fn auditor_amount_hi(&self) -> Result<PodElGamalCiphertext, ProgramError> {
-        self.ciphertext_hi
-            .0
-            .try_extract_ciphertext(1)
-            .map_err(|_| ProgramError::InvalidAccountData)
-    }
-    fn auditor_pubkey(&self) -> &PodElGamalPubkey {
-        &self.auditor_pubkey
-    }
 }
 
 /// The proof context information needed to process a [Transfer] instruction.
@@ -102,25 +72,6 @@ pub struct BurnProofContextInfo {
     pub ciphertext_hi: MintBurnAmountCiphertext,
     /// The new available balance ciphertext for the burning account
     pub new_burner_ciphertext: PodElGamalCiphertext,
-}
-
-#[cfg(feature = "zk-ops")]
-impl AuditableProofContextInfo for BurnProofContextInfo {
-    fn auditor_amount_lo(&self) -> Result<PodElGamalCiphertext, ProgramError> {
-        self.ciphertext_lo
-            .0
-            .try_extract_ciphertext(1)
-            .map_err(|_| ProgramError::InvalidAccountData)
-    }
-    fn auditor_amount_hi(&self) -> Result<PodElGamalCiphertext, ProgramError> {
-        self.ciphertext_hi
-            .0
-            .try_extract_ciphertext(1)
-            .map_err(|_| ProgramError::InvalidAccountData)
-    }
-    fn auditor_pubkey(&self) -> &PodElGamalPubkey {
-        &self.auditor_pubkey
-    }
 }
 
 #[cfg(feature = "zk-ops")]

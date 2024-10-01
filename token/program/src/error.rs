@@ -139,4 +139,3 @@ impl PrintProgramError for TokenError {
         }
     }
 }
-

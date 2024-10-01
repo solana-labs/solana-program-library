@@ -32,7 +32,9 @@ use {
         error::TokenError as Token2022Error,
         extension::{
             confidential_mint_burn::{
-                self, instruction::BurnSplitContextStateAccounts, ConfidentialMintBurn,
+                self,
+                instruction::{BurnSplitContextStateAccounts, MintSplitContextStateAccounts},
+                ConfidentialMintBurn,
             },
             confidential_transfer::{
                 self,
@@ -40,10 +42,7 @@ use {
                     combine_balances, ApplyPendingBalanceAccountInfo, EmptyAccountAccountInfo,
                     TransferAccountInfo, WithdrawAccountInfo,
                 },
-                instruction::{
-                    BatchedGroupedCiphertext3HandlesValidityProofData, BatchedRangeProofU64Data,
-                    ProofContextState, ZkProofData,
-                },
+                instruction::{ProofContextState, ZkProofData},
                 ConfidentialTransferAccount, ConfidentialTransferMint, DecryptableBalance,
             },
             confidential_transfer_fee::{
@@ -58,9 +57,8 @@ use {
         proof::{zk_proof_type_to_instruction, ProofData, ProofLocation},
         solana_zk_sdk::{
             encryption::{
-                auth_encryption::AeKey,
+                auth_encryption::{AeCiphertext, AeKey},
                 elgamal::{ElGamalCiphertext, ElGamalKeypair, ElGamalPubkey, ElGamalSecretKey},
-                pedersen::PedersenOpening,
                 pod::elgamal::PodElGamalPubkey,
             },
             zk_elgamal_proof_program::{
@@ -3483,33 +3481,27 @@ where
         &self,
         account: &Pubkey,
         authority: &Pubkey,
-        amount: u64,
-        auditor_elgamal_pubkey: Option<ElGamalPubkey>,
         supply_elgamal_pubkey: Option<ElGamalPubkey>,
-        range_proof_location: ProofLocation<'_, BatchedRangeProofU64Data>,
-        ciphertext_validity_proof_location: ProofLocation<
-            '_,
-            BatchedGroupedCiphertext3HandlesValidityProofData,
-        >,
-        pedersen_openings: &(PedersenOpening, PedersenOpening),
+        context_state_accounts: &MintSplitContextStateAccounts<'_>,
+        new_decryptable_supply: AeCiphertext,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let signing_pubkeys = signing_keypairs.pubkeys();
         let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
         self.process_ixs(
-            &confidential_mint_burn::instruction::confidential_mint(
-                &self.program_id,
-                account,
-                &self.pubkey,
-                amount,
-                auditor_elgamal_pubkey,
-                supply_elgamal_pubkey,
-                authority,
-                &multisig_signers,
-                range_proof_location,
-                ciphertext_validity_proof_location,
-                pedersen_openings,
-            )?,
+            &[
+                confidential_mint_burn::instruction::confidential_mint_with_split_proofs(
+                    &self.program_id,
+                    account,
+                    &self.pubkey,
+                    supply_elgamal_pubkey,
+                    authority,
+                    &multisig_signers,
+                    context_state_accounts,
+                    new_decryptable_supply,
+                )?,
+            ],
             signing_keypairs,
         )
         .await
@@ -3524,11 +3516,9 @@ where
         authority: &Pubkey,
         context_state_accounts: &BurnSplitContextStateAccounts<'_>,
         amount: u64,
-        auditor_elgamal_pubkey: Option<ElGamalPubkey>,
         supply_elgamal_pubkey: Option<ElGamalPubkey>,
         aes_key: &AeKey,
         signing_keypairs: &S,
-        pedersen_openings: &(PedersenOpening, PedersenOpening),
     ) -> TokenResult<T::Output> {
         let signing_pubkeys = signing_keypairs.pubkeys();
         let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
@@ -3546,15 +3536,12 @@ where
             &confidential_mint_burn::instruction::confidential_burn_with_split_proofs(
                 &self.program_id,
                 ata_pubkey,
-                self.get_address(),
-                auditor_elgamal_pubkey,
+                &self.pubkey,
                 supply_elgamal_pubkey,
-                amount,
                 new_decryptable_available_balance.into(),
                 context_state_accounts,
                 authority,
                 &multisig_signers,
-                pedersen_openings,
             )?,
             signing_keypairs,
         )

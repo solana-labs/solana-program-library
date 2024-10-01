@@ -1,17 +1,13 @@
 #[cfg(not(target_os = "solana"))]
-use crate::{
-    error::TokenError,
-    extension::confidential_transfer::processor::verify_and_split_deposit_amount,
-    proof::ProofLocation,
-};
+use crate::error::TokenError;
 #[cfg(not(target_os = "solana"))]
-use solana_zk_sdk::zk_elgamal_proof_program::proof_data::{
-    BatchedGroupedCiphertext3HandlesValidityProofData, BatchedRangeProofU64Data,
-    CiphertextCiphertextEqualityProofData,
-};
+use solana_zk_sdk::encryption::pod::elgamal::PodElGamalPubkey;
+#[cfg(not(target_os = "solana"))]
+use solana_zk_sdk::zk_elgamal_proof_program::proof_data::CiphertextCiphertextEqualityProofData;
 #[cfg(not(target_os = "solana"))]
 use solana_zk_sdk::{
     encryption::{
+        auth_encryption::AeCiphertext,
         elgamal::{ElGamalCiphertext, ElGamalKeypair, ElGamalPubkey},
         pedersen::PedersenOpening,
     },
@@ -30,19 +26,17 @@ use {
         sysvar,
     },
 };
-#[cfg(not(target_os = "solana"))]
-use solana_zk_sdk::encryption::pod::elgamal::PodElGamalPubkey;
 use {
     crate::extension::confidential_transfer::DecryptableBalance,
     bytemuck::{Pod, Zeroable},
     num_enum::{IntoPrimitive, TryFromPrimitive},
     solana_program::pubkey::Pubkey,
-    solana_zk_sdk::encryption::pod::elgamal::{PodElGamalCiphertext},
+    solana_zk_sdk::encryption::pod::auth_encryption::PodAeCiphertext,
     spl_pod::optional_keys::OptionalNonZeroElGamalPubkey,
 };
 #[cfg(feature = "serde-traits")]
 use {
-    crate::serialization::{aeciphertext_fromstr, elgamalciphertext_fromstr},
+    crate::serialization::aeciphertext_fromstr,
     serde::{Deserialize, Serialize},
 };
 
@@ -122,14 +116,9 @@ pub struct RotateSupplyElGamalData {
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct MintInstructionData {
-    /// low 16 bits of encrypted amount to be minted, exposes mint amounts
-    /// to the auditor through the data received via `get_transaction`
-    #[cfg_attr(feature = "serde-traits", serde(with = "elgamalciphertext_fromstr"))]
-    pub audit_amount_lo: PodElGamalCiphertext,
-    /// high 48 bits of encrypted amount to be minted, exposes mint amounts
-    /// to the auditor through the data received via `get_transaction`
-    #[cfg_attr(feature = "serde-traits", serde(with = "elgamalciphertext_fromstr"))]
-    pub audit_amount_hi: PodElGamalCiphertext,
+    /// The new decryptable supply if the mint succeeds
+    #[cfg_attr(feature = "serde-traits", serde(with = "aeciphertext_fromstr"))]
+    pub new_decryptable_supply: PodAeCiphertext,
     /// Relative location of the `ProofInstruction::VerifyBatchedRangeProofU64`
     /// instruction to the `ConfidentialMint` instruction in the
     /// transaction. The
@@ -144,15 +133,9 @@ pub struct MintInstructionData {
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct BurnInstructionData {
-    /// The new source decryptable balance if the transfer succeeds
+    /// The new decryptable balance of the burner if the burn succeeds
     #[cfg_attr(feature = "serde-traits", serde(with = "aeciphertext_fromstr"))]
     pub new_decryptable_available_balance: DecryptableBalance,
-    /// low 16 bits of encrypted amount to be minted
-    #[cfg_attr(feature = "serde-traits", serde(with = "elgamalciphertext_fromstr"))]
-    pub auditor_lo: PodElGamalCiphertext,
-    /// high 48 bits of encrypted amount to be minted
-    #[cfg_attr(feature = "serde-traits", serde(with = "elgamalciphertext_fromstr"))]
-    pub auditor_hi: PodElGamalCiphertext,
     /// Relative location of the
     /// `ProofInstruction::VerifyCiphertextCommitmentEquality` instruction
     /// to the `ConfidentialBurn` instruction in the transaction. The
@@ -272,24 +255,16 @@ pub fn rotate_supply_elgamal(
 /// Create a `ConfidentialMint` instruction
 #[allow(clippy::too_many_arguments)]
 #[cfg(not(target_os = "solana"))]
-pub fn confidential_mint(
+pub fn confidential_mint_with_split_proofs(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
     mint: &Pubkey,
-    amount: u64,
-    auditor_elgamal_pubkey: Option<ElGamalPubkey>,
     supply_elgamal_pubkey: Option<ElGamalPubkey>,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    range_proof_location: ProofLocation<'_, BatchedRangeProofU64Data>,
-    ciphertext_validity_proof_location: ProofLocation<
-        '_,
-        BatchedGroupedCiphertext3HandlesValidityProofData,
-    >,
-    pedersen_openings: &(PedersenOpening, PedersenOpening),
-) -> Result<Vec<Instruction>, ProgramError> {
-    use crate::proof::ProofData;
-
+    context_accounts: &MintSplitContextStateAccounts,
+    new_decryptable_supply: AeCiphertext,
+) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let mut accounts = vec![AccountMeta::new(*token_account, false)];
     // we only need write lock to adjust confidential suppy on
@@ -301,6 +276,19 @@ pub fn confidential_mint(
     }
 
     accounts.push(AccountMeta::new_readonly(
+        *context_accounts.equality_proof,
+        false,
+    ));
+    accounts.push(AccountMeta::new_readonly(
+        *context_accounts.ciphertext_validity_proof,
+        false,
+    ));
+    accounts.push(AccountMeta::new_readonly(
+        *context_accounts.range_proof,
+        false,
+    ));
+
+    accounts.push(AccountMeta::new_readonly(
         *authority,
         multisig_signers.is_empty(),
     ));
@@ -308,87 +296,34 @@ pub fn confidential_mint(
         accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
     }
 
-    let (amount_lo, amount_hi) = verify_and_split_deposit_amount(amount)?;
-    let auditor_elgamal_pubkey = auditor_elgamal_pubkey.unwrap_or_default();
-    let audit_amount_lo = auditor_elgamal_pubkey.encrypt_with(amount_lo, &pedersen_openings.0);
-    let audit_amount_hi = auditor_elgamal_pubkey.encrypt_with(amount_hi, &pedersen_openings.1);
-
-    let proof_instruction_offset = match range_proof_location {
-        ProofLocation::InstructionOffset(proof_instruction_offset, _) => {
-            accounts.push(AccountMeta::new_readonly(sysvar::instructions::id(), false));
-            proof_instruction_offset.into()
-        }
-        ProofLocation::ContextStateAccount(context_state_account) => {
-            accounts.push(AccountMeta::new_readonly(*context_state_account, false));
-            0
-        }
-    };
-    match ciphertext_validity_proof_location {
-        ProofLocation::InstructionOffset(_, _) => {
-            // already pushed instruction introspection sysvar previously
-        }
-        ProofLocation::ContextStateAccount(context_state_account) => {
-            accounts.push(AccountMeta::new_readonly(*context_state_account, false));
-        }
-    }
-
-    let mut instrs = vec![encode_instruction(
+    Ok(encode_instruction(
         token_program_id,
         accounts,
         TokenInstruction::ConfidentialMintBurnExtension,
         ConfidentialMintBurnInstruction::ConfidentialMint,
         &MintInstructionData {
-            audit_amount_lo: audit_amount_lo.into(),
-            audit_amount_hi: audit_amount_hi.into(),
-            proof_instruction_offset,
+            new_decryptable_supply: new_decryptable_supply.into(),
+            proof_instruction_offset: 0,
         },
-    )];
-
-    if let ProofLocation::InstructionOffset(proof_instruction_offset, range_proof_data) =
-        range_proof_location
-    {
-        if let ProofLocation::InstructionOffset(_, ciphertext_validity_proof_data) =
-            ciphertext_validity_proof_location
-        {
-            // This constructor appends the proof instruction right after the
-            // `ConfidentialMint` instruction. This means that the proof instruction
-            // offset must be always be 1.
-            let proof_instruction_offset: i8 = proof_instruction_offset.into();
-            if proof_instruction_offset != 1 {
-                return Err(TokenError::InvalidProofInstructionOffset.into());
-            }
-
-            match range_proof_data {
-                ProofData::InstructionData(data) => instrs
-                    .push(ProofInstruction::VerifyBatchedRangeProofU64.encode_verify_proof(None, data)),
-                ProofData::RecordAccount(address, offset) => instrs.push(
-                    ProofInstruction::VerifyBatchedRangeProofU64
-                        .encode_verify_proof_from_account(None, address, offset),
-                ),
-            };
-
-            match ciphertext_validity_proof_data {
-                ProofData::InstructionData(data) => instrs.push(
-                    ProofInstruction::VerifyBatchedGroupedCiphertext2HandlesValidity
-                        .encode_verify_proof(None, data),
-                ),
-                ProofData::RecordAccount(address, offset) => instrs.push(
-                    ProofInstruction::VerifyBatchedGroupedCiphertext2HandlesValidity
-                        .encode_verify_proof_from_account(None, address, offset),
-                ),
-            };
-        } else {
-            // both proofs have to either be context state or instruction offset
-            return Err(ProgramError::InvalidArgument);
-        }
-    };
-
-    Ok(instrs)
+    ))
 }
 
 /// Context state accounts used in confidential mint
 #[derive(Clone, Copy)]
 pub struct BurnSplitContextStateAccounts<'a> {
+    /// Location of equality proof
+    pub equality_proof: &'a Pubkey,
+    /// Location of ciphertext validity proof
+    pub ciphertext_validity_proof: &'a Pubkey,
+    /// Location of range proof
+    pub range_proof: &'a Pubkey,
+    /// Authority able to close proof accounts
+    pub authority: &'a Pubkey,
+}
+
+/// Context state accounts used in confidential mint
+#[derive(Clone, Copy)]
+pub struct MintSplitContextStateAccounts<'a> {
     /// Location of equality proof
     pub equality_proof: &'a Pubkey,
     /// Location of ciphertext validity proof
@@ -406,27 +341,21 @@ pub fn confidential_burn_with_split_proofs(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
     mint: &Pubkey,
-    auditor_pubkey: Option<ElGamalPubkey>,
     supply_elgamal_pubkey: Option<ElGamalPubkey>,
-    burn_amount: u64,
     new_decryptable_available_balance: DecryptableBalance,
     context_accounts: &BurnSplitContextStateAccounts,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    pedersen_openings: &(PedersenOpening, PedersenOpening),
 ) -> Result<Vec<Instruction>, ProgramError> {
     Ok(vec![inner_confidential_burn_with_split_proofs(
         token_program_id,
         token_account,
         mint,
-        auditor_pubkey,
         supply_elgamal_pubkey,
-        burn_amount,
         new_decryptable_available_balance,
         context_accounts,
         authority,
         multisig_signers,
-        pedersen_openings,
     )?])
 }
 
@@ -437,14 +366,11 @@ pub fn inner_confidential_burn_with_split_proofs(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
     mint: &Pubkey,
-    auditor_pubkey: Option<ElGamalPubkey>,
     supply_elgamal_pubkey: Option<ElGamalPubkey>,
-    burn_amount: u64,
     new_decryptable_available_balance: DecryptableBalance,
     context_accounts: &BurnSplitContextStateAccounts,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    pedersen_openings: &(PedersenOpening, PedersenOpening),
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let mut accounts = vec![AccountMeta::new(*token_account, false)];
@@ -476,19 +402,6 @@ pub fn inner_confidential_burn_with_split_proofs(
         accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
     }
 
-    let (burn_hi, burn_lo) = if let Some(apk) = auditor_pubkey {
-        let (opening_hi, opening_lo) = pedersen_openings;
-        let (amount_lo, amount_hi) = verify_and_split_deposit_amount(burn_amount)?;
-        let burn_hi = apk.encrypt_with(amount_hi, opening_hi);
-        let burn_lo = apk.encrypt_with(amount_lo, opening_lo);
-        (burn_hi.into(), burn_lo.into())
-    } else {
-        (
-            PodElGamalCiphertext::zeroed(),
-            PodElGamalCiphertext::zeroed(),
-        )
-    };
-
     Ok(encode_instruction(
         token_program_id,
         accounts,
@@ -496,8 +409,6 @@ pub fn inner_confidential_burn_with_split_proofs(
         ConfidentialMintBurnInstruction::ConfidentialBurn,
         &BurnInstructionData {
             new_decryptable_available_balance,
-            auditor_hi: burn_hi,
-            auditor_lo: burn_lo,
             proof_instruction_offset: 0,
         },
     ))

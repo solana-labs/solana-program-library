@@ -2,7 +2,9 @@ use {
     crate::extension::{Extension, ExtensionType},
     bytemuck::{Pod, Zeroable},
     solana_program::pubkey::Pubkey,
-    solana_zk_sdk::encryption::pod::elgamal::PodElGamalCiphertext,
+    solana_zk_sdk::encryption::pod::{
+        auth_encryption::PodAeCiphertext, elgamal::PodElGamalCiphertext,
+    },
     spl_pod::optional_keys::OptionalNonZeroElGamalPubkey,
 };
 
@@ -36,8 +38,10 @@ pub struct ConfidentialMintBurn {
     /// Authority to modify the `ConfidentialMintBurnMint` configuration and to
     /// mint new confidential tokens
     pub mint_authority: Pubkey,
-    /// The confidential supply of the mint
+    /// The confidential supply of the mint (encrypted by `encrypiton_pubkey`)
     pub confidential_supply: PodElGamalCiphertext,
+    /// The decryptable confidential supply of the mint
+    pub decryptable_supply: PodAeCiphertext,
     /// The ElGamal pubkey used to encrypt the confidential supply
     pub supply_elgamal_pubkey: OptionalNonZeroElGamalPubkey,
 }

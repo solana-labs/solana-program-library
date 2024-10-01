@@ -1,4 +1,4 @@
-#![cfg(feature = "test-sbf")]
+//#![cfg(feature = "test-sbf")]
 
 mod program_test;
 use {
@@ -8,22 +8,25 @@ use {
     spl_token_2022::{
         extension::{
             confidential_mint_burn::{
-                instruction::BurnSplitContextStateAccounts,
-                proof_generation::{generate_burn_proofs, generate_mint_proofs},
+                instruction::{BurnSplitContextStateAccounts, MintSplitContextStateAccounts},
                 ConfidentialMintBurn,
             },
             confidential_transfer::{
-                account_info::TransferAccountInfo,
-                ConfidentialTransferAccount,
+                account_info::TransferAccountInfo, ConfidentialTransferAccount,
             },
             BaseStateWithExtensions,
         },
         proof::ProofLocation,
-        solana_zk_sdk::encryption::{elgamal::*, pod::elgamal::PodElGamalPubkey},
+        solana_zk_sdk::encryption::{
+            auth_encryption::AeKey, elgamal::*, pod::elgamal::PodElGamalPubkey,
+        },
     },
     spl_token_client::{
         client::ProgramBanksClientProcessTransaction,
         token::{ExtensionInitializationParams, Token},
+    },
+    spl_token_confidential_transfer_proof_generation::{
+        burn::burn_split_proof_data, mint::mint_split_proof_data,
     },
     std::convert::TryInto,
 };
@@ -36,6 +39,7 @@ async fn test_confidential_mint() {
     let authority = Keypair::new();
     let auditor_elgamal_keypair = ElGamalKeypair::new_rand();
     let auditor_elgamal_pubkey = (*auditor_elgamal_keypair.pubkey()).into();
+    let supply_aes_key = AeKey::new_rand();
 
     let mut context = TestContext::new().await;
     context
@@ -62,6 +66,8 @@ async fn test_confidential_mint() {
         &alice_meta.token_account,
         &authority.pubkey(),
         MINT_AMOUNT,
+        &auditor_elgamal_keypair,
+        &supply_aes_key,
         &[&authority],
     )
     .await;
@@ -118,6 +124,7 @@ async fn test_confidential_burn() {
     let authority = Keypair::new();
     let auditor_elgamal_keypair = ElGamalKeypair::new_rand();
     let auditor_elgamal_pubkey = (*auditor_elgamal_keypair.pubkey()).into();
+    let supply_aes_key = AeKey::new_rand();
 
     let mut context = TestContext::new().await;
     context
@@ -144,6 +151,8 @@ async fn test_confidential_burn() {
         &alice_meta.token_account,
         &authority.pubkey(),
         MINT_AMOUNT,
+        &auditor_elgamal_keypair,
+        &supply_aes_key,
         &[&authority],
     )
     .await;
@@ -195,20 +204,19 @@ async fn test_confidential_burn() {
         .unwrap();
     let transfer_account_info = TransferAccountInfo::new(extension);
 
-    let (equality_proof_data, ciphertext_validity_proof_data, range_proof_data, pedersen_openings) =
-        generate_burn_proofs(
-            &transfer_account_info.available_balance.try_into().unwrap(),
-            &transfer_account_info
-                .decryptable_available_balance
-                .try_into()
-                .unwrap(),
-            BURN_AMOUNT,
-            &alice_meta.elgamal_keypair,
-            &alice_meta.aes_key,
-            &auditor_elgamal_pubkey,
-            &supply_elgamal_pubkey,
-        )
-        .unwrap();
+    let proof_data = burn_split_proof_data(
+        &transfer_account_info.available_balance.try_into().unwrap(),
+        &transfer_account_info
+            .decryptable_available_balance
+            .try_into()
+            .unwrap(),
+        BURN_AMOUNT,
+        &alice_meta.elgamal_keypair,
+        &alice_meta.aes_key,
+        &auditor_elgamal_pubkey.unwrap_or_default(),
+        &supply_elgamal_pubkey.unwrap_or_default(),
+    )
+    .unwrap();
 
     let range_proof_signer = &[&range_proof_context_state_account];
     let equality_proof_signer = &[&equality_proof_context_state_account];
@@ -218,7 +226,7 @@ async fn test_confidential_burn() {
         .confidential_transfer_create_context_state_account(
             context_state_accounts.range_proof,
             context_state_accounts.authority,
-            &range_proof_data,
+            &proof_data.range_proof_data,
             true,
             range_proof_signer,
         )
@@ -228,7 +236,7 @@ async fn test_confidential_burn() {
         .confidential_transfer_create_context_state_account(
             context_state_accounts.equality_proof,
             context_state_accounts.authority,
-            &equality_proof_data,
+            &proof_data.equality_proof_data,
             false,
             equality_proof_signer,
         )
@@ -238,7 +246,7 @@ async fn test_confidential_burn() {
         .confidential_transfer_create_context_state_account(
             context_state_accounts.ciphertext_validity_proof,
             context_state_accounts.authority,
-            &ciphertext_validity_proof_data,
+            &proof_data.ciphertext_validity_proof_data,
             false,
             ciphertext_validity_proof_signer,
         )
@@ -252,11 +260,9 @@ async fn test_confidential_burn() {
             &alice.pubkey(),
             &context_state_accounts,
             BURN_AMOUNT,
-            auditor_elgamal_pubkey,
             supply_elgamal_pubkey,
             &alice_meta.aes_key,
             &[&alice],
-            &pedersen_openings,
         )
         .await
         .unwrap();
@@ -319,6 +325,7 @@ async fn test_rotate_supply_elgamal() {
     let authority = Keypair::new();
     let auditor_elgamal_keypair = ElGamalKeypair::new_rand();
     let auditor_elgamal_pubkey = (*auditor_elgamal_keypair.pubkey()).into();
+    let supply_aes_key = AeKey::new_rand();
 
     let mut context = TestContext::new().await;
     context
@@ -345,6 +352,8 @@ async fn test_rotate_supply_elgamal() {
         &alice_meta.token_account,
         &authority.pubkey(),
         MINT_AMOUNT,
+        &auditor_elgamal_keypair,
+        &supply_aes_key,
         &[&authority],
     )
     .await;
@@ -394,36 +403,55 @@ async fn mint_tokens(
     token_account: &Pubkey,
     authority: &Pubkey,
     mint_amount: u64,
+    supply_elgamal_keypair: &ElGamalKeypair,
+    supply_aes_key: &AeKey,
     bulk_signers: &impl Signers,
 ) {
     let context_state_auth = Keypair::new();
-    let range_proof_context_state_account = Keypair::new();
-    let range_proof_context_pubkey = range_proof_context_state_account.pubkey();
+    let equality_proof_context_state_account = Keypair::new();
+    let equality_proof_context_pubkey = equality_proof_context_state_account.pubkey();
     let ciphertext_validity_proof_context_state_account = Keypair::new();
     let ciphertext_validity_proof_context_pubkey =
         ciphertext_validity_proof_context_state_account.pubkey();
+    let range_proof_context_state_account = Keypair::new();
+    let range_proof_context_pubkey = range_proof_context_state_account.pubkey();
 
     let mint_to_elgamal_pubkey = token.account_elgamal_pubkey(token_account).await.unwrap();
     let auditor_elgamal_pubkey = token.auditor_elgamal_pubkey().await.unwrap();
     let supply_elgamal_pubkey = token.supply_elgamal_pubkey().await.unwrap();
 
-    let (range_proof, ciphertext_validity_proof, pedersen_openings) = generate_mint_proofs(
+    let mint = token.get_mint_info().await.unwrap();
+    let conf_mb_ext = mint.get_extension::<ConfidentialMintBurn>().unwrap();
+
+    let context_state_accounts = MintSplitContextStateAccounts {
+        equality_proof: &equality_proof_context_pubkey,
+        ciphertext_validity_proof: &ciphertext_validity_proof_context_pubkey,
+        range_proof: &range_proof_context_pubkey,
+        authority: &context_state_auth.pubkey(),
+    };
+
+    let proof_data = mint_split_proof_data(
+        &conf_mb_ext.confidential_supply.try_into().unwrap(),
+        &conf_mb_ext.decryptable_supply.try_into().unwrap(),
         mint_amount,
+        supply_elgamal_keypair,
+        supply_aes_key,
         &mint_to_elgamal_pubkey,
-        &auditor_elgamal_pubkey,
-        &supply_elgamal_pubkey,
+        &auditor_elgamal_pubkey.unwrap_or_default(),
     )
     .unwrap();
 
-    let range_proof_signer = &[&range_proof_context_state_account];
+    let equality_proof_signer = &[&equality_proof_context_state_account];
     let ciphertext_validity_proof_signer = &[&ciphertext_validity_proof_context_state_account];
+    let range_proof_signer = &[&range_proof_context_state_account];
+
     token
         .confidential_transfer_create_context_state_account(
-            &range_proof_context_pubkey,
+            &equality_proof_context_pubkey,
             &context_state_auth.pubkey(),
-            &range_proof,
-            true,
-            range_proof_signer,
+            &proof_data.equality_proof_data,
+            false,
+            equality_proof_signer,
         )
         .await
         .unwrap();
@@ -431,32 +459,33 @@ async fn mint_tokens(
         .confidential_transfer_create_context_state_account(
             &ciphertext_validity_proof_context_pubkey,
             &context_state_auth.pubkey(),
-            &ciphertext_validity_proof,
+            &proof_data.ciphertext_validity_proof_data,
             false,
             ciphertext_validity_proof_signer,
         )
         .await
         .unwrap();
+    token
+        .confidential_transfer_create_context_state_account(
+            &range_proof_context_pubkey,
+            &context_state_auth.pubkey(),
+            &proof_data.range_proof_data,
+            false,
+            range_proof_signer,
+        )
+        .await
+        .unwrap();
 
-    let range_proof_location = ProofLocation::ContextStateAccount(&range_proof_context_pubkey);
-    let ciphertext_validity_proof_location =
-        ProofLocation::ContextStateAccount(&ciphertext_validity_proof_context_pubkey);
-
-    println!("MINT: account is {token_account} with owner {authority}");
     token
         .confidential_mint(
             token_account,
             authority,
-            mint_amount,
-            auditor_elgamal_pubkey,
             supply_elgamal_pubkey,
-            range_proof_location,
-            ciphertext_validity_proof_location,
-            &pedersen_openings,
+            &context_state_accounts,
+            proof_data.new_decryptable_supply,
             bulk_signers,
         )
         .await
-        .map_err(|e| println!("{}", e))
         .unwrap();
 
     let close_context_auth = context_state_auth.pubkey();

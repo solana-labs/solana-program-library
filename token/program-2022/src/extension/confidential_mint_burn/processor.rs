@@ -1,8 +1,5 @@
 #[cfg(feature = "zk-ops")]
-use {
-    super::verify_proof::validate_auditor_ciphertext, super::verify_proof::verify_burn_proof,
-    spl_token_confidential_transfer_ciphertext_arithmetic as ciphertext_arithmetic,
-};
+use spl_token_confidential_transfer_ciphertext_arithmetic as ciphertext_arithmetic;
 use {
     crate::{
         check_program_account,
@@ -13,7 +10,7 @@ use {
                     BurnInstructionData, ConfidentialMintBurnInstruction, InitializeMintData,
                     MintInstructionData, RotateSupplyElGamalData, UpdateAuthorityData,
                 },
-                verify_proof::verify_mint_proof,
+                verify_proof::{verify_burn_proof, verify_mint_proof},
                 ConfidentialMintBurn,
             },
             confidential_transfer::{ConfidentialTransferAccount, ConfidentialTransferMint},
@@ -25,6 +22,7 @@ use {
         processor::Processor,
         proof::decode_proof_instruction_context,
     },
+    bytemuck::Zeroable,
     solana_program::{
         account_info::{next_account_info, AccountInfo},
         entrypoint::ProgramResult,
@@ -33,10 +31,13 @@ use {
         pubkey::Pubkey,
         sysvar::instructions::get_instruction_relative,
     },
-    solana_zk_sdk::zk_elgamal_proof_program::{
-        instruction::ProofInstruction,
-        proof_data::{
-            CiphertextCiphertextEqualityProofContext, CiphertextCiphertextEqualityProofData,
+    solana_zk_sdk::{
+        encryption::pod::{auth_encryption::PodAeCiphertext, elgamal::PodElGamalPubkey},
+        zk_elgamal_proof_program::{
+            instruction::ProofInstruction,
+            proof_data::{
+                CiphertextCiphertextEqualityProofContext, CiphertextCiphertextEqualityProofData,
+            },
         },
     },
 };
@@ -54,6 +55,7 @@ fn process_initialize_mint(accounts: &[AccountInfo], data: &InitializeMintData) 
 
     conf_mint_burn_ext.mint_authority = data.authority;
     conf_mint_burn_ext.supply_elgamal_pubkey = data.supply_elgamal_pubkey;
+    conf_mint_burn_ext.decryptable_supply = PodAeCiphertext::zeroed();
 
     Ok(())
 }
@@ -155,8 +157,6 @@ fn process_confidential_mint(
     let account_info_iter = &mut accounts.iter();
     let token_account_info = next_account_info(account_info_iter)?;
     let mint_info = next_account_info(account_info_iter)?;
-    let authority_info = next_account_info(account_info_iter)?;
-    let authority_info_data_len = authority_info.data_len();
 
     check_program_account(mint_info.owner)?;
     let mint_data = &mut mint_info.data.borrow_mut();
@@ -167,6 +167,15 @@ fn process_confidential_mint(
         .auditor_elgamal_pubkey;
     let conf_mint_ext = mint.get_extension_mut::<ConfidentialMintBurn>()?;
 
+    let proof_context = verify_mint_proof(account_info_iter, data.proof_instruction_offset as i64)?;
+
+    check_program_account(token_account_info.owner)?;
+    let token_account_data = &mut token_account_info.data.borrow_mut();
+    let mut token_account = PodStateWithExtensionsMut::<PodAccount>::unpack(token_account_data)?;
+
+    let authority_info = next_account_info(account_info_iter)?;
+    let authority_info_data_len = authority_info.data_len();
+
     Processor::validate_owner(
         program_id,
         &conf_mint_ext.mint_authority,
@@ -175,9 +184,12 @@ fn process_confidential_mint(
         account_info_iter.as_slice(),
     )?;
 
-    check_program_account(token_account_info.owner)?;
-    let token_account_data = &mut token_account_info.data.borrow_mut();
-    let mut token_account = PodStateWithExtensionsMut::<PodAccount>::unpack(token_account_data)?;
+    if token_account
+        .get_extension::<NonTransferableAccount>()
+        .is_ok()
+    {
+        return Err(TokenError::NonTransferable.into());
+    }
 
     if token_account.base.is_frozen() {
         return Err(TokenError::AccountFrozen.into());
@@ -191,38 +203,24 @@ fn process_confidential_mint(
     // it'd enable creating SOL out of thin air
     assert!(!token_account.base.is_native());
 
-    let proof_context = verify_mint_proof(
-        account_info_iter,
-        data.proof_instruction_offset as i64,
-    )?;
-
-    if token_account
-        .get_extension::<NonTransferableAccount>()
-        .is_ok()
-    {
-        return Err(TokenError::NonTransferable.into());
-    }
-
     let confidential_transfer_account =
         token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
     confidential_transfer_account.valid_as_destination()?;
 
-    if proof_context.mint_to_pubkey != confidential_transfer_account.elgamal_pubkey {
+    if proof_context.mint_pubkeys.destination != confidential_transfer_account.elgamal_pubkey {
         return Err(ProgramError::InvalidInstructionData);
     }
 
-    validate_auditor_ciphertext(
-        &auditor_elgamal_pubkey,
-        &proof_context,
-        &data.audit_amount_lo,
-        &data.audit_amount_hi,
-    )?;
+    if let Some(auditor_pk) = Into::<Option<PodElGamalPubkey>>::into(auditor_elgamal_pubkey) {
+        if auditor_pk != proof_context.mint_pubkeys.auditor {
+            return Err(ProgramError::InvalidInstructionData);
+        }
+    }
 
     confidential_transfer_account.pending_balance_lo = ciphertext_arithmetic::add(
         &confidential_transfer_account.pending_balance_lo,
         &proof_context
-            .ciphertext_lo
-            .0
+            .mint_amount_ciphertext_lo
             .try_extract_ciphertext(0)
             .map_err(|_| ProgramError::InvalidAccountData)?,
     )
@@ -230,8 +228,7 @@ fn process_confidential_mint(
     confidential_transfer_account.pending_balance_hi = ciphertext_arithmetic::add(
         &confidential_transfer_account.pending_balance_hi,
         &proof_context
-            .ciphertext_hi
-            .0
+            .mint_amount_ciphertext_hi
             .try_extract_ciphertext(0)
             .map_err(|_| ProgramError::InvalidAccountData)?,
     )
@@ -240,22 +237,26 @@ fn process_confidential_mint(
     confidential_transfer_account.increment_pending_balance_credit_counter()?;
 
     // update supply
-    if conf_mint_ext.supply_elgamal_pubkey.is_some() {
+    if let Some(supply_pk) =
+        Into::<Option<PodElGamalPubkey>>::into(conf_mint_ext.supply_elgamal_pubkey)
+    {
+        if supply_pk != proof_context.mint_pubkeys.supply {
+            return Err(ProgramError::InvalidInstructionData);
+        }
         let current_supply = conf_mint_ext.confidential_supply;
         conf_mint_ext.confidential_supply = ciphertext_arithmetic::add_with_lo_hi(
             &current_supply,
             &proof_context
-                .ciphertext_lo
-                .0
+                .mint_amount_ciphertext_lo
                 .try_extract_ciphertext(2)
                 .map_err(|_| ProgramError::InvalidAccountData)?,
             &proof_context
-                .ciphertext_hi
-                .0
+                .mint_amount_ciphertext_hi
                 .try_extract_ciphertext(2)
                 .map_err(|_| ProgramError::InvalidAccountData)?,
         )
         .ok_or(TokenError::CiphertextArithmeticFailed)?;
+        conf_mint_ext.decryptable_supply = data.new_decryptable_supply;
     }
 
     Ok(())
@@ -281,26 +282,14 @@ fn process_confidential_burn(
         .auditor_elgamal_pubkey;
     let conf_mint_ext = mint.get_extension_mut::<ConfidentialMintBurn>()?;
 
-    // The zero-knowledge proof certifies that:
-    //   1. the burn amount is encrypted in the correct form
-    //   2. the source account has enough balance to burn the amount
-    let proof_context = verify_burn_proof(
-        account_info_iter,
-        data.proof_instruction_offset as i64,
-    )?;
-
-    let authority_info = next_account_info(account_info_iter)?;
+    let proof_context = verify_burn_proof(account_info_iter, data.proof_instruction_offset as i64)?;
 
     check_program_account(token_account_info.owner)?;
-    let authority_info_data_len = authority_info.data_len();
     let token_account_data = &mut token_account_info.data.borrow_mut();
     let mut token_account = PodStateWithExtensionsMut::<PodAccount>::unpack(token_account_data)?;
-    if token_account
-        .get_extension::<NonTransferableAccount>()
-        .is_ok()
-    {
-        return Err(TokenError::NonTransferable.into());
-    }
+
+    let authority_info = next_account_info(account_info_iter)?;
+    let authority_info_data_len = authority_info.data_len();
 
     Processor::validate_owner(
         program_id,
@@ -309,6 +298,13 @@ fn process_confidential_burn(
         authority_info_data_len,
         account_info_iter.as_slice(),
     )?;
+
+    if token_account
+        .get_extension::<NonTransferableAccount>()
+        .is_ok()
+    {
+        return Err(TokenError::NonTransferable.into());
+    }
 
     if token_account.base.is_frozen() {
         return Err(TokenError::AccountFrozen.into());
@@ -324,22 +320,18 @@ fn process_confidential_burn(
 
     // Check that the source encryption public key is consistent with what was
     // actually used to generate the zkp.
-    if proof_context.burner_pubkey != confidential_transfer_account.elgamal_pubkey {
+    if proof_context.burn_pubkeys.source != confidential_transfer_account.elgamal_pubkey {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
 
-    let source_transfer_amount_lo =
-        &proof_context
-            .ciphertext_lo
-            .0
-            .try_extract_ciphertext(0)
-            .map_err(|_| ProgramError::InvalidAccountData)?;
-    let source_transfer_amount_hi =
-        &proof_context
-            .ciphertext_hi
-            .0
-            .try_extract_ciphertext(0)
-            .map_err(|_| ProgramError::InvalidAccountData)?;
+    let source_transfer_amount_lo = &proof_context
+        .burn_amount_ciphertext_lo
+        .try_extract_ciphertext(0)
+        .map_err(|_| ProgramError::InvalidAccountData)?;
+    let source_transfer_amount_hi = &proof_context
+        .burn_amount_ciphertext_hi
+        .try_extract_ciphertext(0)
+        .map_err(|_| ProgramError::InvalidAccountData)?;
 
     let new_source_available_balance = ciphertext_arithmetic::subtract_with_lo_hi(
         &confidential_transfer_account.available_balance,
@@ -350,7 +342,7 @@ fn process_confidential_burn(
 
     // Check that the computed available balance is consistent with what was
     // actually used to generate the zkp on the client side.
-    if new_source_available_balance != proof_context.new_burner_ciphertext {
+    if new_source_available_balance != proof_context.remaining_balance_ciphertext {
         return Err(TokenError::ConfidentialTransferBalanceMismatch.into());
     }
 
@@ -358,26 +350,28 @@ fn process_confidential_burn(
     confidential_transfer_account.decryptable_available_balance =
         data.new_decryptable_available_balance;
 
-    validate_auditor_ciphertext(
-        &auditor_elgamal_pubkey,
-        &proof_context,
-        &data.auditor_lo,
-        &data.auditor_hi,
-    )?;
+    if let Some(auditor_pk) = Into::<Option<PodElGamalPubkey>>::into(auditor_elgamal_pubkey) {
+        if auditor_pk != proof_context.burn_pubkeys.auditor {
+            return Err(ProgramError::InvalidInstructionData);
+        }
+    }
 
     // update supply
-    if conf_mint_ext.supply_elgamal_pubkey.is_some() {
+    if let Some(supply_pk) =
+        Into::<Option<PodElGamalPubkey>>::into(conf_mint_ext.supply_elgamal_pubkey)
+    {
+        if supply_pk != proof_context.burn_pubkeys.supply {
+            return Err(ProgramError::InvalidInstructionData);
+        }
         let current_supply = conf_mint_ext.confidential_supply;
         conf_mint_ext.confidential_supply = ciphertext_arithmetic::subtract_with_lo_hi(
             &current_supply,
             &proof_context
-                .ciphertext_lo
-                .0
+                .burn_amount_ciphertext_lo
                 .try_extract_ciphertext(2)
                 .map_err(|_| ProgramError::InvalidAccountData)?,
             &proof_context
-                .ciphertext_hi
-                .0
+                .burn_amount_ciphertext_hi
                 .try_extract_ciphertext(2)
                 .map_err(|_| ProgramError::InvalidAccountData)?,
         )

@@ -263,6 +263,9 @@ pub enum TokenError {
     /// Withdraw / Deposit not allowed for confidential-mint-burn
     #[error("When the confidential-mint-burn extension is enabled, mints are only allowed into the confidential balance. Likewise conversions confidential token balance to normal balance and vice versa are illegal.")]
     IllegalMintBurnConversion,
+    /// Undecryptable supply when trying to generate confidential-mint proofs
+    #[error("Could not decrypt difference between current supply and decryptable supply when generating mint proofs")]
+    SupplyDecryption,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {
@@ -453,6 +456,9 @@ impl PrintProgramError for TokenError {
             TokenError::IllegalMintBurnConversion => {
                 msg!("Conversions from normal to confidential token balance and vice versa are illegal if the confidential-mint-burn extension is enabled")
             }
+            TokenError::SupplyDecryption => {
+                msg!("Could not decrypt difference between current supply and decryptable supply when generating mint proofs")
+            }
         }
     }
 }
@@ -465,6 +471,7 @@ impl From<TokenProofGenerationError> for TokenError {
             TokenProofGenerationError::NotEnoughFunds => TokenError::InsufficientFunds,
             TokenProofGenerationError::IllegalAmountBitLength => TokenError::IllegalBitLength,
             TokenProofGenerationError::FeeCalculation => TokenError::FeeCalculation,
+            TokenProofGenerationError::SupplyDecryption => TokenError::SupplyDecryption,
         }
     }
 }
