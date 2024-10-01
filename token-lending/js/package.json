@@ -52,7 +52,7 @@
         "@typescript-eslint/parser": "^8.4.0",
         "eslint": "^8.57.0",
         "gh-pages": "^6.1.1",
-        "rollup": "^4.22.4",
+        "rollup": "^4.23.0",
         "ts-node": "^10.9.2",
         "tslib": "^2.7.0",
         "typedoc": "^0.26.7",
