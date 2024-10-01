@@ -645,9 +645,8 @@ fn process_transfer(
 }
 
 /// Processes the changes for the sending party of a confidential transfer
-#[allow(clippy::too_many_arguments)]
 #[cfg(feature = "zk-ops")]
-pub fn process_source_for_transfer(
+fn process_source_for_transfer(
     program_id: &Pubkey,
     source_account_info: &AccountInfo,
     mint_info: &AccountInfo,
