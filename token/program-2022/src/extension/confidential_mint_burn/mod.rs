@@ -22,14 +22,8 @@ pub mod instruction;
 /// Confidential Mint-Burn Extension processor
 pub mod processor;
 
-/// Confidential Mint-Burn proof generation
-pub mod proof_generation;
-
 /// Confidential Mint-Burn proof verification
 pub mod verify_proof;
-
-/// Confidential Mint-Burn proof verification
-pub mod ciphertext_extraction;
 
 /// Confidential mint-burn mint configuration
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
