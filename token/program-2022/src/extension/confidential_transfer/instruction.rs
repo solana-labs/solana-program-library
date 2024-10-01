@@ -672,7 +672,6 @@ pub fn initialize_mint(
 }
 
 /// Create a `UpdateMint` instruction
-#[cfg(not(target_os = "solana"))]
 pub fn update_mint(
     token_program_id: &Pubkey,
     mint: &Pubkey,
@@ -705,7 +704,6 @@ pub fn update_mint(
 ///
 /// This instruction is suitable for use with a cross-program `invoke`
 #[allow(clippy::too_many_arguments)]
-#[cfg(not(target_os = "solana"))]
 pub fn inner_configure_account(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -761,7 +759,6 @@ pub fn inner_configure_account(
 
 /// Create a `ConfigureAccount` instruction
 #[allow(clippy::too_many_arguments)]
-#[cfg(not(target_os = "solana"))]
 pub fn configure_account(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -808,7 +805,6 @@ pub fn configure_account(
 }
 
 /// Create an `ApproveAccount` instruction
-#[cfg(not(target_os = "solana"))]
 pub fn approve_account(
     token_program_id: &Pubkey,
     account_to_approve: &Pubkey,
@@ -837,7 +833,6 @@ pub fn approve_account(
 /// Create an inner `EmptyAccount` instruction
 ///
 /// This instruction is suitable for use with a cross-program `invoke`
-#[cfg(not(target_os = "solana"))]
 pub fn inner_empty_account(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -883,7 +878,6 @@ pub fn inner_empty_account(
 }
 
 /// Create a `EmptyAccount` instruction
-#[cfg(not(target_os = "solana"))]
 pub fn empty_account(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -925,7 +919,6 @@ pub fn empty_account(
 
 /// Create a `Deposit` instruction
 #[allow(clippy::too_many_arguments)]
-#[cfg(not(target_os = "solana"))]
 pub fn deposit(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -962,7 +955,6 @@ pub fn deposit(
 ///
 /// This instruction is suitable for use with a cross-program `invoke`
 #[allow(clippy::too_many_arguments)]
-#[cfg(not(target_os = "solana"))]
 pub fn inner_withdraw(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -1041,7 +1033,6 @@ pub fn inner_withdraw(
 
 /// Create a `Withdraw` instruction
 #[allow(clippy::too_many_arguments)]
-#[cfg(not(target_os = "solana"))]
 pub fn withdraw(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -1114,7 +1105,6 @@ pub fn withdraw(
 ///
 /// This instruction is suitable for use with a cross-program `invoke`
 #[allow(clippy::too_many_arguments)]
-#[cfg(not(target_os = "solana"))]
 pub fn inner_transfer(
     token_program_id: &Pubkey,
     source_token_account: &Pubkey,
@@ -1210,7 +1200,6 @@ pub fn inner_transfer(
 
 /// Create a `Transfer` instruction
 #[allow(clippy::too_many_arguments)]
-#[cfg(not(target_os = "solana"))]
 pub fn transfer(
     token_program_id: &Pubkey,
     source_token_account: &Pubkey,
@@ -1306,7 +1295,6 @@ pub fn transfer(
 /// Create a inner `ApplyPendingBalance` instruction
 ///
 /// This instruction is suitable for use with a cross-program `invoke`
-#[cfg(not(target_os = "solana"))]
 pub fn inner_apply_pending_balance(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -1338,7 +1326,6 @@ pub fn inner_apply_pending_balance(
 }
 
 /// Create a `ApplyPendingBalance` instruction
-#[cfg(not(target_os = "solana"))]
 pub fn apply_pending_balance(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -1357,7 +1344,6 @@ pub fn apply_pending_balance(
     ) // calls check_program_account
 }
 
-#[cfg(not(target_os = "solana"))]
 fn enable_or_disable_balance_credits(
     instruction: ConfidentialTransferInstruction,
     token_program_id: &Pubkey,
@@ -1385,7 +1371,6 @@ fn enable_or_disable_balance_credits(
 }
 
 /// Create a `EnableConfidentialCredits` instruction
-#[cfg(not(target_os = "solana"))]
 pub fn enable_confidential_credits(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -1402,7 +1387,6 @@ pub fn enable_confidential_credits(
 }
 
 /// Create a `DisableConfidentialCredits` instruction
-#[cfg(not(target_os = "solana"))]
 pub fn disable_confidential_credits(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -1419,7 +1403,6 @@ pub fn disable_confidential_credits(
 }
 
 /// Create a `EnableNonConfidentialCredits` instruction
-#[cfg(not(target_os = "solana"))]
 pub fn enable_non_confidential_credits(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -1436,7 +1419,6 @@ pub fn enable_non_confidential_credits(
 }
 
 /// Create a `DisableNonConfidentialCredits` instruction
-#[cfg(not(target_os = "solana"))]
 pub fn disable_non_confidential_credits(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
