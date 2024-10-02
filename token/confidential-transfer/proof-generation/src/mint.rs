@@ -96,6 +96,7 @@ pub fn mint_split_proof_data(
     let decryptable_supply_ciphertext = supply_elgamal_keypair
         .pubkey()
         .encrypt(current_decyptable_supply);
+    #[allow(clippy::arithmetic_side_effects)]
     let ct_decryptable_to_current_diff = decryptable_supply_ciphertext - current_supply_ciphertext;
     let decryptable_to_current_diff = supply_elgamal_keypair
         .secret()

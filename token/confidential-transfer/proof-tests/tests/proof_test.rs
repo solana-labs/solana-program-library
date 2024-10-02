@@ -223,6 +223,7 @@ fn test_mint_validity(mint_amount: u64, supply: u64) {
         equality_proof_data,
         ciphertext_validity_proof_data,
         range_proof_data,
+        new_decryptable_supply: _,
     } = mint_split_proof_data(
         &supply_ciphertext,
         &decryptable_supply,
