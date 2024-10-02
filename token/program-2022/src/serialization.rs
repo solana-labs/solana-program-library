@@ -1,11 +1,6 @@
 //! serialization module - contains helpers for serde types from other crates,
 //! deserialization visitors
 
-use {
-    base64::{prelude::BASE64_STANDARD, Engine},
-    serde::de::Error,
-};
-
 /// helper function to ser/deser COption wrapped values
 pub mod coption_fromstr {
     use {
@@ -135,24 +130,22 @@ pub mod elgamalciphertext_fromstr {
             de::{Error, Visitor},
             Deserializer, Serializer,
         },
-        solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalCiphertext,
-        std::fmt,
+        solana_zk_sdk::encryption::pod::elgamal::PodElGamalCiphertext,
+        std::{fmt, str::FromStr},
     };
 
-    const AE_CIPHERTEXT_LEN: usize = 64;
-
     /// serialize AeCiphertext values supporting Display trait
-    pub fn serialize<S>(x: &ElGamalCiphertext, s: S) -> Result<S::Ok, S::Error>
+    pub fn serialie<S>(x: &PodElGamalCiphertext, s: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         s.serialize_str(&x.to_string())
     }
 
-    struct AeCiphertextVisitor;
+    struct ElGamalCiphertextVisitor;
 
-    impl<'de> Visitor<'de> for AeCiphertextVisitor {
-        type Value = ElGamalCiphertext;
+    impl<'de> Visitor<'de> for ElGamalCiphertextVisitor {
+        type Value = PodElGamalCiphertext;
 
         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
             formatter.write_str("a FromStr type")
@@ -162,17 +155,16 @@ pub mod elgamalciphertext_fromstr {
         where
             E: Error,
         {
-            let array = super::base64_to_bytes::<AE_CIPHERTEXT_LEN, E>(v)?;
-            Ok(ElGamalCiphertext(array))
+            FromStr::from_str(v).map_err(Error::custom)
         }
     }
 
     /// deserialize AeCiphertext values from str
-    pub fn deserialize<'de, D>(d: D) -> Result<ElGamalCiphertext, D::Error>
+    pub fn deserialize<'de, D>(d: D) -> Result<PodElGamalCiphertext, D::Error>
     where
         D: Deserializer<'de>,
     {
-        d.deserialize_str(AeCiphertextVisitor)
+        d.deserialize_str(ElGamalCiphertextVisitor)
     }
 }
 
