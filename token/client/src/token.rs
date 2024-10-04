@@ -31,18 +31,16 @@ use {
     spl_token_2022::{
         error::TokenError as Token2022Error,
         extension::{
-            confidential_mint_burn::{
-                self,
-                instruction::{BurnSplitContextStateAccounts, MintSplitContextStateAccounts},
-                ConfidentialMintBurn,
-            },
+            confidential_mint_burn::{self, ConfidentialMintBurn},
             confidential_transfer::{
                 self,
                 account_info::{
                     combine_balances, ApplyPendingBalanceAccountInfo, EmptyAccountAccountInfo,
                     TransferAccountInfo, WithdrawAccountInfo,
                 },
-                instruction::{ProofContextState, ZkProofData},
+                instruction::{
+                    CiphertextCiphertextEqualityProofData, ProofContextState, ZkProofData,
+                },
                 ConfidentialTransferAccount, ConfidentialTransferMint, DecryptableBalance,
             },
             confidential_transfer_fee::{
@@ -3482,26 +3480,53 @@ where
         account: &Pubkey,
         authority: &Pubkey,
         supply_elgamal_pubkey: Option<ElGamalPubkey>,
-        context_state_accounts: &MintSplitContextStateAccounts<'_>,
+        equality_proof_account: Option<&ProofAccount>,
+        ciphertext_validity_proof_account: Option<&ProofAccount>,
+        range_proof_account: Option<&ProofAccount>,
         new_decryptable_supply: AeCiphertext,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let signing_pubkeys = signing_keypairs.pubkeys();
         let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
+        if !([
+            equality_proof_account,
+            ciphertext_validity_proof_account,
+            range_proof_account,
+        ]
+        .iter()
+        .all(|proof_account| proof_account.is_some()))
+        {
+            return Err(TokenError::ProofGeneration);
+        }
+        // cannot panic as long as either `proof_data` or `proof_account` is `Some(..)`,
+        // which is guaranteed by the previous check
+        let equality_proof_location =
+            Self::confidential_transfer_create_proof_location(None, equality_proof_account, 1)
+                .unwrap();
+        let ciphertext_validity_proof_location = Self::confidential_transfer_create_proof_location(
+            None,
+            ciphertext_validity_proof_account,
+            2,
+        )
+        .unwrap();
+        let range_proof_location =
+            Self::confidential_transfer_create_proof_location(None, range_proof_account, 3)
+                .unwrap();
+
         self.process_ixs(
-            &[
-                confidential_mint_burn::instruction::confidential_mint_with_split_proofs(
-                    &self.program_id,
-                    account,
-                    &self.pubkey,
-                    supply_elgamal_pubkey,
-                    authority,
-                    &multisig_signers,
-                    context_state_accounts,
-                    new_decryptable_supply,
-                )?,
-            ],
+            &confidential_mint_burn::instruction::confidential_mint_with_split_proofs(
+                &self.program_id,
+                account,
+                &self.pubkey,
+                supply_elgamal_pubkey,
+                authority,
+                &multisig_signers,
+                equality_proof_location,
+                ciphertext_validity_proof_location,
+                range_proof_location,
+                new_decryptable_supply,
+            )?,
             signing_keypairs,
         )
         .await
@@ -3514,7 +3539,9 @@ where
         &self,
         ata_pubkey: &Pubkey,
         authority: &Pubkey,
-        context_state_accounts: &BurnSplitContextStateAccounts<'_>,
+        equality_proof_account: Option<&ProofAccount>,
+        ciphertext_validity_proof_account: Option<&ProofAccount>,
+        range_proof_account: Option<&ProofAccount>,
         amount: u64,
         supply_elgamal_pubkey: Option<ElGamalPubkey>,
         aes_key: &AeKey,
@@ -3532,6 +3559,31 @@ where
             .new_decryptable_available_balance(amount, aes_key)
             .map_err(|_| TokenError::AccountDecryption)?;
 
+        if !([
+            equality_proof_account,
+            ciphertext_validity_proof_account,
+            range_proof_account,
+        ]
+        .iter()
+        .all(|proof_account| proof_account.is_some()))
+        {
+            return Err(TokenError::ProofGeneration);
+        }
+        // cannot panic as long as either `proof_data` or `proof_account` is `Some(..)`,
+        // which is guaranteed by the previous check
+        let equality_proof_location =
+            Self::confidential_transfer_create_proof_location(None, equality_proof_account, 1)
+                .unwrap();
+        let ciphertext_validity_proof_location = Self::confidential_transfer_create_proof_location(
+            None,
+            ciphertext_validity_proof_account,
+            2,
+        )
+        .unwrap();
+        let range_proof_location =
+            Self::confidential_transfer_create_proof_location(None, range_proof_account, 3)
+                .unwrap();
+
         self.process_ixs(
             &confidential_mint_burn::instruction::confidential_burn_with_split_proofs(
                 &self.program_id,
@@ -3539,9 +3591,11 @@ where
                 &self.pubkey,
                 supply_elgamal_pubkey,
                 new_decryptable_available_balance.into(),
-                context_state_accounts,
                 authority,
                 &multisig_signers,
+                equality_proof_location,
+                ciphertext_validity_proof_location,
+                range_proof_location,
             )?,
             signing_keypairs,
         )
@@ -3655,30 +3709,24 @@ where
     pub async fn rotate_supply_elgamal<S: Signers>(
         &self,
         authority: &Pubkey,
-        supply_elgamal_keypair: &ElGamalKeypair,
-        supply_aes_key: &AeKey,
         new_supply_elgamal_keypair: &ElGamalKeypair,
         signing_keypairs: &S,
+        proof_data: CiphertextCiphertextEqualityProofData,
     ) -> TokenResult<T::Output> {
         let signing_pubkeys = signing_keypairs.pubkeys();
         let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
-        let mint = self.get_mint_info().await?;
-        let extension_state = mint.get_extension::<ConfidentialMintBurn>()?;
-        let current_supply = self
-            .confidential_supply(supply_elgamal_keypair, supply_aes_key)
-            .await?;
+        let equality_proof_location =
+            Self::confidential_transfer_create_proof_location(Some(&proof_data), None, 1).unwrap();
 
         self.process_ixs(
-            &confidential_mint_burn::instruction::rotate_supply_elgamal(
+            &confidential_mint_burn::instruction::rotate_supply_elgamal_pubkey(
                 &self.program_id,
                 self.get_address(),
                 authority,
                 &multisig_signers,
-                extension_state,
-                current_supply,
-                supply_elgamal_keypair,
-                new_supply_elgamal_keypair,
+                *new_supply_elgamal_keypair.pubkey(),
+                equality_proof_location,
             )?,
             signing_keypairs,
         )

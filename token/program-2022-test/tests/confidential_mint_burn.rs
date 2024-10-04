@@ -7,10 +7,7 @@ use {
     solana_sdk::{pubkey::Pubkey, signature::Signer, signer::keypair::Keypair, signers::Signers},
     spl_token_2022::{
         extension::{
-            confidential_mint_burn::{
-                instruction::{BurnSplitContextStateAccounts, MintSplitContextStateAccounts},
-                ConfidentialMintBurn,
-            },
+            confidential_mint_burn::ConfidentialMintBurn,
             confidential_transfer::{
                 account_info::TransferAccountInfo, ConfidentialTransferAccount,
             },
@@ -22,10 +19,11 @@ use {
     },
     spl_token_client::{
         client::ProgramBanksClientProcessTransaction,
-        token::{ExtensionInitializationParams, Token},
+        token::{ExtensionInitializationParams, ProofAccount, Token},
     },
     spl_token_confidential_transfer_proof_generation::{
         burn::burn_split_proof_data, mint::mint_split_proof_data,
+        supply::supply_elgamal_pubkey_rotation_proof,
     },
     std::convert::TryInto,
 };
@@ -181,18 +179,12 @@ async fn test_confidential_burn() {
     let supply_elgamal_pubkey = token.supply_elgamal_pubkey().await.unwrap();
 
     let equality_proof_context_state_account = Keypair::new();
-    let equality_proof_pubkey = equality_proof_context_state_account.pubkey();
+    let equality_proof_context_pubkey = equality_proof_context_state_account.pubkey();
     let ciphertext_validity_proof_context_state_account = Keypair::new();
-    let ciphertext_validity_proof_pubkey = ciphertext_validity_proof_context_state_account.pubkey();
+    let ciphertext_validity_proof_context_pubkey =
+        ciphertext_validity_proof_context_state_account.pubkey();
     let range_proof_context_state_account = Keypair::new();
-    let range_proof_pubkey = range_proof_context_state_account.pubkey();
-
-    let context_state_accounts = BurnSplitContextStateAccounts {
-        equality_proof: &equality_proof_pubkey,
-        ciphertext_validity_proof: &ciphertext_validity_proof_pubkey,
-        range_proof: &range_proof_pubkey,
-        authority: &context_state_authority.pubkey(),
-    };
+    let range_proof_context_pubkey = range_proof_context_state_account.pubkey();
 
     let state = token
         .get_account_info(&alice_meta.token_account)
@@ -220,44 +212,52 @@ async fn test_confidential_burn() {
     let range_proof_signer = &[&range_proof_context_state_account];
     let equality_proof_signer = &[&equality_proof_context_state_account];
     let ciphertext_validity_proof_signer = &[&ciphertext_validity_proof_context_state_account];
+    let context_state_auth_pubkey = context_state_authority.pubkey();
     // setup proofs
     token
         .confidential_transfer_create_context_state_account(
-            context_state_accounts.range_proof,
-            context_state_accounts.authority,
-            &proof_data.range_proof_data,
-            true,
-            range_proof_signer,
-        )
-        .await
-        .unwrap();
-    token
-        .confidential_transfer_create_context_state_account(
-            context_state_accounts.equality_proof,
-            context_state_accounts.authority,
+            &equality_proof_context_pubkey,
+            &context_state_auth_pubkey,
             &proof_data.equality_proof_data,
-            false,
+            true,
             equality_proof_signer,
         )
         .await
         .unwrap();
     token
         .confidential_transfer_create_context_state_account(
-            context_state_accounts.ciphertext_validity_proof,
-            context_state_accounts.authority,
+            &ciphertext_validity_proof_context_pubkey,
+            &context_state_auth_pubkey,
             &proof_data.ciphertext_validity_proof_data,
             false,
             ciphertext_validity_proof_signer,
         )
         .await
         .unwrap();
+    token
+        .confidential_transfer_create_context_state_account(
+            &range_proof_context_pubkey,
+            &context_state_auth_pubkey,
+            &proof_data.range_proof_data,
+            true,
+            range_proof_signer,
+        )
+        .await
+        .unwrap();
+
+    let equality_proof_location = ProofAccount::ContextAccount(equality_proof_context_pubkey);
+    let ciphertext_validity_proof_location =
+        ProofAccount::ContextAccount(ciphertext_validity_proof_context_pubkey);
+    let range_proof_location = ProofAccount::ContextAccount(range_proof_context_pubkey);
 
     // do the burn
     token
         .confidential_burn(
             &alice_meta.token_account,
             &alice.pubkey(),
-            &context_state_accounts,
+            Some(&equality_proof_location),
+            Some(&ciphertext_validity_proof_location),
+            Some(&range_proof_location),
             BURN_AMOUNT,
             supply_elgamal_pubkey,
             &alice_meta.aes_key,
@@ -271,7 +271,7 @@ async fn test_confidential_burn() {
     let close_context_state_signers = &[context_state_authority];
     token
         .confidential_transfer_close_context_state_account(
-            &equality_proof_pubkey,
+            &equality_proof_context_pubkey,
             &context_state_authority_pubkey,
             &context_state_authority_pubkey,
             close_context_state_signers,
@@ -280,7 +280,7 @@ async fn test_confidential_burn() {
         .unwrap();
     token
         .confidential_transfer_close_context_state_account(
-            &ciphertext_validity_proof_pubkey,
+            &ciphertext_validity_proof_context_pubkey,
             &context_state_authority_pubkey,
             &context_state_authority_pubkey,
             close_context_state_signers,
@@ -289,7 +289,7 @@ async fn test_confidential_burn() {
         .unwrap();
     token
         .confidential_transfer_close_context_state_account(
-            &range_proof_pubkey,
+            &range_proof_context_pubkey,
             &context_state_authority_pubkey,
             &context_state_authority_pubkey,
             close_context_state_signers,
@@ -366,13 +366,27 @@ async fn test_rotate_supply_elgamal() {
     );
 
     let new_supply_elgamal_keypair = ElGamalKeypair::new_rand();
+
+    let mint = token.get_mint_info().await.unwrap();
+    let extension_state = mint.get_extension::<ConfidentialMintBurn>().unwrap();
+    let current_supply = token
+        .confidential_supply(&auditor_elgamal_keypair, &supply_aes_key)
+        .await
+        .unwrap();
+
+    let proof_data = supply_elgamal_pubkey_rotation_proof(
+        current_supply,
+        &auditor_elgamal_keypair,
+        &new_supply_elgamal_keypair,
+        extension_state.confidential_supply.try_into().unwrap(),
+    )
+    .unwrap();
     token
         .rotate_supply_elgamal(
             &authority.pubkey(),
-            &auditor_elgamal_keypair,
-            &supply_aes_key,
             &new_supply_elgamal_keypair,
             &[authority],
+            proof_data,
         )
         .await
         .unwrap();
@@ -423,13 +437,6 @@ async fn mint_tokens(
     let mint = token.get_mint_info().await.unwrap();
     let conf_mb_ext = mint.get_extension::<ConfidentialMintBurn>().unwrap();
 
-    let context_state_accounts = MintSplitContextStateAccounts {
-        equality_proof: &equality_proof_context_pubkey,
-        ciphertext_validity_proof: &ciphertext_validity_proof_context_pubkey,
-        range_proof: &range_proof_context_pubkey,
-        authority: &context_state_auth.pubkey(),
-    };
-
     let proof_data = mint_split_proof_data(
         &conf_mb_ext.confidential_supply.try_into().unwrap(),
         &conf_mb_ext.decryptable_supply.try_into().unwrap(),
@@ -476,12 +483,19 @@ async fn mint_tokens(
         .await
         .unwrap();
 
+    let equality_proof_location = ProofAccount::ContextAccount(equality_proof_context_pubkey);
+    let ciphertext_validity_proof_location =
+        ProofAccount::ContextAccount(ciphertext_validity_proof_context_pubkey);
+    let range_proof_location = ProofAccount::ContextAccount(range_proof_context_pubkey);
+
     token
         .confidential_mint(
             token_account,
             authority,
             supply_elgamal_pubkey,
-            &context_state_accounts,
+            Some(&equality_proof_location),
+            Some(&ciphertext_validity_proof_location),
+            Some(&range_proof_location),
             proof_data.new_decryptable_supply,
             bulk_signers,
         )
