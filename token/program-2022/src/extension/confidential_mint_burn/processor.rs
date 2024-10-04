@@ -8,7 +8,8 @@ use {
             confidential_mint_burn::{
                 instruction::{
                     BurnInstructionData, ConfidentialMintBurnInstruction, InitializeMintData,
-                    MintInstructionData, RotateSupplyElGamalData, UpdateAuthorityData,
+                    MintInstructionData, RotateSupplyElGamalPubkeyData, UpdateAuthorityData,
+                    UpdateDecryptableSupplyData,
                 },
                 verify_proof::{verify_burn_proof, verify_mint_proof},
                 ConfidentialMintBurn,
@@ -20,7 +21,7 @@ use {
         instruction::{decode_instruction_data, decode_instruction_type},
         pod::{PodAccount, PodMint},
         processor::Processor,
-        proof::decode_proof_instruction_context,
+        proof::verify_and_extract_context,
     },
     bytemuck::Zeroable,
     solana_program::{
@@ -29,15 +30,11 @@ use {
         msg,
         program_error::ProgramError,
         pubkey::Pubkey,
-        sysvar::instructions::get_instruction_relative,
     },
     solana_zk_sdk::{
         encryption::pod::{auth_encryption::PodAeCiphertext, elgamal::PodElGamalPubkey},
-        zk_elgamal_proof_program::{
-            instruction::ProofInstruction,
-            proof_data::{
-                CiphertextCiphertextEqualityProofContext, CiphertextCiphertextEqualityProofData,
-            },
+        zk_elgamal_proof_program::proof_data::{
+            CiphertextCiphertextEqualityProofContext, CiphertextCiphertextEqualityProofData,
         },
     },
 };
@@ -51,11 +48,11 @@ fn process_initialize_mint(accounts: &[AccountInfo], data: &InitializeMintData) 
 
     let mint_data = &mut mint_info.data.borrow_mut();
     let mut mint = PodStateWithExtensionsMut::<PodMint>::unpack_uninitialized(mint_data)?;
-    let conf_mint_burn_ext = mint.init_extension::<ConfidentialMintBurn>(true)?;
+    let mint_burn_extension = mint.init_extension::<ConfidentialMintBurn>(true)?;
 
-    conf_mint_burn_ext.mint_authority = data.authority;
-    conf_mint_burn_ext.supply_elgamal_pubkey = data.supply_elgamal_pubkey;
-    conf_mint_burn_ext.decryptable_supply = PodAeCiphertext::zeroed();
+    mint_burn_extension.mint_authority = data.authority;
+    mint_burn_extension.supply_elgamal_pubkey = data.supply_elgamal_pubkey;
+    mint_burn_extension.decryptable_supply = PodAeCiphertext::zeroed();
 
     Ok(())
 }
@@ -74,27 +71,77 @@ fn process_update_mint(
     check_program_account(mint_info.owner)?;
     let mint_data = &mut mint_info.data.borrow_mut();
     let mut mint = PodStateWithExtensionsMut::<PodMint>::unpack(mint_data)?;
-    let mint = mint.get_extension_mut::<ConfidentialMintBurn>()?;
+    let mint_burn_extension = mint.get_extension_mut::<ConfidentialMintBurn>()?;
 
     Processor::validate_owner(
         program_id,
-        &mint.mint_authority,
+        &mint_burn_extension.mint_authority,
         authority_info,
         authority_info_data_len,
         account_info_iter.as_slice(),
     )?;
 
-    mint.mint_authority = new_authority;
+    mint_burn_extension.mint_authority = new_authority;
 
     Ok(())
 }
 
 /// Processes an [RotateSupplyElGamal] instruction.
 #[cfg(feature = "zk-ops")]
-fn process_rotate_supply_elgamal(
+fn process_rotate_supply_elgamal_pubkey(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    data: &RotateSupplyElGamalData,
+    data: &RotateSupplyElGamalPubkeyData,
+) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+    let mint_info = next_account_info(account_info_iter)?;
+
+    check_program_account(mint_info.owner)?;
+    let mint_data = &mut mint_info.data.borrow_mut();
+    let mut mint = PodStateWithExtensionsMut::<PodMint>::unpack(mint_data)?;
+    let mint_burn_extension = mint.get_extension_mut::<ConfidentialMintBurn>()?;
+
+    let proof_context = verify_and_extract_context::<
+        CiphertextCiphertextEqualityProofData,
+        CiphertextCiphertextEqualityProofContext,
+    >(
+        account_info_iter,
+        data.proof_instruction_offset as i64,
+        None,
+    )?;
+
+    if !mint_burn_extension
+        .supply_elgamal_pubkey
+        .equals(&proof_context.first_pubkey)
+    {
+        return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
+    }
+    if mint_burn_extension.confidential_supply != proof_context.first_ciphertext {
+        return Err(ProgramError::InvalidInstructionData);
+    }
+
+    let authority_info = next_account_info(account_info_iter)?;
+    let authority_info_data_len = authority_info.data_len();
+
+    Processor::validate_owner(
+        program_id,
+        &mint_burn_extension.mint_authority,
+        authority_info,
+        authority_info_data_len,
+        account_info_iter.as_slice(),
+    )?;
+
+    mint_burn_extension.supply_elgamal_pubkey = Some(proof_context.second_pubkey).try_into()?;
+    mint_burn_extension.confidential_supply = proof_context.second_ciphertext;
+
+    Ok(())
+}
+
+/// Processes an [UpdateAuthority] instruction.
+fn process_update_decryptable_supply(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    new_decryptable_supply: PodAeCiphertext,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let mint_info = next_account_info(account_info_iter)?;
@@ -104,45 +151,17 @@ fn process_rotate_supply_elgamal(
     check_program_account(mint_info.owner)?;
     let mint_data = &mut mint_info.data.borrow_mut();
     let mut mint = PodStateWithExtensionsMut::<PodMint>::unpack(mint_data)?;
-    let mint = mint.get_extension_mut::<ConfidentialMintBurn>()?;
+    let mint_burn_extension = mint.get_extension_mut::<ConfidentialMintBurn>()?;
 
     Processor::validate_owner(
         program_id,
-        &mint.mint_authority,
+        &mint_burn_extension.mint_authority,
         authority_info,
         authority_info_data_len,
         account_info_iter.as_slice(),
     )?;
 
-    if data.proof_location != 1 {
-        return Err(ProgramError::InvalidInstructionData);
-    }
-
-    let sysvar_account_info = next_account_info(account_info_iter)?;
-    let equality_proof_instruction =
-        get_instruction_relative(data.proof_location as i64, sysvar_account_info)?;
-
-    let proof_context = decode_proof_instruction_context::<
-        CiphertextCiphertextEqualityProofData,
-        CiphertextCiphertextEqualityProofContext,
-    >(
-        account_info_iter,
-        ProofInstruction::VerifyCiphertextCiphertextEquality,
-        &equality_proof_instruction,
-    )?;
-
-    if !mint
-        .supply_elgamal_pubkey
-        .equals(&proof_context.first_pubkey)
-    {
-        return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
-    }
-    if mint.confidential_supply != proof_context.first_ciphertext {
-        return Err(ProgramError::InvalidInstructionData);
-    }
-
-    mint.supply_elgamal_pubkey = Some(proof_context.second_pubkey).try_into()?;
-    mint.confidential_supply = proof_context.second_ciphertext;
+    mint_burn_extension.decryptable_supply = new_decryptable_supply;
 
     Ok(())
 }
@@ -165,7 +184,7 @@ fn process_confidential_mint(
     let auditor_elgamal_pubkey = mint
         .get_extension::<ConfidentialTransferMint>()?
         .auditor_elgamal_pubkey;
-    let conf_mint_ext = mint.get_extension_mut::<ConfidentialMintBurn>()?;
+    let mint_burn_extension = mint.get_extension_mut::<ConfidentialMintBurn>()?;
 
     let proof_context = verify_mint_proof(account_info_iter, data.proof_instruction_offset as i64)?;
 
@@ -178,7 +197,7 @@ fn process_confidential_mint(
 
     Processor::validate_owner(
         program_id,
-        &conf_mint_ext.mint_authority,
+        &mint_burn_extension.mint_authority,
         authority_info,
         authority_info_data_len,
         account_info_iter.as_slice(),
@@ -199,8 +218,6 @@ fn process_confidential_mint(
         return Err(TokenError::MintMismatch.into());
     }
 
-    // Wrapped SOL mint obviously not possible since
-    // it'd enable creating SOL out of thin air
     assert!(!token_account.base.is_native());
 
     let confidential_transfer_account =
@@ -211,8 +228,8 @@ fn process_confidential_mint(
         return Err(ProgramError::InvalidInstructionData);
     }
 
-    if let Some(auditor_pk) = Into::<Option<PodElGamalPubkey>>::into(auditor_elgamal_pubkey) {
-        if auditor_pk != proof_context.mint_pubkeys.auditor {
+    if let Some(auditor_pubkey) = Into::<Option<PodElGamalPubkey>>::into(auditor_elgamal_pubkey) {
+        if auditor_pubkey != proof_context.mint_pubkeys.auditor {
             return Err(ProgramError::InvalidInstructionData);
         }
     }
@@ -237,14 +254,14 @@ fn process_confidential_mint(
     confidential_transfer_account.increment_pending_balance_credit_counter()?;
 
     // update supply
-    if let Some(supply_pk) =
-        Into::<Option<PodElGamalPubkey>>::into(conf_mint_ext.supply_elgamal_pubkey)
+    if let Some(supply_pubkey) =
+        Into::<Option<PodElGamalPubkey>>::into(mint_burn_extension.supply_elgamal_pubkey)
     {
-        if supply_pk != proof_context.mint_pubkeys.supply {
+        if supply_pubkey != proof_context.mint_pubkeys.supply {
             return Err(ProgramError::InvalidInstructionData);
         }
-        let current_supply = conf_mint_ext.confidential_supply;
-        conf_mint_ext.confidential_supply = ciphertext_arithmetic::add_with_lo_hi(
+        let current_supply = mint_burn_extension.confidential_supply;
+        mint_burn_extension.confidential_supply = ciphertext_arithmetic::add_with_lo_hi(
             &current_supply,
             &proof_context
                 .mint_amount_ciphertext_lo
@@ -256,7 +273,7 @@ fn process_confidential_mint(
                 .map_err(|_| ProgramError::InvalidAccountData)?,
         )
         .ok_or(TokenError::CiphertextArithmeticFailed)?;
-        conf_mint_ext.decryptable_supply = data.new_decryptable_supply;
+        mint_burn_extension.decryptable_supply = data.new_decryptable_supply;
     }
 
     Ok(())
@@ -280,7 +297,7 @@ fn process_confidential_burn(
     let auditor_elgamal_pubkey = mint
         .get_extension::<ConfidentialTransferMint>()?
         .auditor_elgamal_pubkey;
-    let conf_mint_ext = mint.get_extension_mut::<ConfidentialMintBurn>()?;
+    let mint_burn_extension = mint.get_extension_mut::<ConfidentialMintBurn>()?;
 
     let proof_context = verify_burn_proof(account_info_iter, data.proof_instruction_offset as i64)?;
 
@@ -350,21 +367,21 @@ fn process_confidential_burn(
     confidential_transfer_account.decryptable_available_balance =
         data.new_decryptable_available_balance;
 
-    if let Some(auditor_pk) = Into::<Option<PodElGamalPubkey>>::into(auditor_elgamal_pubkey) {
-        if auditor_pk != proof_context.burn_pubkeys.auditor {
+    if let Some(auditor_pubkey) = Into::<Option<PodElGamalPubkey>>::into(auditor_elgamal_pubkey) {
+        if auditor_pubkey != proof_context.burn_pubkeys.auditor {
             return Err(ProgramError::InvalidInstructionData);
         }
     }
 
     // update supply
-    if let Some(supply_pk) =
-        Into::<Option<PodElGamalPubkey>>::into(conf_mint_ext.supply_elgamal_pubkey)
+    if let Some(supply_pubkey) =
+        Into::<Option<PodElGamalPubkey>>::into(mint_burn_extension.supply_elgamal_pubkey)
     {
-        if supply_pk != proof_context.burn_pubkeys.supply {
+        if supply_pubkey != proof_context.burn_pubkeys.supply {
             return Err(ProgramError::InvalidInstructionData);
         }
-        let current_supply = conf_mint_ext.confidential_supply;
-        conf_mint_ext.confidential_supply = ciphertext_arithmetic::subtract_with_lo_hi(
+        let current_supply = mint_burn_extension.confidential_supply;
+        mint_burn_extension.confidential_supply = ciphertext_arithmetic::subtract_with_lo_hi(
             &current_supply,
             &proof_context
                 .burn_amount_ciphertext_lo
@@ -400,10 +417,15 @@ pub(crate) fn process_instruction(
             let data = decode_instruction_data::<UpdateAuthorityData>(input)?;
             process_update_mint(program_id, accounts, data.new_authority)
         }
-        ConfidentialMintBurnInstruction::RotateSupplyElGamal => {
+        ConfidentialMintBurnInstruction::RotateSupplyElGamalPubkey => {
             msg!("ConfidentialMintBurnInstruction::RotateSupplyElGamal");
-            let data = decode_instruction_data::<RotateSupplyElGamalData>(input)?;
-            process_rotate_supply_elgamal(program_id, accounts, data)
+            let data = decode_instruction_data::<RotateSupplyElGamalPubkeyData>(input)?;
+            process_rotate_supply_elgamal_pubkey(program_id, accounts, data)
+        }
+        ConfidentialMintBurnInstruction::UpdateDecryptableSupply => {
+            msg!("ConfidentialMintBurnInstruction::UpdateDecryptableSupply");
+            let data = decode_instruction_data::<UpdateDecryptableSupplyData>(input)?;
+            process_update_decryptable_supply(program_id, accounts, data.new_decryptable_supply)
         }
         ConfidentialMintBurnInstruction::ConfidentialMint => {
             msg!("ConfidentialMintBurnInstruction::ConfidentialMint");
