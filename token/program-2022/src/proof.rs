@@ -134,7 +134,11 @@ pub fn verify_and_extract_context<'a, T: Pod + ZkProofData<U>, U: Pod>(
     }
 }
 
-/// todo
+/// Processes a proof location for instruction creation. Adds relevant accounts
+/// to supplied account vector
+///
+/// If the proof location is an instruction offset the corresponding proof
+/// instruction is created and added to the `proof_instructions` vector.
 pub fn process_proof_location<T, U>(
     accounts: &mut Vec<AccountMeta>,
     expected_instruction_offset: &mut i8,
