@@ -3,6 +3,8 @@ split-debuginfo = "unpacked"
 
 [workspace]
 members = [
+  "account-compression/programs/account-compression",
+  "account-compression/programs/noop",
   "associated-token-account/program",
   "associated-token-account/program-test",
   "binary-option/program",

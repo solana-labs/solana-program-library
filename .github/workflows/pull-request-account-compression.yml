@@ -1,27 +1,6 @@
 name: Account Compression Pull Request
 
-on:
-  pull_request:
-    paths:
-      - "account-compression/**"
-      - "libraries/concurrent-merkle-tree/**"
-      - "ci/*-version.sh"
-      - "ci/install-anchor.sh"
-      - ".github/workflows/pull-request-account-compression.yml"
-      - "!account-compression/sdk/**"
-  push:
-    branches: [master]
-    paths:
-      - "account-compression/**"
-      - "libraries/concurrent-merkle-tree/**"
-      - "ci/*-version.sh"
-      - "ci/install-anchor.sh"
-      - ".github/workflows/pull-request-account-compression.yml"
-      - "!account-compression/sdk/**"
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+on: workflow_dispatch
 
 jobs:
   anchor-build-account-compression:

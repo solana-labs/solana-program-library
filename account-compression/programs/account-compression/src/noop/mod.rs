@@ -15,7 +15,7 @@ pub struct Noop;
 
 impl anchor_lang::Id for Noop {
     fn id() -> Pubkey {
-        spl_noop::id()
+        anchor_lang::prelude::Pubkey::from(spl_noop::id().to_bytes())
     }
 }
 
