@@ -34,7 +34,6 @@ use {
     solana_program::{
         instruction::{AccountMeta, Instruction},
         program_error::ProgramError,
-        sysvar,
     },
 };
 
@@ -342,10 +341,7 @@ pub fn rotate_supply_elgamal_pubkey(
     ciphertext_equality_proof: ProofLocation<CiphertextCiphertextEqualityProofData>,
 ) -> Result<Vec<Instruction>, ProgramError> {
     check_program_account(token_program_id)?;
-    let mut accounts = vec![
-        AccountMeta::new(*mint, false),
-        AccountMeta::new_readonly(sysvar::instructions::id(), false),
-    ];
+    let mut accounts = vec![AccountMeta::new(*mint, false)];
 
     let mut expected_instruction_offset = 1;
     let mut proof_instructions = vec![];
@@ -439,7 +435,6 @@ pub fn confidential_mint_with_split_proofs(
     multisig_signers: &[&Pubkey],
     equality_proof_location: ProofLocation<CiphertextCommitmentEqualityProofData>,
     ciphertext_validity_proof_location: ProofLocation<
-        '_,
         BatchedGroupedCiphertext3HandlesValidityProofData,
     >,
     range_proof_location: ProofLocation<BatchedRangeProofU128Data>,
@@ -524,7 +519,6 @@ pub fn confidential_burn_with_split_proofs(
     multisig_signers: &[&Pubkey],
     equality_proof_location: ProofLocation<CiphertextCommitmentEqualityProofData>,
     ciphertext_validity_proof_location: ProofLocation<
-        '_,
         BatchedGroupedCiphertext3HandlesValidityProofData,
     >,
     range_proof_location: ProofLocation<BatchedRangeProofU128Data>,
