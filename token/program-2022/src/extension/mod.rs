@@ -1105,9 +1105,8 @@ pub enum ExtensionType {
     GroupMemberPointer,
     /// Mint contains token group member configurations
     TokenGroupMember,
-
-    /// Mint allowing the minting and burn of confidential tokens
-    ConfidentialMintBurn = u16::MAX - 4269,
+    /// Mint allowing the minting and burning of confidential tokens
+    ConfidentialMintBurn,
 
     /// Test variable-length mint extension
     #[cfg(test)]

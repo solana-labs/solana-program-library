@@ -80,7 +80,7 @@ pub fn mint_split_proof_data(
         .ok_or(TokenProofGenerationError::IllegalAmountBitLength)?;
 
     // fresh mints are initialized with a zeroed decryptable_supply
-    // TODO: @samkim is there a better way to do this?
+    // TODO: don't clone here once AeCiphertext implement Copy in the zk-sdk
     let pod_decryptable_supply: PodAeCiphertext = current_decryptable_supply.clone().into();
     let current_decyptable_supply = if pod_decryptable_supply != PodAeCiphertext::default() {
         // decrypt the current supply
