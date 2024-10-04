@@ -32,7 +32,7 @@ pub struct ConfidentialMintBurn {
     /// Authority to modify the `ConfidentialMintBurnMint` configuration and to
     /// mint new confidential tokens
     pub mint_authority: Pubkey,
-    /// The confidential supply of the mint (encrypted by `encrypiton_pubkey`)
+    /// The confidential supply of the mint (encrypted by `encryption_pubkey`)
     pub confidential_supply: PodElGamalCiphertext,
     /// The decryptable confidential supply of the mint
     pub decryptable_supply: PodAeCiphertext,
