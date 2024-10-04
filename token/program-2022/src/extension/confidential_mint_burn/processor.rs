@@ -186,7 +186,12 @@ fn process_confidential_mint(
         .auditor_elgamal_pubkey;
     let mint_burn_extension = mint.get_extension_mut::<ConfidentialMintBurn>()?;
 
-    let proof_context = verify_mint_proof(account_info_iter, data.proof_instruction_offset as i64)?;
+    let proof_context = verify_mint_proof(
+        account_info_iter,
+        data.equality_proof_instruction_offset,
+        data.ciphertext_validity_proof_instruction_offset,
+        data.range_proof_instruction_offset,
+    )?;
 
     check_program_account(token_account_info.owner)?;
     let token_account_data = &mut token_account_info.data.borrow_mut();
@@ -299,7 +304,12 @@ fn process_confidential_burn(
         .auditor_elgamal_pubkey;
     let mint_burn_extension = mint.get_extension_mut::<ConfidentialMintBurn>()?;
 
-    let proof_context = verify_burn_proof(account_info_iter, data.proof_instruction_offset as i64)?;
+    let proof_context = verify_burn_proof(
+        account_info_iter,
+        data.equality_proof_instruction_offset,
+        data.ciphertext_validity_proof_instruction_offset,
+        data.range_proof_instruction_offset,
+    )?;
 
     check_program_account(token_account_info.owner)?;
     let token_account_data = &mut token_account_info.data.borrow_mut();

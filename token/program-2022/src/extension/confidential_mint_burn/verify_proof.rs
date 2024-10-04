@@ -22,9 +22,11 @@ use {
 #[cfg(feature = "zk-ops")]
 pub fn verify_mint_proof(
     account_info_iter: &mut Iter<'_, AccountInfo<'_>>,
-    proof_instruction_offset: i64,
+    equality_proof_instruction_offset: i8,
+    ciphertext_validity_proof_instruction_offset: i8,
+    range_proof_instruction_offset: i8,
 ) -> Result<MintProofContext, ProgramError> {
-    let sysvar_account_info = if proof_instruction_offset != 0 {
+    let sysvar_account_info = if equality_proof_instruction_offset != 0 {
         Some(next_account_info(account_info_iter)?)
     } else {
         None
@@ -35,35 +37,23 @@ pub fn verify_mint_proof(
         CiphertextCommitmentEqualityProofContext,
     >(
         account_info_iter,
-        proof_instruction_offset,
+        equality_proof_instruction_offset as i64,
         sysvar_account_info,
     )?;
-
-    let proof_instruction_offset = if proof_instruction_offset != 0 {
-        proof_instruction_offset + 1
-    } else {
-        proof_instruction_offset
-    };
 
     let ciphertext_validity_proof_context = verify_and_extract_context::<
         BatchedGroupedCiphertext3HandlesValidityProofData,
         BatchedGroupedCiphertext3HandlesValidityProofContext,
     >(
         account_info_iter,
-        proof_instruction_offset,
+        ciphertext_validity_proof_instruction_offset as i64,
         sysvar_account_info,
     )?;
-
-    let proof_instruction_offset = if proof_instruction_offset != 0 {
-        proof_instruction_offset + 1
-    } else {
-        proof_instruction_offset
-    };
 
     let range_proof_context =
         verify_and_extract_context::<BatchedRangeProofU128Data, BatchedRangeProofContext>(
             account_info_iter,
-            proof_instruction_offset,
+            range_proof_instruction_offset as i64,
             sysvar_account_info,
         )?;
 
@@ -80,9 +70,11 @@ pub fn verify_mint_proof(
 #[cfg(feature = "zk-ops")]
 pub fn verify_burn_proof(
     account_info_iter: &mut Iter<'_, AccountInfo<'_>>,
-    proof_instruction_offset: i64,
+    equality_proof_instruction_offset: i8,
+    ciphertext_validity_proof_instruction_offset: i8,
+    range_proof_instruction_offset: i8,
 ) -> Result<BurnProofContext, ProgramError> {
-    let sysvar_account_info = if proof_instruction_offset != 0 {
+    let sysvar_account_info = if equality_proof_instruction_offset != 0 {
         Some(next_account_info(account_info_iter)?)
     } else {
         None
@@ -93,35 +85,23 @@ pub fn verify_burn_proof(
         CiphertextCommitmentEqualityProofContext,
     >(
         account_info_iter,
-        proof_instruction_offset,
+        equality_proof_instruction_offset as i64,
         sysvar_account_info,
     )?;
-
-    let proof_instruction_offset = if proof_instruction_offset != 0 {
-        proof_instruction_offset + 1
-    } else {
-        proof_instruction_offset
-    };
 
     let ciphertext_validity_proof_context = verify_and_extract_context::<
         BatchedGroupedCiphertext3HandlesValidityProofData,
         BatchedGroupedCiphertext3HandlesValidityProofContext,
     >(
         account_info_iter,
-        proof_instruction_offset,
+        ciphertext_validity_proof_instruction_offset as i64,
         sysvar_account_info,
     )?;
-
-    let proof_instruction_offset = if proof_instruction_offset != 0 {
-        proof_instruction_offset + 1
-    } else {
-        proof_instruction_offset
-    };
 
     let range_proof_context =
         verify_and_extract_context::<BatchedRangeProofU128Data, BatchedRangeProofContext>(
             account_info_iter,
-            proof_instruction_offset,
+            range_proof_instruction_offset as i64,
             sysvar_account_info,
         )?;
 

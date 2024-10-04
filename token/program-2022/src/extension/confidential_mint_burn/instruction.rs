@@ -3,10 +3,14 @@ use solana_zk_sdk::encryption::pod::elgamal::PodElGamalPubkey;
 #[cfg(not(target_os = "solana"))]
 use solana_zk_sdk::encryption::{auth_encryption::AeCiphertext, elgamal::ElGamalPubkey};
 #[cfg(not(target_os = "solana"))]
-use solana_zk_sdk::zk_elgamal_proof_program::proof_data::{
-    BatchedGroupedCiphertext3HandlesValidityProofData, BatchedRangeProofU128Data,
-    CiphertextCiphertextEqualityProofData, CiphertextCommitmentEqualityProofData,
+use solana_zk_sdk::zk_elgamal_proof_program::{
+    instruction::ProofInstruction,
+    proof_data::{
+        BatchedGroupedCiphertext3HandlesValidityProofData, BatchedRangeProofU128Data,
+        CiphertextCiphertextEqualityProofData, CiphertextCommitmentEqualityProofData,
+    },
 };
+#[cfg(not(target_os = "solana"))]
 use {
     crate::extension::confidential_transfer::DecryptableBalance,
     bytemuck::{Pod, Zeroable},
@@ -25,7 +29,7 @@ use {
     crate::{
         check_program_account,
         instruction::{encode_instruction, TokenInstruction},
-        proof::{ProofData, ProofLocation},
+        proof::{process_proof_location, ProofLocation},
     },
     solana_program::{
         instruction::{AccountMeta, Instruction},
@@ -122,11 +126,11 @@ pub enum ConfidentialMintBurnInstruction {
     ///   1. `[]` The SPL Token mint. `[writable]` if the mint has a non-zero
     ///      supply elgamal-pubkey
     ///   2. `[]` The context state account containing the pre-verified
-    ///      `CiphertextCommitmentEquality` proof
+    ///      `VerifyCiphertextCommitmentEquality` proof
     ///   3. `[]` The context state account containing the pre-verified
-    ///      `BatchedGroupedCiphertext3HandlesValidity` proof
+    ///      `VerifyBatchedGroupedCiphertext3HandlesValidity` proof
     ///   4. `[]` The context state account containing the pre-verified
-    ///      `BatchedRangeProofU128`
+    ///      `VerifyBatchedRangeProofU128`
     ///   5. `[signer]` The single account owner.
     ///
     ///   * Multisignature authority
@@ -134,11 +138,11 @@ pub enum ConfidentialMintBurnInstruction {
     ///   1. `[]` The SPL Token mint. `[writable]` if the mint has a non-zero
     ///      supply elgamal-pubkey
     ///   2. `[]` The context state account containing the pre-verified
-    ///      `CiphertextCommitmentEquality` proof
+    ///      `VerifyCiphertextCommitmentEquality` proof
     ///   3. `[]` The context state account containing the pre-verified
-    ///      `BatchedGroupedCiphertext3HandlesValidity` proof
+    ///      `VerifyBatchedGroupedCiphertext3HandlesValidity` proof
     ///   4. `[]` The context state account containing the pre-verified
-    ///      `BatchedRangeProofU128`
+    ///      `VerifyBatchedRangeProofU128`
     ///   2. `[]` The multisig account owner.
     ///   3.. `[signer]` Required M signer accounts for the SPL Token Multisig
     ///
@@ -154,11 +158,11 @@ pub enum ConfidentialMintBurnInstruction {
     ///   1. `[]` The SPL Token mint. `[writable]` if the mint has a non-zero
     ///      supply elgamal-pubkey
     ///   2. `[]` The context state account containing the pre-verified
-    ///      `CiphertextCommitmentEquality` proof
+    ///      `VerifyCiphertextCommitmentEquality` proof
     ///   3. `[]` The context state account containing the pre-verified
-    ///      `BatchedGroupedCiphertext3HandlesValidity` proof
+    ///      `VerifyBatchedGroupedCiphertext3HandlesValidity` proof
     ///   4. `[]` The context state account containing the pre-verified
-    ///      `BatchedRangeProofU128`
+    ///      `VerifyBatchedRangeProofU128`
     ///   5. `[signer]` The single account owner.
     ///
     ///   * Multisignature authority
@@ -166,13 +170,13 @@ pub enum ConfidentialMintBurnInstruction {
     ///   1. `[]` The SPL Token mint. `[writable]` if the mint has a non-zero
     ///      supply elgamal-pubkey
     ///   2. `[]` The context state account containing the pre-verified
-    ///      `CiphertextCommitmentEquality` proof
+    ///      `VerifyCiphertextCommitmentEquality` proof
     ///   3. `[]` The context state account containing the pre-verified
-    ///      `BatchedGroupedCiphertext3HandlesValidity` proof
+    ///      `VerifyBatchedGroupedCiphertext3HandlesValidity` proof
     ///   4. `[]` The context state account containing the pre-verified
-    ///      `BatchedRangeProofU128`
-    ///   2. `[]` The multisig account owner.
-    ///   3.. `[signer]` Required M signer accounts for the SPL Token Multisig
+    ///      `VerifyBatchedRangeProofU128`
+    ///   5. `[]` The multisig account owner.
+    ///   6.. `[signer]` Required M signer accounts for the SPL Token Multisig
     ///
     /// Data expected by this instruction:
     ///   `BurnInstructionData`
@@ -236,12 +240,20 @@ pub struct MintInstructionData {
     /// The new decryptable supply if the mint succeeds
     #[cfg_attr(feature = "serde-traits", serde(with = "aeciphertext_fromstr"))]
     pub new_decryptable_supply: PodAeCiphertext,
-    /// Relative location of the `ProofInstruction::VerifyBatchedRangeProofU64`
+    /// Relative location of the
+    /// `ProofInstruction::VerifyCiphertextCommitmentEquality` instruction
+    /// to the `ConfidentialMint` instruction in the transaction. 0 if the
+    /// proof is in a pre-verified context account
+    pub equality_proof_instruction_offset: i8,
+    /// Relative location of the
+    /// `ProofInstruction::VerifyBatchedGroupedCiphertext3HandlesValidity`
     /// instruction to the `ConfidentialMint` instruction in the
-    /// transaction. The
-    /// `ProofInstruction::VerifyBatchedGroupedCiphertext2HandlesValidity`
-    /// has to always be at the instruction directly after the range proof one.
-    pub proof_instruction_offset: i8,
+    /// transaction. 0 if the proof is in a pre-verified context account
+    pub ciphertext_validity_proof_instruction_offset: i8,
+    /// Relative location of the `ProofInstruction::VerifyBatchedRangeProofU128`
+    /// instruction to the `ConfidentialMint` instruction in the
+    /// transaction. 0 if the proof is in a pre-verified context account
+    pub range_proof_instruction_offset: i8,
 }
 
 /// Data expected by `ConfidentialMintBurnInstruction::ConfidentialBurn`
@@ -255,12 +267,18 @@ pub struct BurnInstructionData {
     pub new_decryptable_available_balance: DecryptableBalance,
     /// Relative location of the
     /// `ProofInstruction::VerifyCiphertextCommitmentEquality` instruction
-    /// to the `ConfidentialBurn` instruction in the transaction. The
-    /// `ProofInstruction::VerifyBatchedRangeProofU128` has to always be at
-    /// the instruction directly after the equality proof one,
-    /// with the `ProofInstruction::VerifyBatchedGroupedCiphertext2HandlesValidity`
-    /// following after that.
-    pub proof_instruction_offset: i8,
+    /// to the `ConfidentialMint` instruction in the transaction. 0 if the
+    /// proof is in a pre-verified context account
+    pub equality_proof_instruction_offset: i8,
+    /// Relative location of the
+    /// `ProofInstruction::VerifyBatchedGroupedCiphertext3HandlesValidity`
+    /// instruction to the `ConfidentialMint` instruction in the
+    /// transaction. 0 if the proof is in a pre-verified context account
+    pub ciphertext_validity_proof_instruction_offset: i8,
+    /// Relative location of the `ProofInstruction::VerifyBatchedRangeProofU128`
+    /// instruction to the `ConfidentialMint` instruction in the
+    /// transaction. 0 if the proof is in a pre-verified context account
+    pub range_proof_instruction_offset: i8,
 }
 
 /// Create a `InitializeMint` instruction
@@ -322,26 +340,24 @@ pub fn rotate_supply_elgamal_pubkey(
     multisig_signers: &[&Pubkey],
     new_supply_elgamal_pubkey: ElGamalPubkey,
     ciphertext_equality_proof: ProofLocation<CiphertextCiphertextEqualityProofData>,
-) -> Result<Instruction, ProgramError> {
+) -> Result<Vec<Instruction>, ProgramError> {
     check_program_account(token_program_id)?;
     let mut accounts = vec![
         AccountMeta::new(*mint, false),
         AccountMeta::new_readonly(sysvar::instructions::id(), false),
     ];
 
-    let proof_instruction_offset: i8 = match ciphertext_equality_proof {
-        ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) => {
-            accounts.push(AccountMeta::new_readonly(sysvar::instructions::id(), false));
-            if let ProofData::RecordAccount(record_address, _) = proof_data {
-                accounts.push(AccountMeta::new_readonly(*record_address, false));
-            }
-            proof_instruction_offset.into()
-        }
-        ProofLocation::ContextStateAccount(context_state_account) => {
-            accounts.push(AccountMeta::new_readonly(*context_state_account, false));
-            0
-        }
-    };
+    let mut expected_instruction_offset = 1;
+    let mut proof_instructions = vec![];
+
+    let proof_instruction_offset = process_proof_location(
+        &mut accounts,
+        &mut expected_instruction_offset,
+        &mut proof_instructions,
+        ciphertext_equality_proof,
+        true,
+        ProofInstruction::VerifyCiphertextCiphertextEquality,
+    )?;
 
     accounts.push(AccountMeta::new_readonly(
         *authority,
@@ -351,7 +367,7 @@ pub fn rotate_supply_elgamal_pubkey(
         accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
     }
 
-    Ok(encode_instruction(
+    let mut instructions = vec![encode_instruction(
         token_program_id,
         accounts,
         TokenInstruction::ConfidentialMintBurnExtension,
@@ -363,7 +379,11 @@ pub fn rotate_supply_elgamal_pubkey(
             .try_into()?,
             proof_instruction_offset,
         },
-    ))
+    )];
+
+    instructions.extend_from_slice(&proof_instructions);
+
+    Ok(instructions)
 }
 
 /// Create a `UpdateMint` instruction
@@ -424,7 +444,7 @@ pub fn confidential_mint_with_split_proofs(
     >,
     range_proof_location: ProofLocation<BatchedRangeProofU128Data>,
     new_decryptable_supply: AeCiphertext,
-) -> Result<Instruction, ProgramError> {
+) -> Result<Vec<Instruction>, ProgramError> {
     check_program_account(token_program_id)?;
     let mut accounts = vec![AccountMeta::new(*token_account, false)];
     // we only need write lock to adjust confidential suppy on
@@ -435,45 +455,35 @@ pub fn confidential_mint_with_split_proofs(
         accounts.push(AccountMeta::new_readonly(*mint, false));
     }
 
-    let proof_instruction_offset = match equality_proof_location {
-        ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) => {
-            accounts.push(AccountMeta::new_readonly(sysvar::instructions::id(), false));
-            if let ProofData::RecordAccount(record_address, _) = proof_data {
-                accounts.push(AccountMeta::new_readonly(*record_address, false));
-            }
-            proof_instruction_offset.into()
-        }
-        ProofLocation::ContextStateAccount(context_state_account) => {
-            accounts.push(AccountMeta::new_readonly(*context_state_account, false));
-            0
-        }
-    };
+    let mut expected_instruction_offset = 1;
+    let mut proof_instructions = vec![];
 
-    match ciphertext_validity_proof_location {
-        ProofLocation::InstructionOffset(_, proof_data) => {
-            // sysvar only pushed once since verify_proof reads it out and then
-            // supplies it to verify_and_extract
-            if let ProofData::RecordAccount(record_address, _) = proof_data {
-                accounts.push(AccountMeta::new_readonly(*record_address, false));
-            }
-        }
-        ProofLocation::ContextStateAccount(context_state_account) => {
-            accounts.push(AccountMeta::new_readonly(*context_state_account, false));
-        }
-    }
+    let equality_proof_instruction_offset = process_proof_location(
+        &mut accounts,
+        &mut expected_instruction_offset,
+        &mut proof_instructions,
+        equality_proof_location,
+        true,
+        ProofInstruction::VerifyCiphertextCommitmentEquality,
+    )?;
 
-    match range_proof_location {
-        ProofLocation::InstructionOffset(_, proof_data) => {
-            // sysvar only pushed once since verify_proof reads it out and then
-            // supplies it to verify_and_extract
-            if let ProofData::RecordAccount(record_address, _) = proof_data {
-                accounts.push(AccountMeta::new_readonly(*record_address, false));
-            }
-        }
-        ProofLocation::ContextStateAccount(context_state_account) => {
-            accounts.push(AccountMeta::new_readonly(*context_state_account, false));
-        }
-    }
+    let ciphertext_validity_proof_instruction_offset = process_proof_location(
+        &mut accounts,
+        &mut expected_instruction_offset,
+        &mut proof_instructions,
+        ciphertext_validity_proof_location,
+        false,
+        ProofInstruction::VerifyBatchedGroupedCiphertext3HandlesValidity,
+    )?;
+
+    let range_proof_instruction_offset = process_proof_location(
+        &mut accounts,
+        &mut expected_instruction_offset,
+        &mut proof_instructions,
+        range_proof_location,
+        false,
+        ProofInstruction::VerifyBatchedRangeProofU128,
+    )?;
 
     accounts.push(AccountMeta::new_readonly(
         *authority,
@@ -483,16 +493,22 @@ pub fn confidential_mint_with_split_proofs(
         accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
     }
 
-    Ok(encode_instruction(
+    let mut instructions = vec![encode_instruction(
         token_program_id,
         accounts,
         TokenInstruction::ConfidentialMintBurnExtension,
         ConfidentialMintBurnInstruction::ConfidentialMint,
         &MintInstructionData {
             new_decryptable_supply: new_decryptable_supply.into(),
-            proof_instruction_offset,
+            equality_proof_instruction_offset,
+            ciphertext_validity_proof_instruction_offset,
+            range_proof_instruction_offset,
         },
-    ))
+    )];
+
+    instructions.extend_from_slice(&proof_instructions);
+
+    Ok(instructions)
 }
 
 /// Create a inner `ConfidentialBurn` instruction
@@ -512,7 +528,7 @@ pub fn confidential_burn_with_split_proofs(
         BatchedGroupedCiphertext3HandlesValidityProofData,
     >,
     range_proof_location: ProofLocation<BatchedRangeProofU128Data>,
-) -> Result<Instruction, ProgramError> {
+) -> Result<Vec<Instruction>, ProgramError> {
     check_program_account(token_program_id)?;
     let mut accounts = vec![AccountMeta::new(*token_account, false)];
     if supply_elgamal_pubkey.is_some() {
@@ -521,45 +537,35 @@ pub fn confidential_burn_with_split_proofs(
         accounts.push(AccountMeta::new_readonly(*mint, false));
     }
 
-    let proof_instruction_offset = match equality_proof_location {
-        ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) => {
-            accounts.push(AccountMeta::new_readonly(sysvar::instructions::id(), false));
-            if let ProofData::RecordAccount(record_address, _) = proof_data {
-                accounts.push(AccountMeta::new_readonly(*record_address, false));
-            }
-            proof_instruction_offset.into()
-        }
-        ProofLocation::ContextStateAccount(context_state_account) => {
-            accounts.push(AccountMeta::new_readonly(*context_state_account, false));
-            0
-        }
-    };
+    let mut expected_instruction_offset = 1;
+    let mut proof_instructions = vec![];
 
-    match ciphertext_validity_proof_location {
-        ProofLocation::InstructionOffset(_, proof_data) => {
-            // sysvar only pushed once since verify_proof reads it out and then
-            // supplies it to verify_and_extract
-            if let ProofData::RecordAccount(record_address, _) = proof_data {
-                accounts.push(AccountMeta::new_readonly(*record_address, false));
-            }
-        }
-        ProofLocation::ContextStateAccount(context_state_account) => {
-            accounts.push(AccountMeta::new_readonly(*context_state_account, false));
-        }
-    }
+    let equality_proof_instruction_offset = process_proof_location(
+        &mut accounts,
+        &mut expected_instruction_offset,
+        &mut proof_instructions,
+        equality_proof_location,
+        true,
+        ProofInstruction::VerifyCiphertextCommitmentEquality,
+    )?;
 
-    match range_proof_location {
-        ProofLocation::InstructionOffset(_, proof_data) => {
-            // sysvar only pushed once since verify_proof reads it out and then
-            // supplies it to verify_and_extract
-            if let ProofData::RecordAccount(record_address, _) = proof_data {
-                accounts.push(AccountMeta::new_readonly(*record_address, false));
-            }
-        }
-        ProofLocation::ContextStateAccount(context_state_account) => {
-            accounts.push(AccountMeta::new_readonly(*context_state_account, false));
-        }
-    }
+    let ciphertext_validity_proof_instruction_offset = process_proof_location(
+        &mut accounts,
+        &mut expected_instruction_offset,
+        &mut proof_instructions,
+        ciphertext_validity_proof_location,
+        false,
+        ProofInstruction::VerifyBatchedGroupedCiphertext3HandlesValidity,
+    )?;
+
+    let range_proof_instruction_offset = process_proof_location(
+        &mut accounts,
+        &mut expected_instruction_offset,
+        &mut proof_instructions,
+        range_proof_location,
+        false,
+        ProofInstruction::VerifyBatchedRangeProofU128,
+    )?;
 
     accounts.push(AccountMeta::new_readonly(
         *authority,
@@ -570,14 +576,20 @@ pub fn confidential_burn_with_split_proofs(
         accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
     }
 
-    Ok(encode_instruction(
+    let mut instructions = vec![encode_instruction(
         token_program_id,
         accounts,
         TokenInstruction::ConfidentialMintBurnExtension,
         ConfidentialMintBurnInstruction::ConfidentialBurn,
         &BurnInstructionData {
             new_decryptable_available_balance,
-            proof_instruction_offset,
+            equality_proof_instruction_offset,
+            ciphertext_validity_proof_instruction_offset,
+            range_proof_instruction_offset,
         },
-    ))
+    )];
+
+    instructions.extend_from_slice(&proof_instructions);
+
+    Ok(instructions)
 }
