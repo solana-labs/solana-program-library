@@ -92,7 +92,7 @@ pub struct InitializeMintData {
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct UpdateAuthorityData {
-    /// The pubkey the `authority` is to be rotated to
+    /// The new `authority` pubkey
     pub new_authority: Pubkey,
 }
 
