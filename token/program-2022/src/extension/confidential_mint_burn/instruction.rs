@@ -1,5 +1,5 @@
 #[cfg(not(target_os = "solana"))]
-use solana_zk_sdk::encryption::pod::elgamal::PodElGamalPubkey;
+use crate::proof::{process_proof_location, ProofLocation};
 #[cfg(not(target_os = "solana"))]
 use solana_zk_sdk::encryption::{auth_encryption::AeCiphertext, elgamal::ElGamalPubkey};
 #[cfg(not(target_os = "solana"))]
@@ -10,31 +10,26 @@ use solana_zk_sdk::zk_elgamal_proof_program::{
         CiphertextCiphertextEqualityProofData, CiphertextCommitmentEqualityProofData,
     },
 };
-#[cfg(not(target_os = "solana"))]
-use {
-    crate::extension::confidential_transfer::DecryptableBalance,
-    bytemuck::{Pod, Zeroable},
-    num_enum::{IntoPrimitive, TryFromPrimitive},
-    solana_program::pubkey::Pubkey,
-    solana_zk_sdk::encryption::pod::auth_encryption::PodAeCiphertext,
-    spl_pod::optional_keys::OptionalNonZeroElGamalPubkey,
-};
 #[cfg(feature = "serde-traits")]
 use {
     crate::serialization::aeciphertext_fromstr,
     serde::{Deserialize, Serialize},
 };
-#[cfg(not(target_os = "solana"))]
 use {
     crate::{
         check_program_account,
+        extension::confidential_transfer::DecryptableBalance,
         instruction::{encode_instruction, TokenInstruction},
-        proof::{process_proof_location, ProofLocation},
     },
+    bytemuck::{Pod, Zeroable},
+    num_enum::{IntoPrimitive, TryFromPrimitive},
     solana_program::{
         instruction::{AccountMeta, Instruction},
         program_error::ProgramError,
+        pubkey::Pubkey,
     },
+    solana_zk_sdk::encryption::pod::{auth_encryption::PodAeCiphertext, elgamal::PodElGamalPubkey},
+    spl_pod::optional_keys::OptionalNonZeroElGamalPubkey,
 };
 
 /// Confidential Transfer extension instructions
@@ -281,7 +276,6 @@ pub struct BurnInstructionData {
 }
 
 /// Create a `InitializeMint` instruction
-#[cfg(not(target_os = "solana"))]
 pub fn initialize_mint(
     token_program_id: &Pubkey,
     mint: &Pubkey,
@@ -304,7 +298,6 @@ pub fn initialize_mint(
 }
 
 /// Create a `UpdateMint` instruction
-#[cfg(not(target_os = "solana"))]
 pub fn update_authority(
     token_program_id: &Pubkey,
     mint: &Pubkey,
