@@ -29,7 +29,7 @@
   },
   "dependencies": {
     "@solana/web3.js": "^1.95.3",
-    "@solana/addresses": "2.0.0-rc.1",
+    "@solana/addresses": "2.0.0-20241006045741",
     "@solana/spl-single-pool": "1.0.0"
   },
   "ava": {
