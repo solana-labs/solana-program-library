@@ -1999,9 +1999,9 @@ checksum = "3a471a38ef8ed83cd6e40aa59c1ffe17db6855c18e3604d9c4ed8c08ebc28678"
 
 [[package]]
 name = "futures"
-version = "0.3.30"
+version = "0.3.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "645c6916888f6cb6350d2550b80fb63e734897a8498abe35cfb732b6487804b0"
+checksum = "65bc07b1a8bc7c85c5f2e110c476c7389b4554ba72af57d8445ea63a576b0876"
 dependencies = [
  "futures-channel",
  "futures-core",
@@ -2030,9 +2030,9 @@ checksum = "05f29059c0c2090612e8d742178b0580d2dc940c837851ad723096f87af6663e"
 
 [[package]]
 name = "futures-executor"
-version = "0.3.30"
+version = "0.3.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a576fc72ae164fca6b9db127eaa9a9dda0d61316034f33a0a0d4eda41f02b01d"
+checksum = "1e28d1d997f585e54aebc3f97d39e72338912123a67330d723fdbb564d646c9f"
 dependencies = [
  "futures-core",
  "futures-task",
@@ -2176,7 +2176,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8af59a261bcf42f45d1b261232847b9b850ba0a1419d6100698246fb66e9240"
 dependencies = [
  "arc-swap",
- "futures 0.3.30",
+ "futures 0.3.31",
  "log",
  "reqwest",
  "serde",
@@ -2454,7 +2454,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ca815a891b24fdfb243fa3239c86154392b0953ee584aa1a2a1f66d20cbe75cc"
 dependencies = [
  "bytes",
- "futures 0.3.30",
+ "futures 0.3.31",
  "headers",
  "http",
  "hyper",
@@ -2722,7 +2722,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d2b99d4207e2a04fb4581746903c2bb7eb376f88de9c699d0f3e10feeac0cd3a"
 dependencies = [
  "derive_more",
- "futures 0.3.30",
+ "futures 0.3.31",
  "jsonrpc-core",
  "jsonrpc-pubsub",
  "log",
@@ -2737,7 +2737,7 @@ version = "18.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "14f7f76aef2d054868398427f6c54943cf3d1caa9a7ec7d0c38d69df97a965eb"
 dependencies = [
- "futures 0.3.30",
+ "futures 0.3.31",
  "futures-executor",
  "futures-util",
  "log",
@@ -2752,7 +2752,7 @@ version = "18.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b51da17abecbdab3e3d4f26b01c5ec075e88d3abe3ab3b05dc9aa69392764ec0"
 dependencies = [
- "futures 0.3.30",
+ "futures 0.3.31",
  "jsonrpc-client-transports",
 ]
 
@@ -2774,7 +2774,7 @@ version = "18.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e1dea6e07251d9ce6a552abfb5d7ad6bc290a4596c8dcc3d795fae2bbdc1f3ff"
 dependencies = [
- "futures 0.3.30",
+ "futures 0.3.31",
  "hyper",
  "jsonrpc-core",
  "jsonrpc-server-utils",
@@ -2790,7 +2790,7 @@ version = "18.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "240f87695e6c6f62fb37f05c02c04953cf68d6408b8c1c89de85c7a0125b1011"
 dependencies = [
- "futures 0.3.30",
+ "futures 0.3.31",
  "jsonrpc-core",
  "lazy_static",
  "log",
@@ -2806,7 +2806,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fa4fdea130485b572c39a460d50888beb00afb3e35de23ccd7fad8ff19f0e0d4"
 dependencies = [
  "bytes",
- "futures 0.3.30",
+ "futures 0.3.31",
  "globset",
  "jsonrpc-core",
  "lazy_static",
@@ -4727,7 +4727,7 @@ version = "3.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4b4b487fe2acf240a021cf57c6b2b4903b1e78ca0ecd862a71b71d2a51fed77d"
 dependencies = [
- "futures 0.3.30",
+ "futures 0.3.31",
  "log",
  "once_cell",
  "parking_lot 0.12.0",
@@ -4992,7 +4992,7 @@ checksum = "41d1c5305e39e09653383c2c7244f2f78b3bcae37cf50c64cb4789c9f5096ec2"
 dependencies = [
  "base64 0.13.0",
  "bytes",
- "futures 0.3.30",
+ "futures 0.3.31",
  "httparse",
  "log",
  "rand 0.8.5",
@@ -5094,7 +5094,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ef39e4e89a7ff154960b4eb42483c09f9284b05193487c72678c84bd2ccda9c0"
 dependencies = [
  "borsh 1.5.1",
- "futures 0.3.30",
+ "futures 0.3.31",
  "solana-banks-interface",
  "solana-program",
  "solana-sdk",
@@ -5124,7 +5124,7 @@ checksum = "1987ad9ca4c1ec488a20be89d01d339a2a69882f6eb5061d8382318b69f85f35"
 dependencies = [
  "bincode",
  "crossbeam-channel",
- "futures 0.3.30",
+ "futures 0.3.31",
  "solana-banks-interface",
  "solana-client",
  "solana-runtime",
@@ -5281,7 +5281,7 @@ dependencies = [
  "async-trait",
  "bincode",
  "dashmap",
- "futures 0.3.30",
+ "futures 0.3.31",
  "futures-util",
  "indexmap 2.2.6",
  "indicatif",
@@ -5375,7 +5375,7 @@ dependencies = [
  "crossbeam-channel",
  "dashmap",
  "etcd-client",
- "futures 0.3.30",
+ "futures 0.3.31",
  "histogram",
  "itertools 0.12.1",
  "lazy_static",
@@ -5622,7 +5622,7 @@ dependencies = [
  "dashmap",
  "eager",
  "fs_extra",
- "futures 0.3.30",
+ "futures 0.3.31",
  "itertools 0.12.1",
  "lazy-lru",
  "lazy_static",
@@ -5961,7 +5961,7 @@ checksum = "438a959b0fdd4462f2e3414e344eb238cfcae47954138e7c3b71c91cdddcd0f8"
 dependencies = [
  "async-mutex",
  "async-trait",
- "futures 0.3.30",
+ "futures 0.3.31",
  "itertools 0.12.1",
  "lazy_static",
  "log",
@@ -6325,7 +6325,7 @@ dependencies = [
  "bzip2",
  "enum-iterator",
  "flate2",
- "futures 0.3.30",
+ "futures 0.3.31",
  "goauth",
  "http",
  "hyper",
@@ -6562,7 +6562,7 @@ dependencies = [
  "bincode",
  "bytes",
  "crossbeam-channel",
- "futures 0.3.30",
+ "futures 0.3.31",
  "itertools 0.12.1",
  "log",
  "lru",
@@ -7490,7 +7490,7 @@ name = "spl-tlv-account-resolution"
 version = "0.8.1"
 dependencies = [
  "bytemuck",
- "futures 0.3.30",
+ "futures 0.3.31",
  "futures-util",
  "serde",
  "solana-client",
@@ -7631,7 +7631,7 @@ dependencies = [
  "base64 0.22.1",
  "clap 2.34.0",
  "console",
- "futures 0.3.30",
+ "futures 0.3.31",
  "libtest-mimic",
  "serde",
  "serde_derive",
@@ -7669,7 +7669,7 @@ dependencies = [
  "async-trait",
  "bincode",
  "bytemuck",
- "futures 0.3.30",
+ "futures 0.3.31",
  "futures-util",
  "solana-banks-interface",
  "solana-cli-output",
@@ -8275,7 +8275,7 @@ checksum = "1c38a012bed6fb9681d3bf71ffaa4f88f3b4b9ed3198cda6e4c8462d24d4bb80"
 dependencies = [
  "anyhow",
  "fnv",
- "futures 0.3.30",
+ "futures 0.3.31",
  "humantime",
  "opentelemetry",
  "pin-project",
