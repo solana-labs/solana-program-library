@@ -1122,6 +1122,8 @@ pub enum AuthorityType {
     GroupPointer,
     /// Authority to set the group member address
     GroupMemberPointer,
+    /// Authority to mint new confidential tokens
+    MintConfidentialTokens,
 }
 
 impl AuthorityType {
@@ -1142,6 +1144,7 @@ impl AuthorityType {
             AuthorityType::MetadataPointer => 12,
             AuthorityType::GroupPointer => 13,
             AuthorityType::GroupMemberPointer => 14,
+            AuthorityType::MintConfidentialTokens => 15,
         }
     }
 
@@ -1162,6 +1165,7 @@ impl AuthorityType {
             12 => Ok(AuthorityType::MetadataPointer),
             13 => Ok(AuthorityType::GroupPointer),
             14 => Ok(AuthorityType::GroupMemberPointer),
+            15 => Ok(AuthorityType::MintConfidentialTokens),
             _ => Err(TokenError::InvalidInstruction.into()),
         }
     }

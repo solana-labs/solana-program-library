@@ -10,6 +10,7 @@ use solana_zk_sdk::zk_elgamal_proof_program::{
         CiphertextCiphertextEqualityProofData, CiphertextCommitmentEqualityProofData,
     },
 };
+use spl_pod::optional_keys::OptionalNonZeroPubkey;
 #[cfg(feature = "serde-traits")]
 use {
     crate::serialization::aeciphertext_fromstr,
@@ -55,39 +56,7 @@ pub enum ConfidentialMintBurnInstruction {
     /// Data expected by this instruction:
     ///   `InitializeMintData`
     InitializeMint,
-    /// Updates mint-authority for confidential-mint-burn mint.
-    ///
-    /// Accounts expected by this instruction:
-    ///
-    ///   * Single authority
-    ///   0. `[writable]` The SPL Token mint.
-    ///   1. `[signer]` Confidential mint authority.
-    ///
-    ///   * Multisignature authority
-    ///   0. `[writable]` The SPL Token mint.
-    ///   1. `[]` The multisig authority account owner.
-    ///   2.. `[signer]` Required M signer accounts for the SPL Token Multisig
-    ///
-    /// Data expected by this instruction:
-    ///   `UpdateAuthorityData`
-    UpdateAuthority,
     /// Rotates the ElGamal pubkey used to encrypt confidential supply
-    ///
-    /// Accounts expected by this instruction:
-    ///
-    ///   * Single authority
-    ///   0. `[writable]` The SPL Token mint.
-    ///   1. `[signer]` Confidential mint authority.
-    ///
-    ///   * Multisignature authority
-    ///   0. `[writable]` The SPL Token mint.
-    ///   1. `[]` The multisig authority account owner.
-    ///   2.. `[signer]` Required M signer accounts for the SPL Token Multisig
-    ///
-    /// Data expected by this instruction:
-    ///   `RotateSupplyElGamalPubkeyData`
-    RotateSupplyElGamalPubkey,
-    /// Updates the decryptable supply of the mint
     ///
     /// Accounts expected by this instruction:
     ///
@@ -109,6 +78,22 @@ pub enum ConfidentialMintBurnInstruction {
     ///   3.. `[signer]` Required M signer accounts for the SPL Token Multisig
     ///
     /// Data expected by this instruction:
+    ///   `RotateSupplyElGamalPubkeyData`
+    RotateSupplyElGamalPubkey,
+    /// Updates the decryptable supply of the mint
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   * Single authority
+    ///   0. `[writable]` The SPL Token mint.
+    ///   1. `[signer]` Confidential mint authority.
+    ///
+    ///   * Multisignature authority
+    ///   0. `[writable]` The SPL Token mint.
+    ///   1. `[]` The multisig authority account owner.
+    ///   2.. `[signer]` Required M signer accounts for the SPL Token Multisig
+    ///
+    /// Data expected by this instruction:
     ///   `UpdateDecryptableSupplyData`
     UpdateDecryptableSupply,
     /// Mints tokens to confidential balance
@@ -119,26 +104,32 @@ pub enum ConfidentialMintBurnInstruction {
     ///   0. `[writable]` The SPL Token account.
     ///   1. `[]` The SPL Token mint. `[writable]` if the mint has a non-zero
     ///      supply elgamal-pubkey
-    ///   2. `[]` The context state account containing the pre-verified
-    ///      `VerifyCiphertextCommitmentEquality` proof
-    ///   3. `[]` The context state account containing the pre-verified
-    ///      `VerifyBatchedGroupedCiphertext3HandlesValidity` proof
-    ///   4. `[]` The context state account containing the pre-verified
-    ///      `VerifyBatchedRangeProofU128`
-    ///   5. `[signer]` The single account owner.
+    ///   2. `[]` (Optional) Instructions sysvar if at least one of the
+    ///      `zk_elgamal_proof` instructions are included in the same
+    ///      transaction.
+    ///   3. `[]` (Optional) The context state account containing the
+    ///      pre-verified `VerifyCiphertextCommitmentEquality` proof
+    ///   4. `[]` (Optional) The context state account containing the
+    ///      pre-verified `VerifyBatchedGroupedCiphertext3HandlesValidity` proof
+    ///   5. `[]` (Optional) The context state account containing the
+    ///      pre-verified `VerifyBatchedRangeProofU128`
+    ///   6. `[signer]` The single account owner.
     ///
     ///   * Multisignature authority
     ///   0. `[writable]` The SPL Token mint.
     ///   1. `[]` The SPL Token mint. `[writable]` if the mint has a non-zero
     ///      supply elgamal-pubkey
-    ///   2. `[]` The context state account containing the pre-verified
-    ///      `VerifyCiphertextCommitmentEquality` proof
-    ///   3. `[]` The context state account containing the pre-verified
-    ///      `VerifyBatchedGroupedCiphertext3HandlesValidity` proof
-    ///   4. `[]` The context state account containing the pre-verified
-    ///      `VerifyBatchedRangeProofU128`
-    ///   2. `[]` The multisig account owner.
-    ///   3.. `[signer]` Required M signer accounts for the SPL Token Multisig
+    ///   2. `[]` (Optional) Instructions sysvar if at least one of the
+    ///      `zk_elgamal_proof` instructions are included in the same
+    ///      transaction.
+    ///   3. `[]` (Optional) The context state account containing the
+    ///      pre-verified `VerifyCiphertextCommitmentEquality` proof
+    ///   4. `[]` (Optional) The context state account containing the
+    ///      pre-verified `VerifyBatchedGroupedCiphertext3HandlesValidity` proof
+    ///   5. `[]` (Optional) The context state account containing the
+    ///      pre-verified `VerifyBatchedRangeProofU128`
+    ///   6. `[]` The multisig account owner.
+    ///   7.. `[signer]` Required M signer accounts for the SPL Token Multisig
     ///
     /// Data expected by this instruction:
     ///   `MintInstructionData`
@@ -151,26 +142,32 @@ pub enum ConfidentialMintBurnInstruction {
     ///   0. `[writable]` The SPL Token account.
     ///   1. `[]` The SPL Token mint. `[writable]` if the mint has a non-zero
     ///      supply elgamal-pubkey
-    ///   2. `[]` The context state account containing the pre-verified
-    ///      `VerifyCiphertextCommitmentEquality` proof
-    ///   3. `[]` The context state account containing the pre-verified
-    ///      `VerifyBatchedGroupedCiphertext3HandlesValidity` proof
-    ///   4. `[]` The context state account containing the pre-verified
-    ///      `VerifyBatchedRangeProofU128`
-    ///   5. `[signer]` The single account owner.
+    ///   2. `[]` (Optional) Instructions sysvar if at least one of the
+    ///      `zk_elgamal_proof` instructions are included in the same
+    ///      transaction.
+    ///   3. `[]` (Optional) The context state account containing the
+    ///      pre-verified `VerifyCiphertextCommitmentEquality` proof
+    ///   4. `[]` (Optional) The context state account containing the
+    ///      pre-verified `VerifyBatchedGroupedCiphertext3HandlesValidity` proof
+    ///   5. `[]` (Optional) The context state account containing the
+    ///      pre-verified `VerifyBatchedRangeProofU128`
+    ///   6. `[signer]` The single account owner.
     ///
     ///   * Multisignature authority
     ///   0. `[writable]` The SPL Token mint.
     ///   1. `[]` The SPL Token mint. `[writable]` if the mint has a non-zero
     ///      supply elgamal-pubkey
-    ///   2. `[]` The context state account containing the pre-verified
-    ///      `VerifyCiphertextCommitmentEquality` proof
-    ///   3. `[]` The context state account containing the pre-verified
-    ///      `VerifyBatchedGroupedCiphertext3HandlesValidity` proof
-    ///   4. `[]` The context state account containing the pre-verified
-    ///      `VerifyBatchedRangeProofU128`
-    ///   5. `[]` The multisig account owner.
-    ///   6.. `[signer]` Required M signer accounts for the SPL Token Multisig
+    ///   2. `[]` (Optional) Instructions sysvar if at least one of the
+    ///      `zk_elgamal_proof` instructions are included in the same
+    ///      transaction.
+    ///   3. `[]` (Optional) The context state account containing the
+    ///      pre-verified `VerifyCiphertextCommitmentEquality` proof
+    ///   4. `[]` (Optional) The context state account containing the
+    ///      pre-verified `VerifyBatchedGroupedCiphertext3HandlesValidity` proof
+    ///   5. `[]` (Optional) The context state account containing the
+    ///      pre-verified `VerifyBatchedRangeProofU128`
+    ///   6. `[]` The multisig account owner.
+    ///   7.. `[signer]` Required M signer accounts for the SPL Token Multisig
     ///
     /// Data expected by this instruction:
     ///   `BurnInstructionData`
@@ -185,19 +182,11 @@ pub enum ConfidentialMintBurnInstruction {
 pub struct InitializeMintData {
     /// Authority used to modify the `ConfidentialMintBurn` mint
     /// configuration and mint new tokens
-    pub authority: Pubkey,
+    pub authority: OptionalNonZeroPubkey,
     /// The ElGamal pubkey used to encrypt the confidential supply
     pub supply_elgamal_pubkey: OptionalNonZeroElGamalPubkey,
-}
-
-/// Data expected by `ConfidentialMintBurnInstruction::UpdateMint`
-#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
-#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
-#[repr(C)]
-pub struct UpdateAuthorityData {
-    /// The new `authority` pubkey
-    pub new_authority: Pubkey,
+    /// The initial 0 supply ecrypted with the supply aes key
+    pub decryptable_supply: PodAeCiphertext,
 }
 
 /// Data expected by `ConfidentialMintBurnInstruction::RotateSupplyElGamal`
@@ -279,11 +268,18 @@ pub struct BurnInstructionData {
 pub fn initialize_mint(
     token_program_id: &Pubkey,
     mint: &Pubkey,
-    authority: Pubkey,
+    authority: Option<Pubkey>,
     confidential_supply_pubkey: Option<PodElGamalPubkey>,
+    decryptable_supply: Option<PodAeCiphertext>,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let accounts = vec![AccountMeta::new(*mint, false)];
+
+    let decryptable_supply = if confidential_supply_pubkey.is_some() {
+        decryptable_supply.ok_or(ProgramError::InvalidInstructionData)?
+    } else {
+        PodAeCiphertext::zeroed()
+    };
 
     Ok(encode_instruction(
         token_program_id,
@@ -291,34 +287,10 @@ pub fn initialize_mint(
         TokenInstruction::ConfidentialMintBurnExtension,
         ConfidentialMintBurnInstruction::InitializeMint,
         &InitializeMintData {
-            authority,
+            authority: authority.try_into()?,
             supply_elgamal_pubkey: confidential_supply_pubkey.try_into()?,
+            decryptable_supply,
         },
-    ))
-}
-
-/// Create a `UpdateMint` instruction
-pub fn update_authority(
-    token_program_id: &Pubkey,
-    mint: &Pubkey,
-    authority: &Pubkey,
-    multisig_signers: &[&Pubkey],
-    new_authority: Pubkey,
-) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
-    let mut accounts = vec![
-        AccountMeta::new(*mint, false),
-        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
-    ];
-    for multisig_signer in multisig_signers.iter() {
-        accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
-    }
-    Ok(encode_instruction(
-        token_program_id,
-        accounts,
-        TokenInstruction::ConfidentialMintBurnExtension,
-        ConfidentialMintBurnInstruction::UpdateAuthority,
-        &UpdateAuthorityData { new_authority },
     ))
 }
 
@@ -396,7 +368,7 @@ pub fn update_decryptable_supply(
         token_program_id,
         accounts,
         TokenInstruction::ConfidentialMintBurnExtension,
-        ConfidentialMintBurnInstruction::UpdateAuthority,
+        ConfidentialMintBurnInstruction::UpdateDecryptableSupply,
         &UpdateDecryptableSupplyData {
             new_decryptable_supply: new_decryptable_supply.into(),
         },
