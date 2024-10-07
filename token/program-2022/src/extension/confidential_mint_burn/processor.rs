@@ -8,7 +8,7 @@ use {
             confidential_mint_burn::{
                 instruction::{
                     BurnInstructionData, ConfidentialMintBurnInstruction, InitializeMintData,
-                    MintInstructionData, RotateSupplyElGamalPubkeyData, UpdateAuthorityData,
+                    MintInstructionData, RotateSupplyElGamalPubkeyData,
                     UpdateDecryptableSupplyData,
                 },
                 verify_proof::{verify_burn_proof, verify_mint_proof},
@@ -23,7 +23,6 @@ use {
         processor::Processor,
         proof::verify_and_extract_context,
     },
-    bytemuck::Zeroable,
     solana_program::{
         account_info::{next_account_info, AccountInfo},
         entrypoint::ProgramResult,
@@ -50,38 +49,9 @@ fn process_initialize_mint(accounts: &[AccountInfo], data: &InitializeMintData) 
     let mut mint = PodStateWithExtensionsMut::<PodMint>::unpack_uninitialized(mint_data)?;
     let mint_burn_extension = mint.init_extension::<ConfidentialMintBurn>(true)?;
 
-    mint_burn_extension.mint_authority = data.authority;
+    mint_burn_extension.authority = data.authority;
     mint_burn_extension.supply_elgamal_pubkey = data.supply_elgamal_pubkey;
-    mint_burn_extension.decryptable_supply = PodAeCiphertext::zeroed();
-
-    Ok(())
-}
-
-/// Processes an [UpdateAuthority] instruction.
-fn process_update_mint(
-    program_id: &Pubkey,
-    accounts: &[AccountInfo],
-    new_authority: Pubkey,
-) -> ProgramResult {
-    let account_info_iter = &mut accounts.iter();
-    let mint_info = next_account_info(account_info_iter)?;
-    let authority_info = next_account_info(account_info_iter)?;
-    let authority_info_data_len = authority_info.data_len();
-
-    check_program_account(mint_info.owner)?;
-    let mint_data = &mut mint_info.data.borrow_mut();
-    let mut mint = PodStateWithExtensionsMut::<PodMint>::unpack(mint_data)?;
-    let mint_burn_extension = mint.get_extension_mut::<ConfidentialMintBurn>()?;
-
-    Processor::validate_owner(
-        program_id,
-        &mint_burn_extension.mint_authority,
-        authority_info,
-        authority_info_data_len,
-        account_info_iter.as_slice(),
-    )?;
-
-    mint_burn_extension.mint_authority = new_authority;
+    mint_burn_extension.decryptable_supply = data.decryptable_supply;
 
     Ok(())
 }
@@ -110,10 +80,13 @@ fn process_rotate_supply_elgamal_pubkey(
         None,
     )?;
 
-    if !mint_burn_extension
-        .supply_elgamal_pubkey
-        .equals(&proof_context.first_pubkey)
-    {
+    let supply_elgamal_pubkey: Option<PodElGamalPubkey> =
+        mint_burn_extension.supply_elgamal_pubkey.into();
+    let Some(supply_elgamal_pubkey) = supply_elgamal_pubkey else {
+        return Err(TokenError::InvalidState.into());
+    };
+
+    if !supply_elgamal_pubkey.eq(&proof_context.first_pubkey) {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
     if mint_burn_extension.confidential_supply != proof_context.first_ciphertext {
@@ -123,9 +96,12 @@ fn process_rotate_supply_elgamal_pubkey(
     let authority_info = next_account_info(account_info_iter)?;
     let authority_info_data_len = authority_info.data_len();
 
+    let authority = Option::<Pubkey>::from(mint_burn_extension.authority)
+        .ok_or(TokenError::NoAuthorityExists)?;
+
     Processor::validate_owner(
         program_id,
-        &mint_burn_extension.mint_authority,
+        &authority,
         authority_info,
         authority_info_data_len,
         account_info_iter.as_slice(),
@@ -153,9 +129,12 @@ fn process_update_decryptable_supply(
     let mut mint = PodStateWithExtensionsMut::<PodMint>::unpack(mint_data)?;
     let mint_burn_extension = mint.get_extension_mut::<ConfidentialMintBurn>()?;
 
+    let authority = Option::<Pubkey>::from(mint_burn_extension.authority)
+        .ok_or(TokenError::NoAuthorityExists)?;
+
     Processor::validate_owner(
         program_id,
-        &mint_burn_extension.mint_authority,
+        &authority,
         authority_info,
         authority_info_data_len,
         account_info_iter.as_slice(),
@@ -200,9 +179,12 @@ fn process_confidential_mint(
     let authority_info = next_account_info(account_info_iter)?;
     let authority_info_data_len = authority_info.data_len();
 
+    let authority = Option::<Pubkey>::from(mint_burn_extension.authority)
+        .ok_or(TokenError::NoAuthorityExists)?;
+
     Processor::validate_owner(
         program_id,
-        &mint_burn_extension.mint_authority,
+        &authority,
         authority_info,
         authority_info_data_len,
         account_info_iter.as_slice(),
@@ -421,11 +403,6 @@ pub(crate) fn process_instruction(
             msg!("ConfidentialMintBurnInstruction::InitializeMint");
             let data = decode_instruction_data::<InitializeMintData>(input)?;
             process_initialize_mint(accounts, data)
-        }
-        ConfidentialMintBurnInstruction::UpdateAuthority => {
-            msg!("ConfidentialMintBurnInstruction::UpdateMint");
-            let data = decode_instruction_data::<UpdateAuthorityData>(input)?;
-            process_update_mint(program_id, accounts, data.new_authority)
         }
         ConfidentialMintBurnInstruction::RotateSupplyElGamalPubkey => {
             msg!("ConfidentialMintBurnInstruction::RotateSupplyElGamal");

@@ -1,11 +1,10 @@
 use {
     crate::extension::{Extension, ExtensionType},
     bytemuck::{Pod, Zeroable},
-    solana_program::pubkey::Pubkey,
     solana_zk_sdk::encryption::pod::{
         auth_encryption::PodAeCiphertext, elgamal::PodElGamalCiphertext,
     },
-    spl_pod::optional_keys::OptionalNonZeroElGamalPubkey,
+    spl_pod::optional_keys::{OptionalNonZeroElGamalPubkey, OptionalNonZeroPubkey},
 };
 
 /// Maximum bit length of any mint or burn amount
@@ -25,13 +24,17 @@ pub mod processor;
 /// Confidential Mint-Burn proof verification
 pub mod verify_proof;
 
+/// Confidential Mint Burn Extension supply information needed for instructions
+#[cfg(not(target_os = "solana"))]
+pub mod account_info;
+
 /// Confidential mint-burn mint configuration
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct ConfidentialMintBurn {
     /// Authority to modify the `ConfidentialMintBurnMint` configuration and to
     /// mint new confidential tokens
-    pub mint_authority: Pubkey,
+    pub authority: OptionalNonZeroPubkey,
     /// The confidential supply of the mint (encrypted by `encryption_pubkey`)
     pub confidential_supply: PodElGamalCiphertext,
     /// The decryptable confidential supply of the mint

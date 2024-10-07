@@ -8,7 +8,6 @@ use {
             auth_encryption::{AeCiphertext, AeKey},
             elgamal::{ElGamalCiphertext, ElGamalKeypair, ElGamalPubkey},
             pedersen::Pedersen,
-            pod::auth_encryption::PodAeCiphertext,
         },
         zk_elgamal_proof_program::proof_data::{
             BatchedGroupedCiphertext3HandlesValidityProofData, BatchedRangeProofU128Data,
@@ -33,8 +32,8 @@ pub struct MintProofData {
 
 pub fn mint_split_proof_data(
     current_supply_ciphertext: &ElGamalCiphertext,
-    current_decryptable_supply: &AeCiphertext,
     mint_amount: u64,
+    current_supply: u64,
     supply_elgamal_keypair: &ElGamalKeypair,
     supply_aes_key: &AeKey,
     destination_elgamal_pubkey: &ElGamalPubkey,
@@ -79,34 +78,8 @@ pub fn mint_split_proof_data(
         )
         .ok_or(TokenProofGenerationError::IllegalAmountBitLength)?;
 
-    // fresh mints are initialized with a zeroed decryptable_supply
-    // TODO: don't clone here once AeCiphertext implement Copy in the zk-sdk
-    let pod_decryptable_supply: PodAeCiphertext = current_decryptable_supply.clone().into();
-    let current_decyptable_supply = if pod_decryptable_supply != PodAeCiphertext::default() {
-        // decrypt the current supply
-        current_decryptable_supply
-            .decrypt(supply_aes_key)
-            .ok_or(TokenProofGenerationError::IllegalAmountBitLength)?
-    } else {
-        0
-    };
-
-    // get the difference between the supply ciphertext and the decryptable supply
-    // explanation see https://github.com/solana-labs/solana-program-library/pull/6881#issuecomment-2385579058
-    let decryptable_supply_ciphertext = supply_elgamal_keypair
-        .pubkey()
-        .encrypt(current_decyptable_supply);
-    #[allow(clippy::arithmetic_side_effects)]
-    let ct_decryptable_to_current_diff = decryptable_supply_ciphertext - current_supply_ciphertext;
-    let decryptable_to_current_diff = supply_elgamal_keypair
-        .secret()
-        .decrypt_u32(&ct_decryptable_to_current_diff)
-        .ok_or(TokenProofGenerationError::SupplyDecryption)?;
-
     // compute the new supply
-    let new_supply = current_decyptable_supply
-        .checked_sub(decryptable_to_current_diff)
-        .ok_or(TokenProofGenerationError::IllegalAmountBitLength)?
+    let new_supply = current_supply
         .checked_add(mint_amount)
         .ok_or(TokenProofGenerationError::IllegalAmountBitLength)?;
 
