@@ -347,8 +347,8 @@ importers:
         specifier: 2.0.0-rc.1
         version: 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.2)
       '@solana/instructions':
-        specifier: 2.0.0-rc.1
-        version: 2.0.0-rc.1(typescript@5.6.2)
+        specifier: 2.0.0-20241006045741
+        version: 2.0.0-20241006045741(typescript@5.6.2)
       '@solana/transaction-messages':
         specifier: 2.0.0-rc.1
         version: 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.2)
@@ -2338,6 +2338,17 @@ packages:
     transitivePeerDependencies:
       - fastestsmallesttextencoderdecoder
 
+  /@solana/errors@2.0.0-20241006045741(typescript@5.6.2):
+    resolution: {integrity: sha512-HtebBByyFgju2x/wDkHCgn1M5MZEY6TCimfivdoAMAazPuu9U59+olw5ParPUkirG87emdayYMVkghZgqDB01w==}
+    hasBin: true
+    peerDependencies:
+      typescript: '>=5'
+    dependencies:
+      chalk: 5.3.0
+      commander: 12.1.0
+      typescript: 5.6.2
+    dev: false
+
   /@solana/errors@2.0.0-preview.2:
     resolution: {integrity: sha512-H2DZ1l3iYF5Rp5pPbJpmmtCauWeQXRJapkDg8epQ8BJ7cA2Ut/QEtC3CMmw/iMTcuS6uemFNLcWvlOfoQhvQuA==}
     hasBin: true
@@ -2408,6 +2419,15 @@ packages:
     peerDependencies:
       typescript: '>=5'
     dependencies:
+      typescript: 5.6.2
+    dev: false
+
+  /@solana/instructions@2.0.0-20241006045741(typescript@5.6.2):
+    resolution: {integrity: sha512-m2SimQL/8c1m2kkG9kb4jisPptvMWnR+Y+Hr88xOzwbqr0jI+/gn5B/muLx8eM1euvaL63kXcJCJ8Cpg2Y+Uhw==}
+    peerDependencies:
+      typescript: '>=5'
+    dependencies:
+      '@solana/errors': 2.0.0-20241006045741(typescript@5.6.2)
       typescript: 5.6.2
     dev: false
 
