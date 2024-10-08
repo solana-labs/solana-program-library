@@ -7,7 +7,7 @@ use {
     solana_sdk::{pubkey::Pubkey, signature::Signer, signer::keypair::Keypair, signers::Signers},
     spl_token_2022::{
         extension::{
-            confidential_mint_burn::ConfidentialMintBurn,
+            confidential_mint_burn::{account_info::SupplyAccountInfo, ConfidentialMintBurn},
             confidential_transfer::{
                 account_info::TransferAccountInfo, ConfidentialTransferAccount,
             },
@@ -23,7 +23,6 @@ use {
     },
     spl_token_confidential_transfer_proof_generation::{
         burn::burn_split_proof_data, mint::mint_split_proof_data,
-        supply::supply_elgamal_pubkey_rotation_proof,
     },
     std::convert::TryInto,
 };
@@ -49,6 +48,7 @@ async fn test_confidential_mint() {
             ExtensionInitializationParams::ConfidentialMintBurnMint {
                 authority: authority.pubkey(),
                 confidential_supply_pubkey: Some(auditor_elgamal_pubkey),
+                decryptable_supply: Some(supply_aes_key.encrypt(0).into()),
             },
         ])
         .await
@@ -56,7 +56,6 @@ async fn test_confidential_mint() {
 
     let TokenContext { token, alice, .. } = context.token_context.unwrap();
     let alice_meta = ConfidentialTokenAccountMeta::new(&token, &alice, None, false, false).await;
-    //let alice_elgamal_pubkey = (*alice_meta.elgamal_keypair.pubkey()).into();
 
     mint_tokens(
         &token,
@@ -134,6 +133,7 @@ async fn test_confidential_burn() {
             ExtensionInitializationParams::ConfidentialMintBurnMint {
                 authority: authority.pubkey(),
                 confidential_supply_pubkey: Some(auditor_elgamal_pubkey),
+                decryptable_supply: Some(supply_aes_key.encrypt(0).into()),
             },
         ])
         .await
@@ -141,7 +141,6 @@ async fn test_confidential_burn() {
 
     let TokenContext { token, alice, .. } = context.token_context.unwrap();
     let alice_meta = ConfidentialTokenAccountMeta::new(&token, &alice, None, false, false).await;
-    //let alice_elgamal_pubkey = (*alice_meta.elgamal_keypair.pubkey()).into();
 
     mint_tokens(
         &token,
@@ -337,6 +336,7 @@ async fn test_rotate_supply_elgamal() {
             ExtensionInitializationParams::ConfidentialMintBurnMint {
                 authority: authority.pubkey(),
                 confidential_supply_pubkey: Some(auditor_elgamal_pubkey),
+                decryptable_supply: Some(supply_aes_key.encrypt(0).into()),
             },
         ])
         .await
@@ -344,7 +344,6 @@ async fn test_rotate_supply_elgamal() {
 
     let TokenContext { token, alice, .. } = context.token_context.unwrap();
     let alice_meta = ConfidentialTokenAccountMeta::new(&token, &alice, None, false, false).await;
-    //let alice_elgamal_pubkey = (*alice_meta.elgamal_keypair.pubkey()).into();
 
     mint_tokens(
         &token,
@@ -368,19 +367,16 @@ async fn test_rotate_supply_elgamal() {
     let new_supply_elgamal_keypair = ElGamalKeypair::new_rand();
 
     let mint = token.get_mint_info().await.unwrap();
-    let extension_state = mint.get_extension::<ConfidentialMintBurn>().unwrap();
-    let current_supply = token
-        .confidential_supply(&auditor_elgamal_keypair, &supply_aes_key)
-        .await
+    let mint_burn_extension = mint.get_extension::<ConfidentialMintBurn>().unwrap();
+    let supply_account_info = SupplyAccountInfo::new(mint_burn_extension);
+    let proof_data = supply_account_info
+        .generate_rotate_supply_elgamal_pubkey_proof(
+            &supply_aes_key,
+            &auditor_elgamal_keypair,
+            &new_supply_elgamal_keypair,
+        )
         .unwrap();
 
-    let proof_data = supply_elgamal_pubkey_rotation_proof(
-        current_supply,
-        &auditor_elgamal_keypair,
-        &new_supply_elgamal_keypair,
-        extension_state.confidential_supply.try_into().unwrap(),
-    )
-    .unwrap();
     token
         .rotate_supply_elgamal(
             &authority.pubkey(),
@@ -400,10 +396,10 @@ async fn test_rotate_supply_elgamal() {
     );
 
     let mint = token.get_mint_info().await.unwrap();
-    let conf_mint_burn_ext = mint.get_extension::<ConfidentialMintBurn>().unwrap();
+    let mint_burn_extension = mint.get_extension::<ConfidentialMintBurn>().unwrap();
 
     assert_eq!(
-        conf_mint_burn_ext.supply_elgamal_pubkey,
+        mint_burn_extension.supply_elgamal_pubkey,
         Some(Into::<PodElGamalPubkey>::into(
             *new_supply_elgamal_keypair.pubkey(),
         ))
@@ -435,12 +431,15 @@ async fn mint_tokens(
     let supply_elgamal_pubkey = token.supply_elgamal_pubkey().await.unwrap();
 
     let mint = token.get_mint_info().await.unwrap();
-    let conf_mb_ext = mint.get_extension::<ConfidentialMintBurn>().unwrap();
+    let mint_burn_extension = mint.get_extension::<ConfidentialMintBurn>().unwrap();
+    let supply_account_info = SupplyAccountInfo::new(mint_burn_extension);
 
     let proof_data = mint_split_proof_data(
-        &conf_mb_ext.confidential_supply.try_into().unwrap(),
-        &conf_mb_ext.decryptable_supply.try_into().unwrap(),
+        &mint_burn_extension.confidential_supply.try_into().unwrap(),
         mint_amount,
+        supply_account_info
+            .decrypt_current_supply(supply_aes_key, supply_elgamal_keypair)
+            .unwrap(),
         supply_elgamal_keypair,
         supply_aes_key,
         &mint_to_elgamal_pubkey,

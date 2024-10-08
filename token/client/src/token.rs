@@ -31,7 +31,7 @@ use {
     spl_token_2022::{
         error::TokenError as Token2022Error,
         extension::{
-            confidential_mint_burn::{self, ConfidentialMintBurn},
+            confidential_mint_burn::{self, account_info::SupplyAccountInfo, ConfidentialMintBurn},
             confidential_transfer::{
                 self,
                 account_info::{
@@ -199,6 +199,7 @@ pub enum ExtensionInitializationParams {
     ConfidentialMintBurnMint {
         authority: Pubkey,
         confidential_supply_pubkey: Option<PodElGamalPubkey>,
+        decryptable_supply: Option<PodAeCiphertext>,
     },
 }
 impl ExtensionInitializationParams {
@@ -332,11 +333,13 @@ impl ExtensionInitializationParams {
             Self::ConfidentialMintBurnMint {
                 authority,
                 confidential_supply_pubkey,
+                decryptable_supply,
             } => confidential_mint_burn::instruction::initialize_mint(
                 token_program_id,
                 mint,
                 authority,
                 confidential_supply_pubkey,
+                decryptable_supply,
             ),
         }
     }
@@ -3655,43 +3658,10 @@ where
         supply_aes_key: &AeKey,
     ) -> Result<u64, TokenError> {
         let mint = self.get_mint_info().await?;
-        let confidential_mint_burn_ext = mint.get_extension::<ConfidentialMintBurn>()?;
+        let mint_burn_extension = mint.get_extension::<ConfidentialMintBurn>()?;
+        let supply_account_info = SupplyAccountInfo::new(mint_burn_extension);
 
-        let current_decyptable_supply =
-            if confidential_mint_burn_ext.decryptable_supply != PodAeCiphertext::default() {
-                // decrypt the current supply
-                let decryptable_supply: AeCiphertext = confidential_mint_burn_ext
-                    .decryptable_supply
-                    .try_into()
-                    .map_err(|_| TokenError::AccountDecryption)?;
-                decryptable_supply
-                    .decrypt(supply_aes_key)
-                    .ok_or(TokenError::AccountDecryption)?
-            } else {
-                0
-            };
-
-        // get the difference between the supply ciphertext and the decryptable supply
-        // explanation see https://github.com/solana-labs/solana-program-library/pull/6881#issuecomment-2385579058
-        let decryptable_supply_ciphertext = supply_elgamal_keypair
-            .pubkey()
-            .encrypt(current_decyptable_supply);
-        let current_supply: ElGamalCiphertext = confidential_mint_burn_ext
-            .confidential_supply
-            .try_into()
-            .map_err(|_| TokenError::AccountDecryption)?;
-        let ct_decryptable_to_current_diff = decryptable_supply_ciphertext - current_supply;
-        let decryptable_to_current_diff = supply_elgamal_keypair
-            .secret()
-            .decrypt_u32(&ct_decryptable_to_current_diff)
-            .ok_or(TokenError::AccountDecryption)?;
-
-        // compute the total supply
-        current_decyptable_supply
-            .checked_sub(decryptable_to_current_diff)
-            .ok_or(TokenError::TokenProgramError(String::from(
-                "Confidential supply underflow",
-            )))
+        Ok(supply_account_info.decrypt_current_supply(supply_aes_key, supply_elgamal_keypair)?)
     }
 
     pub async fn supply_elgamal_pubkey(&self) -> TokenResult<Option<ElGamalPubkey>> {

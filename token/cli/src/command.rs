@@ -38,7 +38,7 @@ use {
     spl_token_2022::{
         error::TokenError,
         extension::{
-            confidential_mint_burn::ConfidentialMintBurn,
+            confidential_mint_burn::{account_info::SupplyAccountInfo, ConfidentialMintBurn},
             confidential_transfer::{
                 account_info::{
                     ApplyPendingBalanceAccountInfo, TransferAccountInfo, WithdrawAccountInfo,
@@ -71,8 +71,7 @@ use {
         token::{ComputeUnitLimit, ExtensionInitializationParams, ProofAccount, Token},
     },
     spl_token_confidential_transfer_proof_generation::{
-        burn::burn_split_proof_data, mint::mint_split_proof_data,
-        supply::supply_elgamal_pubkey_rotation_proof, transfer::TransferProofData,
+        burn::burn_split_proof_data, mint::mint_split_proof_data, transfer::TransferProofData,
         withdraw::WithdrawProofData,
     },
     spl_token_group_interface::state::TokenGroup,
@@ -341,9 +340,19 @@ async fn command_create_token(
     }
 
     if enable_confidential_mint_burn {
+        let confidential_supply_pubkey: Option<PodElGamalPubkey> =
+            confidential_supply_pubkey.into();
+        let decryptable_supply = if confidential_supply_pubkey.is_some() {
+            let aes_key = AeKey::new_from_signer(config.default_signer()?.as_ref(), b"").unwrap();
+            Some(aes_key.encrypt(0).into())
+        } else {
+            None
+        };
+
         extensions.push(ExtensionInitializationParams::ConfidentialMintBurnMint {
             authority,
-            confidential_supply_pubkey: confidential_supply_pubkey.into(),
+            confidential_supply_pubkey,
+            decryptable_supply,
         });
     }
 
@@ -3476,17 +3485,16 @@ async fn command_deposit_withdraw_mint_confidential_tokens(
 
             let mint = token.get_mint_info().await?;
             let mint_burn_extension = mint.get_extension::<ConfidentialMintBurn>()?;
+            let supply_account_info = SupplyAccountInfo::new(mint_burn_extension);
 
             let proof_data = mint_split_proof_data(
                 &mint_burn_extension
                     .confidential_supply
                     .try_into()
                     .map_err(|_| TokenError::MalformedCiphertext)?,
-                &mint_burn_extension
-                    .decryptable_supply
-                    .try_into()
-                    .map_err(|_| TokenError::MalformedCiphertext)?,
                 amount,
+                supply_account_info
+                    .decrypt_current_supply(supply_aes_key, supply_elgamal_keypair)?,
                 supply_elgamal_keypair,
                 supply_aes_key,
                 &mint_to_elgamal_pubkey,
@@ -4854,26 +4862,23 @@ pub async fn process_command<'a>(
             let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
-            let cur_elgamal_keypair =
+            let supply_elgamal_keypair =
                 elgamal_keypair_of(arg_matches, "current_supply_keypair").unwrap();
             let supply_aes_key = aes_key_of(arg_matches, "supply_aes_key").unwrap();
-            let new_elgamal_keypair =
+            let new_supply_elgamal_keypair =
                 elgamal_keypair_of(arg_matches, "new_supply_keypair").unwrap();
             let (auth_signer, auth) =
                 config.signer_or_default(arg_matches, "authority", &mut wallet_manager);
 
             let token = &token_client_from_config(config, &token, None)?;
             let mint = token.get_mint_info().await?;
-            let extension_state = mint.get_extension::<ConfidentialMintBurn>()?;
-            let current_supply = token
-                .confidential_supply(&cur_elgamal_keypair, &supply_aes_key)
-                .await?;
+            let mint_burn_extension = mint.get_extension::<ConfidentialMintBurn>()?;
+            let supply_account_info = SupplyAccountInfo::new(mint_burn_extension);
 
-            let proof_data = supply_elgamal_pubkey_rotation_proof(
-                current_supply,
-                &cur_elgamal_keypair,
-                &new_elgamal_keypair,
-                extension_state.confidential_supply.try_into()?,
+            let proof_data = supply_account_info.generate_rotate_supply_elgamal_pubkey_proof(
+                &supply_aes_key,
+                &supply_elgamal_keypair,
+                &new_supply_elgamal_keypair,
             )?;
 
             Ok(
@@ -4882,7 +4887,7 @@ pub async fn process_command<'a>(
                     &token
                         .rotate_supply_elgamal(
                             &auth,
-                            &new_elgamal_keypair,
+                            &new_supply_elgamal_keypair,
                             &[&auth_signer],
                             proof_data,
                         )
