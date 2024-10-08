@@ -30,7 +30,7 @@ pub struct SupplyAccountInfo {
 impl SupplyAccountInfo {
     /// Creates a SupplyAccountInfo from ConfidentialMintBurn extension account
     /// data
-    pub fn new(extension: ConfidentialMintBurn) -> Self {
+    pub fn new(extension: &ConfidentialMintBurn) -> Self {
         Self {
             current_supply: extension.confidential_supply,
             decryptable_supply: extension.decryptable_supply,
