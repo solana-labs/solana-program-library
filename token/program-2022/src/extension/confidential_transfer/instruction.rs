@@ -108,8 +108,8 @@ pub enum ConfidentialTransferInstruction {
     /// account.
     ///
     /// Data expected by this instruction:
-    ///   None if an `ElGamalRegistry` address is provided in the list of accounts
-    ///   `ConfigureAccountInstructionData` otherwise
+    ///   None if an `ElGamalRegistry` address is provided in the list of
+    /// accounts   `ConfigureAccountInstructionData` otherwise
     ConfigureAccount,
 
     /// Approves a token account for confidential transfers.

@@ -93,8 +93,8 @@ fn process_update_mint(
     Ok(())
 }
 
-/// Processes a [ConfigureAccount] instruction with the assumption that an ElGamal registry is
-/// provided.
+/// Processes a [ConfigureAccount] instruction with the assumption that an
+/// ElGamal registry is provided.
 fn process_configure_account_from_registry(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -162,8 +162,8 @@ fn process_configure_account(
     }
 
     if let Some(registry_account) = elgamal_registry_account {
-        // if ElGamal registry was provided, then just verify that the registry owner and the
-        // account match, then skip the signature verification check
+        // if ElGamal registry was provided, then just verify that the registry owner
+        // and the account match, then skip the signature verification check
         if registry_account.owner != *authority_info.key {
             return Err(TokenError::OwnerMismatch.into());
         }

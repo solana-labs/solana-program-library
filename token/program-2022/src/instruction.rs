@@ -711,10 +711,9 @@ pub enum TokenInstruction<'a> {
     /// Initialize an ElGamal public key registry for an account.
     ///
     /// 0. `[writable]` The account to initialize
-    /// 1. `[]` Instructions sysvar if `VerifyPubkeyValidity` is included in
-    ///    the same transaction or context state account if
-    ///    `VerifyPubkeyValidity` is pre-verified into a context state
-    ///    account.
+    /// 1. `[]` Instructions sysvar if `VerifyPubkeyValidity` is included in the
+    ///    same transaction or context state account if `VerifyPubkeyValidity`
+    ///    is pre-verified into a context state account.
     /// 2. `[]` (Optional) Record account if the accompanying proof is to be
     ///    read from a record account.
     CreateElGamalRegistry {
@@ -731,10 +730,9 @@ pub enum TokenInstruction<'a> {
     ///
     /// 0. `[writable]` The account to initialize
     /// 1. `[signer]` The owner of the ElGamal public key registry
-    /// 2. `[]` Instructions sysvar if `VerifyPubkeyValidity` is included in
-    ///    the same transaction or context state account if
-    ///    `VerifyPubkeyValidity` is pre-verified into a context state
-    ///    account.
+    /// 2. `[]` Instructions sysvar if `VerifyPubkeyValidity` is included in the
+    ///    same transaction or context state account if `VerifyPubkeyValidity`
+    ///    is pre-verified into a context state account.
     /// 3. `[]` (Optional) Record account if the accompanying proof is to be
     ///    read from a record account.
     UpdateElGamalRegistry {

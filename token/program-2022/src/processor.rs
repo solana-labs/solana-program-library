@@ -1544,7 +1544,8 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes an [CreateElGamalRegistry](enum.TokenInstruction.html) instruction
+    /// Processes an [CreateElGamalRegistry](enum.TokenInstruction.html)
+    /// instruction
     pub fn process_create_elgamal_registry(
         accounts: &[AccountInfo],
         owner: &Pubkey,
@@ -1568,7 +1569,8 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes an [UpdateElGamalRegistry](enum.TokenInstruction.html) instruction
+    /// Processes an [UpdateElGamalRegistry](enum.TokenInstruction.html)
+    /// instruction
     pub fn process_update_elgamal_registry(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
