@@ -22,7 +22,7 @@ use {
         instruction::{decode_instruction_data, decode_instruction_type},
         pod::{PodAccount, PodMint},
         processor::Processor,
-        proof::verify_and_extract_context,
+        proof::{verify_and_extract_context, ElGamalRegistry},
     },
     solana_program::{
         account_info::{next_account_info, AccountInfo},
@@ -33,6 +33,7 @@ use {
         pubkey::Pubkey,
         sysvar::Sysvar,
     },
+    spl_pod::bytemuck::pod_from_bytes,
     spl_token_confidential_transfer_proof_extraction::{
         transfer::TransferProofContext, transfer_with_fee::TransferWithFeeProofContext,
     },
@@ -92,23 +93,62 @@ fn process_update_mint(
     Ok(())
 }
 
+/// Processes a [ConfigureAccount] instruction with the assumption that an ElGamal registry is
+/// provided.
+fn process_configure_account_from_registry(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+) -> ProgramResult {
+    let elgamal_registry_account = accounts.get(2).unwrap();
+
+    if elgamal_registry_account.owner != program_id {
+        return Err(TokenError::OwnerMismatch.into());
+    }
+
+    let elgamal_registry_account_data = &elgamal_registry_account.data.borrow();
+    let elgamal_registry_account =
+        pod_from_bytes::<ElGamalRegistry>(elgamal_registry_account_data)?;
+
+    let decryptable_zero_balance = PodAeCiphertext::default();
+    let maximum_pending_balance_credit_counter =
+        DEFAULT_MAXIMUM_PENDING_BALANCE_CREDIT_COUNTER.into();
+
+    process_configure_account(
+        program_id,
+        accounts,
+        &decryptable_zero_balance,
+        &maximum_pending_balance_credit_counter,
+        None,
+        Some(elgamal_registry_account),
+    )
+}
+
 /// Processes a [ConfigureAccount] instruction.
 fn process_configure_account(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     decryptable_zero_balance: &DecryptableBalance,
     maximum_pending_balance_credit_counter: &PodU64,
-    proof_instruction_offset: i64,
+    proof_instruction_offset: Option<i64>,
+    elgamal_registry_account: Option<&ElGamalRegistry>,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let token_account_info = next_account_info(account_info_iter)?;
     let mint_info = next_account_info(account_info_iter)?;
 
-    // zero-knowledge proof certifies that the supplied ElGamal public key is valid
-    let proof_context = verify_and_extract_context::<
-        PubkeyValidityProofData,
-        PubkeyValidityProofContext,
-    >(account_info_iter, proof_instruction_offset, None)?;
+    let elgamal_pubkey = if let Some(offset) = proof_instruction_offset {
+        // zero-knowledge proof certifies that the supplied ElGamal public key is valid
+        let proof_context = verify_and_extract_context::<
+            PubkeyValidityProofData,
+            PubkeyValidityProofContext,
+        >(account_info_iter, offset, None)?;
+        proof_context.pubkey
+    } else {
+        // if proof instruction offset is `None`, then assume that the proof
+        // was already verified in an ElGamal registry account
+        let _elgamal_registry_account = next_account_info(account_info_iter)?;
+        elgamal_registry_account.unwrap().elgamal_pubkey
+    };
 
     let authority_info = next_account_info(account_info_iter)?;
     let authority_info_data_len = authority_info.data_len();
@@ -121,13 +161,21 @@ fn process_configure_account(
         return Err(TokenError::MintMismatch.into());
     }
 
-    Processor::validate_owner(
-        program_id,
-        &token_account.base.owner,
-        authority_info,
-        authority_info_data_len,
-        account_info_iter.as_slice(),
-    )?;
+    if let Some(registry_account) = elgamal_registry_account {
+        // if ElGamal registry was provided, then just verify that the registry owner and the
+        // account match, then skip the signature verification check
+        if registry_account.owner != *authority_info.key {
+            return Err(TokenError::OwnerMismatch.into());
+        }
+    } else {
+        Processor::validate_owner(
+            program_id,
+            &token_account.base.owner,
+            authority_info,
+            authority_info_data_len,
+            account_info_iter.as_slice(),
+        )?;
+    }
 
     check_program_account(mint_info.owner)?;
     let mint_data = &mut mint_info.data.borrow();
@@ -140,7 +188,7 @@ fn process_configure_account(
     let confidential_transfer_account =
         token_account.init_extension::<ConfidentialTransferAccount>(false)?;
     confidential_transfer_account.approved = confidential_transfer_mint.auto_approve_new_accounts;
-    confidential_transfer_account.elgamal_pubkey = proof_context.pubkey;
+    confidential_transfer_account.elgamal_pubkey = elgamal_pubkey;
     confidential_transfer_account.maximum_pending_balance_credit_counter =
         *maximum_pending_balance_credit_counter;
 
@@ -1102,14 +1150,20 @@ pub(crate) fn process_instruction(
         }
         ConfidentialTransferInstruction::ConfigureAccount => {
             msg!("ConfidentialTransferInstruction::ConfigureAccount");
-            let data = decode_instruction_data::<ConfigureAccountInstructionData>(input)?;
-            process_configure_account(
-                program_id,
-                accounts,
-                &data.decryptable_zero_balance,
-                &data.maximum_pending_balance_credit_counter,
-                data.proof_instruction_offset as i64,
-            )
+            if input.is_empty() {
+                // instruction data is empty, so assume an ElGamal registry is provided
+                process_configure_account_from_registry(program_id, accounts)
+            } else {
+                let data = decode_instruction_data::<ConfigureAccountInstructionData>(input)?;
+                process_configure_account(
+                    program_id,
+                    accounts,
+                    &data.decryptable_zero_balance,
+                    &data.maximum_pending_balance_credit_counter,
+                    Some(data.proof_instruction_offset as i64),
+                    None,
+                )
+            }
         }
         ConfidentialTransferInstruction::ApproveAccount => {
             msg!("ConfidentialTransferInstruction::ApproveAccount");

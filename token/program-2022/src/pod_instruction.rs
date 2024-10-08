@@ -53,6 +53,20 @@ pub(crate) struct SetAuthorityData {
     // The new authority option comes later, but cannot be included as
     // plain old data in this struct
 }
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
+pub(crate) struct CreateElGamalRegistryData {
+    /// The owner of the ElGamal registry account
+    pub(crate) owner: Pubkey,
+    /// The proof instruction offset
+    pub(crate) proof_instruction_offset: i8,
+}
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
+pub(crate) struct UpdateElGamalRegistryData {
+    /// The proof instruction offset
+    pub(crate) proof_instruction_offset: i8,
+}
 
 /// All of the base instructions in Token-2022, reduced down to their one-byte
 /// discriminant.
@@ -114,6 +128,8 @@ pub(crate) enum PodTokenInstruction {
     // 40
     GroupPointerExtension,
     GroupMemberPointerExtension,
+    CreateElGamalRegistry,
+    UpdateElGamalRegistry,
 }
 
 fn unpack_pubkey_option(input: &[u8]) -> Result<PodCOption<Pubkey>, ProgramError> {

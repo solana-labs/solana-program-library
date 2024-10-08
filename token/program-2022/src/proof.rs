@@ -2,7 +2,7 @@
 
 use {
     crate::check_zk_elgamal_proof_program_account,
-    bytemuck::Pod,
+    bytemuck::{Pod, Zeroable},
     solana_program::{
         account_info::{next_account_info, AccountInfo},
         instruction::Instruction,
@@ -11,15 +11,29 @@ use {
         pubkey::Pubkey,
         sysvar::instructions::get_instruction_relative,
     },
-    solana_zk_sdk::zk_elgamal_proof_program::{
-        self,
-        instruction::ProofInstruction,
-        proof_data::{ProofType, ZkProofData},
-        state::ProofContextState,
+    solana_zk_sdk::{
+        encryption::pod::elgamal::PodElGamalPubkey,
+        zk_elgamal_proof_program::{
+            self,
+            instruction::ProofInstruction,
+            proof_data::{ProofType, ZkProofData},
+            state::ProofContextState,
+        },
     },
     spl_pod::bytemuck::pod_from_bytes,
     std::{num::NonZeroI8, slice::Iter},
 };
+
+/// ElGamal public key registry. It contains an ElGamal public key that is
+/// associated with a wallet account, but independent of any specific mint.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
+pub struct ElGamalRegistry {
+    /// The owner of the registry
+    pub owner: Pubkey,
+    /// The ElGamal public key associated with an account
+    pub elgamal_pubkey: PodElGamalPubkey,
+}
 
 /// If a proof is to be read from a record account, the proof instruction data
 /// must be 5 bytes: 1 byte for the proof type and 4 bytes for the u32 offset

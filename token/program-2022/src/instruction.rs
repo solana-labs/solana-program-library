@@ -708,6 +708,42 @@ pub enum TokenInstruction<'a> {
     /// for further details about the extended instructions that share this
     /// instruction prefix
     GroupMemberPointerExtension,
+    /// Initialize an ElGamal public key registry for an account.
+    ///
+    /// 0. `[writable]` The account to initialize
+    /// 1. `[]` Instructions sysvar if `VerifyPubkeyValidity` is included in
+    ///    the same transaction or context state account if
+    ///    `VerifyPubkeyValidity` is pre-verified into a context state
+    ///    account.
+    /// 2. `[]` (Optional) Record account if the accompanying proof is to be
+    ///    read from a record account.
+    CreateElGamalRegistry {
+        /// The owner of the ElGamal registry account
+        #[cfg_attr(feature = "serde-traits", serde(with = "As::<DisplayFromStr>"))]
+        owner: Pubkey,
+        /// Relative location of the `ProofInstruction::PubkeyValidityProof`
+        /// instruction to the `CreateElGamalRegistry` instruction in the
+        /// transaction. If the offset is `0`, then use a context state account
+        /// for the proof.
+        proof_instruction_offset: i8,
+    },
+    /// Update an ElGamal public key registry with a new ElGamal public key.
+    ///
+    /// 0. `[writable]` The account to initialize
+    /// 1. `[signer]` The owner of the ElGamal public key registry
+    /// 2. `[]` Instructions sysvar if `VerifyPubkeyValidity` is included in
+    ///    the same transaction or context state account if
+    ///    `VerifyPubkeyValidity` is pre-verified into a context state
+    ///    account.
+    /// 3. `[]` (Optional) Record account if the accompanying proof is to be
+    ///    read from a record account.
+    UpdateElGamalRegistry {
+        /// Relative location of the `ProofInstruction::PubkeyValidityProof`
+        /// instruction to the `UpdateElGamalRegistry` instruction in the
+        /// transaction. If the offset is `0`, then use a context state account
+        /// for the proof.
+        proof_instruction_offset: i8,
+    },
 }
 impl<'a> TokenInstruction<'a> {
     /// Unpacks a byte buffer into a
@@ -1017,6 +1053,20 @@ impl<'a> TokenInstruction<'a> {
             }
             &Self::GroupMemberPointerExtension => {
                 buf.push(41);
+            }
+            &Self::CreateElGamalRegistry {
+                owner,
+                proof_instruction_offset,
+            } => {
+                buf.push(42);
+                buf.extend_from_slice(owner.as_ref());
+                buf.extend_from_slice(&proof_instruction_offset.to_le_bytes());
+            }
+            &Self::UpdateElGamalRegistry {
+                proof_instruction_offset,
+            } => {
+                buf.push(43);
+                buf.extend_from_slice(&proof_instruction_offset.to_le_bytes());
             }
         };
         buf

@@ -34,8 +34,10 @@ use {
         pod::{PodAccount, PodCOption, PodMint, PodMultisig},
         pod_instruction::{
             decode_instruction_data_with_coption_pubkey, AmountCheckedData, AmountData,
-            InitializeMintData, InitializeMultisigData, PodTokenInstruction, SetAuthorityData,
+            CreateElGamalRegistryData, InitializeMintData, InitializeMultisigData,
+            PodTokenInstruction, SetAuthorityData, UpdateElGamalRegistryData,
         },
+        proof::{verify_and_extract_context, ElGamalRegistry},
         state::{Account, AccountState, Mint, PackedSizeOf},
     },
     solana_program::{
@@ -49,6 +51,9 @@ use {
         pubkey::Pubkey,
         system_instruction, system_program,
         sysvar::{rent::Rent, Sysvar},
+    },
+    solana_zk_sdk::zk_elgamal_proof_program::proof_data::pubkey_validity::{
+        PubkeyValidityProofContext, PubkeyValidityProofData,
     },
     spl_pod::{
         bytemuck::{pod_from_bytes, pod_from_bytes_mut},
@@ -1539,6 +1544,63 @@ impl Processor {
         Ok(())
     }
 
+    /// Processes an [CreateElGamalRegistry](enum.TokenInstruction.html) instruction
+    pub fn process_create_elgamal_registry(
+        accounts: &[AccountInfo],
+        owner: &Pubkey,
+        proof_instruction_offset: i64,
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let registry_account_info = next_account_info(account_info_iter)?;
+
+        // zero-knowledge proof certifies that the supplied ElGamal public key is valid
+        let proof_context = verify_and_extract_context::<
+            PubkeyValidityProofData,
+            PubkeyValidityProofContext,
+        >(account_info_iter, proof_instruction_offset, None)?;
+
+        let registry_account_data = &mut registry_account_info.data.borrow_mut();
+        let registry_account = pod_from_bytes_mut::<ElGamalRegistry>(registry_account_data)?;
+
+        registry_account.owner = *owner;
+        registry_account.elgamal_pubkey = proof_context.pubkey;
+
+        Ok(())
+    }
+
+    /// Processes an [UpdateElGamalRegistry](enum.TokenInstruction.html) instruction
+    pub fn process_update_elgamal_registry(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+        proof_instruction_offset: i64,
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let registry_account_info = next_account_info(account_info_iter)?;
+        let owner_info = next_account_info(account_info_iter)?;
+        let owner_info_data_len = owner_info.data_len();
+
+        // zero-knowledge proof certifies that the supplied ElGamal public key is valid
+        let proof_context = verify_and_extract_context::<
+            PubkeyValidityProofData,
+            PubkeyValidityProofContext,
+        >(account_info_iter, proof_instruction_offset, None)?;
+
+        let registry_account_data = &mut registry_account_info.data.borrow_mut();
+        let registry_account = pod_from_bytes_mut::<ElGamalRegistry>(registry_account_data)?;
+
+        Processor::validate_owner(
+            program_id,
+            &registry_account.owner,
+            owner_info,
+            owner_info_data_len,
+            account_info_iter.as_slice(),
+        )?;
+
+        registry_account.elgamal_pubkey = proof_context.pubkey;
+
+        Ok(())
+    }
+
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         if let Ok(instruction_type) = decode_instruction_type(input) {
@@ -1791,6 +1853,24 @@ impl Processor {
                         program_id,
                         accounts,
                         &input[1..],
+                    )
+                }
+                PodTokenInstruction::CreateElGamalRegistry => {
+                    msg!("Instruction: InitializeElGamalRegistry");
+                    let data = decode_instruction_data::<CreateElGamalRegistryData>(input)?;
+                    Self::process_create_elgamal_registry(
+                        accounts,
+                        &data.owner,
+                        data.proof_instruction_offset.into(),
+                    )
+                }
+                PodTokenInstruction::UpdateElGamalRegistry => {
+                    msg!("Instruction: UpdateElGamalRegistry");
+                    let data = decode_instruction_data::<UpdateElGamalRegistryData>(input)?;
+                    Self::process_update_elgamal_registry(
+                        program_id,
+                        accounts,
+                        data.proof_instruction_offset.into(),
                     )
                 }
             }
