@@ -10,7 +10,6 @@ use solana_zk_sdk::zk_elgamal_proof_program::{
         CiphertextCiphertextEqualityProofData, CiphertextCommitmentEqualityProofData,
     },
 };
-use spl_pod::optional_keys::OptionalNonZeroPubkey;
 #[cfg(feature = "serde-traits")]
 use {
     crate::serialization::aeciphertext_fromstr,
@@ -30,7 +29,7 @@ use {
         pubkey::Pubkey,
     },
     solana_zk_sdk::encryption::pod::{auth_encryption::PodAeCiphertext, elgamal::PodElGamalPubkey},
-    spl_pod::optional_keys::OptionalNonZeroElGamalPubkey,
+    spl_pod::optional_keys::{OptionalNonZeroElGamalPubkey, OptionalNonZeroPubkey},
 };
 
 /// Confidential Transfer extension instructions
@@ -186,6 +185,7 @@ pub struct InitializeMintData {
     /// The ElGamal pubkey used to encrypt the confidential supply
     pub supply_elgamal_pubkey: OptionalNonZeroElGamalPubkey,
     /// The initial 0 supply ecrypted with the supply aes key
+    #[cfg_attr(feature = "serde-traits", serde(with = "aeciphertext_fromstr"))]
     pub decryptable_supply: PodAeCiphertext,
 }
 
@@ -268,7 +268,7 @@ pub struct BurnInstructionData {
 pub fn initialize_mint(
     token_program_id: &Pubkey,
     mint: &Pubkey,
-    authority: Option<Pubkey>,
+    authority: Pubkey,
     confidential_supply_pubkey: Option<PodElGamalPubkey>,
     decryptable_supply: Option<PodAeCiphertext>,
 ) -> Result<Instruction, ProgramError> {
@@ -281,6 +281,7 @@ pub fn initialize_mint(
         PodAeCiphertext::zeroed()
     };
 
+    let authority = Some(authority);
     Ok(encode_instruction(
         token_program_id,
         accounts,
