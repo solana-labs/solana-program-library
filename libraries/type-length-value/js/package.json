@@ -49,7 +49,7 @@
         "@types/chai": "^5.0.0",
         "@types/mocha": "^10.0.8",
         "@types/node": "^22.7.4",
-        "@typescript-eslint/eslint-plugin": "^8.4.0",
+        "@typescript-eslint/eslint-plugin": "^8.8.1",
         "@typescript-eslint/parser": "^8.4.0",
         "chai": "^5.1.1",
         "eslint": "^8.57.0",
