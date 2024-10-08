@@ -81,6 +81,8 @@ pub enum ConfidentialTransferInstruction {
     ///
     /// Accounts expected by this instruction:
     ///
+    /// TODO: Add an option to include an `ElGamalRegistry` address
+    ///
     ///   * Single owner/delegate
     ///   0. `[writeable]` The SPL Token account.
     ///   1. `[]` The corresponding SPL Token mint.
@@ -106,7 +108,8 @@ pub enum ConfidentialTransferInstruction {
     /// account.
     ///
     /// Data expected by this instruction:
-    ///   `ConfigureAccountInstructionData`
+    ///   None if an `ElGamalRegistry` address is provided in the list of
+    /// accounts   `ConfigureAccountInstructionData` otherwise
     ConfigureAccount,
 
     /// Approves a token account for confidential transfers.
