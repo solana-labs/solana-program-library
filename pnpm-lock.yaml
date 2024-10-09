@@ -10,7 +10,7 @@ importers:
     devDependencies:
       '@solana/eslint-config-solana':
         specifier: ^3.0.3
-        version: 3.0.3(@typescript-eslint/eslint-plugin@6.21.0)(@typescript-eslint/parser@6.21.0)(eslint-plugin-jest@27.9.0)(eslint-plugin-react-hooks@4.6.0)(eslint-plugin-simple-import-sort@10.0.0)(eslint-plugin-sort-keys-fix@1.1.2)(eslint-plugin-typescript-sort-keys@3.2.0)(eslint@8.57.0)(typescript@5.6.2)
+        version: 3.0.3(@typescript-eslint/eslint-plugin@6.21.0)(@typescript-eslint/parser@6.21.0)(eslint-plugin-jest@27.9.0)(eslint-plugin-react-hooks@4.6.0)(eslint-plugin-simple-import-sort@10.0.0)(eslint-plugin-sort-keys-fix@1.1.2)(eslint-plugin-typescript-sort-keys@3.2.0)(eslint@8.57.0)(typescript@5.6.3)
       '@solana/prettier-config-solana':
         specifier: ^0.0.5
         version: 0.0.5(prettier@3.3.3)
@@ -62,7 +62,7 @@ importers:
         version: 0.20.1
       '@solana/eslint-config-solana':
         specifier: ^3.0.3
-        version: 3.0.3(@typescript-eslint/eslint-plugin@8.4.0)(@typescript-eslint/parser@8.4.0)(eslint-plugin-jest@28.8.3)(eslint-plugin-react-hooks@4.6.0)(eslint-plugin-simple-import-sort@12.1.1)(eslint-plugin-sort-keys-fix@1.1.2)(eslint-plugin-typescript-sort-keys@3.2.0)(eslint@8.57.0)(typescript@5.6.2)
+        version: 3.0.3(@typescript-eslint/eslint-plugin@8.4.0)(@typescript-eslint/parser@8.4.0)(eslint-plugin-jest@28.8.3)(eslint-plugin-react-hooks@4.6.0)(eslint-plugin-simple-import-sort@12.1.1)(eslint-plugin-sort-keys-fix@1.1.2)(eslint-plugin-typescript-sort-keys@3.2.0)(eslint@8.57.0)(typescript@5.6.3)
       '@types/bn.js':
         specifier: ^5.1.6
         version: 5.1.6
@@ -77,10 +77,10 @@ importers:
         version: 2.6.11
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.4.0
-        version: 8.4.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)(typescript@5.6.2)
+        version: 8.4.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)(typescript@5.6.3)
       '@typescript-eslint/parser':
         specifier: ^8.4.0
-        version: 8.4.0(eslint@8.57.0)(typescript@5.6.2)
+        version: 8.4.0(eslint@8.57.0)(typescript@5.6.3)
       eslint:
         specifier: ^8.57.0
         version: 8.57.0
@@ -92,7 +92,7 @@ importers:
         version: 2.31.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)
       eslint-plugin-jest:
         specifier: ^28.8.3
-        version: 28.8.3(@typescript-eslint/eslint-plugin@8.4.0)(eslint@8.57.0)(jest@29.7.0)(typescript@5.6.2)
+        version: 28.8.3(@typescript-eslint/eslint-plugin@8.4.0)(eslint@8.57.0)(jest@29.7.0)(typescript@5.6.3)
       eslint-plugin-mocha:
         specifier: ^10.5.0
         version: 10.5.0(eslint@8.57.0)
@@ -116,19 +116,19 @@ importers:
         version: 2.0.8
       ts-jest:
         specifier: ^29.2.5
-        version: 29.2.5(@babel/core@7.23.2)(jest@29.7.0)(typescript@5.6.2)
+        version: 29.2.5(@babel/core@7.23.2)(jest@29.7.0)(typescript@5.6.3)
       ts-jest-resolver:
         specifier: ^2.0.1
         version: 2.0.1
       ts-node:
         specifier: ^10.9.2
-        version: 10.9.2(@types/node@22.7.5)(typescript@5.6.2)
+        version: 10.9.2(@types/node@22.7.5)(typescript@5.6.3)
       typedoc:
         specifier: ^0.26.8
-        version: 0.26.8(typescript@5.6.2)
+        version: 0.26.8(typescript@5.6.3)
       typescript:
-        specifier: 5.6.2
-        version: 5.6.2
+        specifier: 5.6.3
+        version: 5.6.3
 
   libraries/type-length-value/js:
     dependencies:
@@ -147,10 +147,10 @@ importers:
         version: 22.7.5
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.4.0
-        version: 8.4.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)(typescript@5.6.2)
+        version: 8.4.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)(typescript@5.6.3)
       '@typescript-eslint/parser':
         specifier: ^8.4.0
-        version: 8.4.0(eslint@8.57.0)(typescript@5.6.2)
+        version: 8.4.0(eslint@8.57.0)(typescript@5.6.3)
       chai:
         specifier: ^5.1.1
         version: 5.1.1
@@ -171,13 +171,13 @@ importers:
         version: 0.3.4
       ts-node:
         specifier: ^10.9.2
-        version: 10.9.2(@types/node@22.7.5)(typescript@5.6.2)
+        version: 10.9.2(@types/node@22.7.5)(typescript@5.6.3)
       typedoc:
         specifier: ^0.26.8
-        version: 0.26.8(typescript@5.6.2)
+        version: 0.26.8(typescript@5.6.3)
       typescript:
-        specifier: ^5.6.2
-        version: 5.6.2
+        specifier: ^5.6.3
+        version: 5.6.3
 
   memo/js:
     dependencies:
@@ -202,10 +202,10 @@ importers:
         version: 2.6.11
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.4.0
-        version: 8.4.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)(typescript@5.6.2)
+        version: 8.4.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)(typescript@5.6.3)
       '@typescript-eslint/parser':
         specifier: ^8.4.0
-        version: 8.4.0(eslint@8.57.0)(typescript@5.6.2)
+        version: 8.4.0(eslint@8.57.0)(typescript@5.6.3)
       chai:
         specifier: ^5.1.1
         version: 5.1.1
@@ -232,16 +232,16 @@ importers:
         version: 2.0.8
       ts-jest:
         specifier: ^29.2.5
-        version: 29.2.5(@babel/core@7.23.2)(jest@29.7.0)(typescript@5.6.2)
+        version: 29.2.5(@babel/core@7.23.2)(jest@29.7.0)(typescript@5.6.3)
       ts-node:
         specifier: ^10.9.2
-        version: 10.9.2(@types/node@22.7.5)(typescript@5.6.2)
+        version: 10.9.2(@types/node@22.7.5)(typescript@5.6.3)
       typedoc:
         specifier: ^0.26.8
-        version: 0.26.8(typescript@5.6.2)
+        version: 0.26.8(typescript@5.6.3)
       typescript:
-        specifier: ^5.6.2
-        version: 5.6.2
+        specifier: ^5.6.3
+        version: 5.6.3
 
   name-service/js:
     dependencies:
@@ -269,10 +269,10 @@ importers:
         version: 22.7.5
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.4.0
-        version: 8.4.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)(typescript@5.6.2)
+        version: 8.4.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)(typescript@5.6.3)
       '@typescript-eslint/parser':
         specifier: ^8.4.0
-        version: 8.4.0(eslint@8.57.0)(typescript@5.6.2)
+        version: 8.4.0(eslint@8.57.0)(typescript@5.6.3)
       eslint:
         specifier: ^8.57.0
         version: 8.57.0
@@ -281,7 +281,7 @@ importers:
         version: 3.2.0(eslint@8.57.0)
       eslint-plugin-functional:
         specifier: ^7.0.2
-        version: 7.0.2(eslint@8.57.0)(typescript@5.6.2)
+        version: 7.0.2(eslint@8.57.0)(typescript@5.6.3)
       eslint-plugin-import:
         specifier: ^2.31.0
         version: 2.31.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)
@@ -293,22 +293,22 @@ importers:
         version: 2.0.8
       ts-jest:
         specifier: ^29.2.5
-        version: 29.2.5(@babel/core@7.23.2)(jest@29.7.0)(typescript@5.6.2)
+        version: 29.2.5(@babel/core@7.23.2)(jest@29.7.0)(typescript@5.6.3)
       ts-node:
         specifier: ^10.9.2
-        version: 10.9.2(@types/node@22.7.5)(typescript@5.6.2)
+        version: 10.9.2(@types/node@22.7.5)(typescript@5.6.3)
       typedoc:
         specifier: ^0.26.8
-        version: 0.26.8(typescript@5.6.2)
+        version: 0.26.8(typescript@5.6.3)
       typescript:
-        specifier: ^5.6.2
-        version: 5.6.2
+        specifier: ^5.6.3
+        version: 5.6.3
 
   single-pool/js/packages/classic:
     dependencies:
       '@solana/addresses':
         specifier: 2.0.0-rc.1
-        version: 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.2)
+        version: 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
       '@solana/spl-single-pool':
         specifier: 1.0.0
         version: link:../modern
@@ -324,7 +324,7 @@ importers:
         version: 22.7.5
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.4.0
-        version: 8.4.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)(typescript@5.6.2)
+        version: 8.4.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)(typescript@5.6.3)
       ava:
         specifier: ^6.1.3
         version: 6.1.3(@ava/typescript@5.0.0)
@@ -338,33 +338,33 @@ importers:
         specifier: ^4.19.1
         version: 4.19.1
       typescript:
-        specifier: ^5.6.2
-        version: 5.6.2
+        specifier: ^5.6.3
+        version: 5.6.3
 
   single-pool/js/packages/modern:
     dependencies:
       '@solana/addresses':
         specifier: 2.0.0-rc.1
-        version: 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.2)
+        version: 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
       '@solana/instructions':
         specifier: 2.0.0-rc.1
-        version: 2.0.0-rc.1(typescript@5.6.2)
+        version: 2.0.0-rc.1(typescript@5.6.3)
       '@solana/transaction-messages':
         specifier: 2.0.0-rc.1
-        version: 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.2)
+        version: 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
     devDependencies:
       '@types/node':
         specifier: ^22.7.5
         version: 22.7.5
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.4.0
-        version: 8.4.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)(typescript@5.6.2)
+        version: 8.4.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)(typescript@5.6.3)
       eslint:
         specifier: ^8.57.0
         version: 8.57.0
       typescript:
-        specifier: ^5.6.2
-        version: 5.6.2
+        specifier: ^5.6.3
+        version: 5.6.3
 
   stake-pool/js:
     dependencies:
@@ -373,7 +373,7 @@ importers:
         version: 4.0.1
       '@solana/spl-token':
         specifier: 0.4.6
-        version: 0.4.6(@solana/web3.js@1.95.3)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.2)
+        version: 0.4.6(@solana/web3.js@1.95.3)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
       '@solana/web3.js':
         specifier: ^1.95.3
         version: 1.95.3
@@ -410,7 +410,7 @@ importers:
         version: 0.4.4(rollup@4.24.0)
       '@rollup/plugin-typescript':
         specifier: ^12.1.0
-        version: 12.1.0(rollup@4.24.0)(tslib@2.7.0)(typescript@5.6.2)
+        version: 12.1.0(rollup@4.24.0)(tslib@2.7.0)(typescript@5.6.3)
       '@types/bn.js':
         specifier: ^5.1.6
         version: 5.1.6
@@ -425,10 +425,10 @@ importers:
         version: 2.6.11
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.4.0
-        version: 8.4.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)(typescript@5.6.2)
+        version: 8.4.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)(typescript@5.6.3)
       '@typescript-eslint/parser':
         specifier: ^8.4.0
-        version: 8.4.0(eslint@8.57.0)(typescript@5.6.2)
+        version: 8.4.0(eslint@8.57.0)(typescript@5.6.3)
       cross-env:
         specifier: ^7.0.3
         version: 7.0.3
@@ -446,19 +446,19 @@ importers:
         version: 4.24.0
       rollup-plugin-dts:
         specifier: ^6.1.1
-        version: 6.1.1(rollup@4.24.0)(typescript@5.6.2)
+        version: 6.1.1(rollup@4.24.0)(typescript@5.6.3)
       ts-jest:
         specifier: ^29.2.5
-        version: 29.2.5(@babel/core@7.23.2)(jest@29.7.0)(typescript@5.6.2)
+        version: 29.2.5(@babel/core@7.23.2)(jest@29.7.0)(typescript@5.6.3)
       typescript:
-        specifier: ^5.6.2
-        version: 5.6.2
+        specifier: ^5.6.3
+        version: 5.6.3
 
   token-group/js:
     dependencies:
       '@solana/codecs':
         specifier: 2.0.0-rc.1
-        version: 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.2)
+        version: 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
       '@solana/spl-type-length-value':
         specifier: 0.1.0
         version: link:../../libraries/type-length-value/js
@@ -477,10 +477,10 @@ importers:
         version: 22.7.5
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.4.0
-        version: 8.4.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)(typescript@5.6.2)
+        version: 8.4.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)(typescript@5.6.3)
       '@typescript-eslint/parser':
         specifier: ^8.4.0
-        version: 8.4.0(eslint@8.57.0)(typescript@5.6.2)
+        version: 8.4.0(eslint@8.57.0)(typescript@5.6.3)
       chai:
         specifier: ^5.1.1
         version: 5.1.1
@@ -501,16 +501,16 @@ importers:
         version: 0.3.4
       ts-node:
         specifier: ^10.9.2
-        version: 10.9.2(@types/node@22.7.5)(typescript@5.6.2)
+        version: 10.9.2(@types/node@22.7.5)(typescript@5.6.3)
       tslib:
         specifier: ^2.7.0
         version: 2.7.0
       typedoc:
         specifier: ^0.26.8
-        version: 0.26.8(typescript@5.6.2)
+        version: 0.26.8(typescript@5.6.3)
       typescript:
-        specifier: ^5.6.2
-        version: 5.6.2
+        specifier: ^5.6.3
+        version: 5.6.3
 
   token-lending/js:
     dependencies:
@@ -535,10 +535,10 @@ importers:
         version: 15.3.0(rollup@4.24.0)
       '@rollup/plugin-typescript':
         specifier: ^12.1.0
-        version: 12.1.0(rollup@4.24.0)(tslib@2.7.0)(typescript@5.6.2)
+        version: 12.1.0(rollup@4.24.0)(tslib@2.7.0)(typescript@5.6.3)
       '@solana/spl-token':
         specifier: 0.4.6
-        version: 0.4.6(@solana/web3.js@1.95.3)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.2)
+        version: 0.4.6(@solana/web3.js@1.95.3)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
       '@solana/web3.js':
         specifier: ^1.95.3
         version: 1.95.3
@@ -550,10 +550,10 @@ importers:
         version: 22.7.5
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.4.0
-        version: 8.4.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)(typescript@5.6.2)
+        version: 8.4.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)(typescript@5.6.3)
       '@typescript-eslint/parser':
         specifier: ^8.4.0
-        version: 8.4.0(eslint@8.57.0)(typescript@5.6.2)
+        version: 8.4.0(eslint@8.57.0)(typescript@5.6.3)
       eslint:
         specifier: ^8.57.0
         version: 8.57.0
@@ -565,22 +565,22 @@ importers:
         version: 4.24.0
       ts-node:
         specifier: ^10.9.2
-        version: 10.9.2(@types/node@22.7.5)(typescript@5.6.2)
+        version: 10.9.2(@types/node@22.7.5)(typescript@5.6.3)
       tslib:
         specifier: ^2.7.0
         version: 2.7.0
       typedoc:
         specifier: ^0.26.8
-        version: 0.26.8(typescript@5.6.2)
+        version: 0.26.8(typescript@5.6.3)
       typescript:
-        specifier: ^5.6.2
-        version: 5.6.2
+        specifier: ^5.6.3
+        version: 5.6.3
 
   token-metadata/js:
     dependencies:
       '@solana/codecs':
         specifier: 2.0.0-rc.1
-        version: 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.2)
+        version: 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
       '@solana/spl-type-length-value':
         specifier: 0.1.0
         version: link:../../libraries/type-length-value/js
@@ -599,10 +599,10 @@ importers:
         version: 22.7.5
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.4.0
-        version: 8.4.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)(typescript@5.6.2)
+        version: 8.4.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)(typescript@5.6.3)
       '@typescript-eslint/parser':
         specifier: ^8.4.0
-        version: 8.4.0(eslint@8.57.0)(typescript@5.6.2)
+        version: 8.4.0(eslint@8.57.0)(typescript@5.6.3)
       chai:
         specifier: ^5.1.1
         version: 5.1.1
@@ -623,16 +623,16 @@ importers:
         version: 0.3.4
       ts-node:
         specifier: ^10.9.2
-        version: 10.9.2(@types/node@22.7.5)(typescript@5.6.2)
+        version: 10.9.2(@types/node@22.7.5)(typescript@5.6.3)
       tslib:
         specifier: ^2.7.0
         version: 2.7.0
       typedoc:
         specifier: ^0.26.8
-        version: 0.26.8(typescript@5.6.2)
+        version: 0.26.8(typescript@5.6.3)
       typescript:
-        specifier: ^5.6.2
-        version: 5.6.2
+        specifier: ^5.6.3
+        version: 5.6.3
 
   token-swap/js:
     dependencies:
@@ -645,7 +645,7 @@ importers:
     devDependencies:
       '@solana/spl-token':
         specifier: 0.4.6
-        version: 0.4.6(@solana/web3.js@1.95.3)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.2)
+        version: 0.4.6(@solana/web3.js@1.95.3)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
       '@solana/web3.js':
         specifier: ^1.95.3
         version: 1.95.3
@@ -663,10 +663,10 @@ importers:
         version: 10.0.9
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.4.0
-        version: 8.4.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)(typescript@5.6.2)
+        version: 8.4.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)(typescript@5.6.3)
       '@typescript-eslint/parser':
         specifier: ^8.4.0
-        version: 8.4.0(eslint@8.57.0)(typescript@5.6.2)
+        version: 8.4.0(eslint@8.57.0)(typescript@5.6.3)
       eslint:
         specifier: ^8.57.0
         version: 8.57.0
@@ -684,10 +684,10 @@ importers:
         version: 2.0.8
       ts-node:
         specifier: ^10.9.2
-        version: 10.9.2(@types/node@22.7.5)(typescript@5.6.2)
+        version: 10.9.2(@types/node@22.7.5)(typescript@5.6.3)
       typescript:
-        specifier: ^5.6.2
-        version: 5.6.2
+        specifier: ^5.6.3
+        version: 5.6.3
 
   token/js:
     dependencies:
@@ -709,7 +709,7 @@ importers:
     devDependencies:
       '@solana/codecs-strings':
         specifier: 2.0.0-rc.1
-        version: 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.2)
+        version: 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
       '@solana/spl-memo':
         specifier: 0.2.4
         version: link:../../memo/js
@@ -733,10 +733,10 @@ importers:
         version: 2.6.11
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.4.0
-        version: 8.4.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)(typescript@5.6.2)
+        version: 8.4.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)(typescript@5.6.3)
       '@typescript-eslint/parser':
         specifier: ^8.4.0
-        version: 8.4.0(eslint@8.57.0)(typescript@5.6.2)
+        version: 8.4.0(eslint@8.57.0)(typescript@5.6.3)
       chai:
         specifier: ^5.1.1
         version: 5.1.1
@@ -766,13 +766,13 @@ importers:
         version: 2.0.8
       ts-node:
         specifier: ^10.9.2
-        version: 10.9.2(@types/node@22.7.5)(typescript@5.6.2)
+        version: 10.9.2(@types/node@22.7.5)(typescript@5.6.3)
       typedoc:
         specifier: ^0.26.8
-        version: 0.26.8(typescript@5.6.2)
+        version: 0.26.8(typescript@5.6.3)
       typescript:
-        specifier: ^5.6.2
-        version: 5.6.2
+        specifier: ^5.6.3
+        version: 5.6.3
 
 packages:
 
@@ -1971,7 +1971,7 @@ packages:
       terser: 5.24.0
     dev: true
 
-  /@rollup/plugin-typescript@12.1.0(rollup@4.24.0)(tslib@2.7.0)(typescript@5.6.2):
+  /@rollup/plugin-typescript@12.1.0(rollup@4.24.0)(tslib@2.7.0)(typescript@5.6.3):
     resolution: {integrity: sha512-Kzs8KGJofe7cfTRODsnG1jNGxSvU8gVoNNd7Z/QaY25AYwe2LSSUpx/kPxqF38NYkpR8de3m51r9uwJpDlz6dg==}
     engines: {node: '>=14.0.0'}
     peerDependencies:
@@ -1988,7 +1988,7 @@ packages:
       resolve: 1.22.8
       rollup: 4.24.0
       tslib: 2.7.0
-      typescript: 5.6.2
+      typescript: 5.6.3
     dev: true
 
   /@rollup/plugin-virtual@3.0.2(rollup@4.24.0):
@@ -2204,27 +2204,27 @@ packages:
       '@sinonjs/commons': 3.0.0
     dev: true
 
-  /@solana/addresses@2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.2):
+  /@solana/addresses@2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3):
     resolution: {integrity: sha512-g31KrLZdECjAKceShlGoYxnWDmEVklpjPs8xOtnj/HWupEk+Mds4vtmTACTAeJkWZW/3x+z0aexMtO86MKA47g==}
     peerDependencies:
       typescript: '>=5'
     dependencies:
-      '@solana/assertions': 2.0.0-rc.1(typescript@5.6.2)
-      '@solana/codecs-core': 2.0.0-rc.1(typescript@5.6.2)
-      '@solana/codecs-strings': 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.2)
-      '@solana/errors': 2.0.0-rc.1(typescript@5.6.2)
-      typescript: 5.6.2
+      '@solana/assertions': 2.0.0-rc.1(typescript@5.6.3)
+      '@solana/codecs-core': 2.0.0-rc.1(typescript@5.6.3)
+      '@solana/codecs-strings': 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
+      '@solana/errors': 2.0.0-rc.1(typescript@5.6.3)
+      typescript: 5.6.3
     transitivePeerDependencies:
       - fastestsmallesttextencoderdecoder
     dev: false
 
-  /@solana/assertions@2.0.0-rc.1(typescript@5.6.2):
+  /@solana/assertions@2.0.0-rc.1(typescript@5.6.3):
     resolution: {integrity: sha512-dvxYCUB7ftZa5lWcsyMYLsGm204H6yVN8Q3ngluMG0rhTtScMBRklVg7Vs39ISwJOkJWJPGToaZ7DjNJ83bm1Q==}
     peerDependencies:
       typescript: '>=5'
     dependencies:
-      '@solana/errors': 2.0.0-rc.1(typescript@5.6.2)
-      typescript: 5.6.2
+      '@solana/errors': 2.0.0-rc.1(typescript@5.6.3)
+      typescript: 5.6.3
     dev: false
 
   /@solana/buffer-layout-utils@0.2.0:
@@ -2251,13 +2251,13 @@ packages:
     dependencies:
       '@solana/errors': 2.0.0-preview.2
 
-  /@solana/codecs-core@2.0.0-rc.1(typescript@5.6.2):
+  /@solana/codecs-core@2.0.0-rc.1(typescript@5.6.3):
     resolution: {integrity: sha512-bauxqMfSs8EHD0JKESaNmNuNvkvHSuN3bbWAF5RjOfDu2PugxHrvRebmYauvSumZ3cTfQ4HJJX6PG5rN852qyQ==}
     peerDependencies:
       typescript: '>=5'
     dependencies:
-      '@solana/errors': 2.0.0-rc.1(typescript@5.6.2)
-      typescript: 5.6.2
+      '@solana/errors': 2.0.0-rc.1(typescript@5.6.3)
+      typescript: 5.6.3
 
   /@solana/codecs-data-structures@2.0.0-preview.2:
     resolution: {integrity: sha512-Xf5vIfromOZo94Q8HbR04TbgTwzigqrKII0GjYr21K7rb3nba4hUW2ir8kguY7HWFBcjHGlU5x3MevKBOLp3Zg==}
@@ -2266,15 +2266,15 @@ packages:
       '@solana/codecs-numbers': 2.0.0-preview.2
       '@solana/errors': 2.0.0-preview.2
 
-  /@solana/codecs-data-structures@2.0.0-rc.1(typescript@5.6.2):
+  /@solana/codecs-data-structures@2.0.0-rc.1(typescript@5.6.3):
     resolution: {integrity: sha512-rinCv0RrAVJ9rE/rmaibWJQxMwC5lSaORSZuwjopSUE6T0nb/MVg6Z1siNCXhh/HFTOg0l8bNvZHgBcN/yvXog==}
     peerDependencies:
       typescript: '>=5'
     dependencies:
-      '@solana/codecs-core': 2.0.0-rc.1(typescript@5.6.2)
-      '@solana/codecs-numbers': 2.0.0-rc.1(typescript@5.6.2)
-      '@solana/errors': 2.0.0-rc.1(typescript@5.6.2)
-      typescript: 5.6.2
+      '@solana/codecs-core': 2.0.0-rc.1(typescript@5.6.3)
+      '@solana/codecs-numbers': 2.0.0-rc.1(typescript@5.6.3)
+      '@solana/errors': 2.0.0-rc.1(typescript@5.6.3)
+      typescript: 5.6.3
 
   /@solana/codecs-numbers@2.0.0-preview.2:
     resolution: {integrity: sha512-aLZnDTf43z4qOnpTcDsUVy1Ci9im1Md8thWipSWbE+WM9ojZAx528oAql+Cv8M8N+6ALKwgVRhPZkto6E59ARw==}
@@ -2282,14 +2282,14 @@ packages:
       '@solana/codecs-core': 2.0.0-preview.2
       '@solana/errors': 2.0.0-preview.2
 
-  /@solana/codecs-numbers@2.0.0-rc.1(typescript@5.6.2):
+  /@solana/codecs-numbers@2.0.0-rc.1(typescript@5.6.3):
     resolution: {integrity: sha512-J5i5mOkvukXn8E3Z7sGIPxsThRCgSdgTWJDQeZvucQ9PT6Y3HiVXJ0pcWiOWAoQ3RX8e/f4I3IC+wE6pZiJzDQ==}
     peerDependencies:
       typescript: '>=5'
     dependencies:
-      '@solana/codecs-core': 2.0.0-rc.1(typescript@5.6.2)
-      '@solana/errors': 2.0.0-rc.1(typescript@5.6.2)
-      typescript: 5.6.2
+      '@solana/codecs-core': 2.0.0-rc.1(typescript@5.6.3)
+      '@solana/errors': 2.0.0-rc.1(typescript@5.6.3)
+      typescript: 5.6.3
 
   /@solana/codecs-strings@2.0.0-preview.2(fastestsmallesttextencoderdecoder@1.0.22):
     resolution: {integrity: sha512-EgBwY+lIaHHgMJIqVOGHfIfpdmmUDNoNO/GAUGeFPf+q0dF+DtwhJPEMShhzh64X2MeCZcmSO6Kinx0Bvmmz2g==}
@@ -2301,17 +2301,17 @@ packages:
       '@solana/errors': 2.0.0-preview.2
       fastestsmallesttextencoderdecoder: 1.0.22
 
-  /@solana/codecs-strings@2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.2):
+  /@solana/codecs-strings@2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3):
     resolution: {integrity: sha512-9/wPhw8TbGRTt6mHC4Zz1RqOnuPTqq1Nb4EyuvpZ39GW6O2t2Q7Q0XxiB3+BdoEjwA2XgPw6e2iRfvYgqty44g==}
     peerDependencies:
       fastestsmallesttextencoderdecoder: ^1.0.22
       typescript: '>=5'
     dependencies:
-      '@solana/codecs-core': 2.0.0-rc.1(typescript@5.6.2)
-      '@solana/codecs-numbers': 2.0.0-rc.1(typescript@5.6.2)
-      '@solana/errors': 2.0.0-rc.1(typescript@5.6.2)
+      '@solana/codecs-core': 2.0.0-rc.1(typescript@5.6.3)
+      '@solana/codecs-numbers': 2.0.0-rc.1(typescript@5.6.3)
+      '@solana/errors': 2.0.0-rc.1(typescript@5.6.3)
       fastestsmallesttextencoderdecoder: 1.0.22
-      typescript: 5.6.2
+      typescript: 5.6.3
 
   /@solana/codecs@2.0.0-preview.2(fastestsmallesttextencoderdecoder@1.0.22):
     resolution: {integrity: sha512-4HHzCD5+pOSmSB71X6w9ptweV48Zj1Vqhe732+pcAQ2cMNnN0gMPMdDq7j3YwaZDZ7yrILVV/3+HTnfT77t2yA==}
@@ -2324,17 +2324,17 @@ packages:
     transitivePeerDependencies:
       - fastestsmallesttextencoderdecoder
 
-  /@solana/codecs@2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.2):
+  /@solana/codecs@2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3):
     resolution: {integrity: sha512-qxoR7VybNJixV51L0G1RD2boZTcxmwUWnKCaJJExQ5qNKwbpSyDdWfFJfM5JhGyKe9DnPVOZB+JHWXnpbZBqrQ==}
     peerDependencies:
       typescript: '>=5'
     dependencies:
-      '@solana/codecs-core': 2.0.0-rc.1(typescript@5.6.2)
-      '@solana/codecs-data-structures': 2.0.0-rc.1(typescript@5.6.2)
-      '@solana/codecs-numbers': 2.0.0-rc.1(typescript@5.6.2)
-      '@solana/codecs-strings': 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.2)
-      '@solana/options': 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.2)
-      typescript: 5.6.2
+      '@solana/codecs-core': 2.0.0-rc.1(typescript@5.6.3)
+      '@solana/codecs-data-structures': 2.0.0-rc.1(typescript@5.6.3)
+      '@solana/codecs-numbers': 2.0.0-rc.1(typescript@5.6.3)
+      '@solana/codecs-strings': 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
+      '@solana/options': 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
+      typescript: 5.6.3
     transitivePeerDependencies:
       - fastestsmallesttextencoderdecoder
 
@@ -2345,7 +2345,7 @@ packages:
       chalk: 5.3.0
       commander: 12.1.0
 
-  /@solana/errors@2.0.0-rc.1(typescript@5.6.2):
+  /@solana/errors@2.0.0-rc.1(typescript@5.6.3):
     resolution: {integrity: sha512-ejNvQ2oJ7+bcFAYWj225lyRkHnixuAeb7RQCixm+5mH4n1IA4Qya/9Bmfy5RAAHQzxK43clu3kZmL5eF9VGtYQ==}
     hasBin: true
     peerDependencies:
@@ -2353,9 +2353,9 @@ packages:
     dependencies:
       chalk: 5.3.0
       commander: 12.1.0
-      typescript: 5.6.2
+      typescript: 5.6.3
 
-  /@solana/eslint-config-solana@3.0.3(@typescript-eslint/eslint-plugin@6.21.0)(@typescript-eslint/parser@6.21.0)(eslint-plugin-jest@27.9.0)(eslint-plugin-react-hooks@4.6.0)(eslint-plugin-simple-import-sort@10.0.0)(eslint-plugin-sort-keys-fix@1.1.2)(eslint-plugin-typescript-sort-keys@3.2.0)(eslint@8.57.0)(typescript@5.6.2):
+  /@solana/eslint-config-solana@3.0.3(@typescript-eslint/eslint-plugin@6.21.0)(@typescript-eslint/parser@6.21.0)(eslint-plugin-jest@27.9.0)(eslint-plugin-react-hooks@4.6.0)(eslint-plugin-simple-import-sort@10.0.0)(eslint-plugin-sort-keys-fix@1.1.2)(eslint-plugin-typescript-sort-keys@3.2.0)(eslint@8.57.0)(typescript@5.6.3):
     resolution: {integrity: sha512-yTaeCbOBwjmK4oUkknixOpwOzzAK8+4YWvJEJFNHuueESetieDnAeEHV7rzJllFgHEWa9nXps9Q3aD4/XJp71A==}
     peerDependencies:
       '@typescript-eslint/eslint-plugin': ^6.0.0
@@ -2368,18 +2368,18 @@ packages:
       eslint-plugin-typescript-sort-keys: ^3.2.0
       typescript: ^5.1.6
     dependencies:
-      '@typescript-eslint/eslint-plugin': 6.21.0(@typescript-eslint/parser@6.21.0)(eslint@8.57.0)(typescript@5.6.2)
-      '@typescript-eslint/parser': 6.21.0(eslint@8.57.0)(typescript@5.6.2)
+      '@typescript-eslint/eslint-plugin': 6.21.0(@typescript-eslint/parser@6.21.0)(eslint@8.57.0)(typescript@5.6.3)
+      '@typescript-eslint/parser': 6.21.0(eslint@8.57.0)(typescript@5.6.3)
       eslint: 8.57.0
-      eslint-plugin-jest: 27.9.0(@typescript-eslint/eslint-plugin@6.21.0)(eslint@8.57.0)(typescript@5.6.2)
+      eslint-plugin-jest: 27.9.0(@typescript-eslint/eslint-plugin@6.21.0)(eslint@8.57.0)(typescript@5.6.3)
       eslint-plugin-react-hooks: 4.6.0(eslint@8.57.0)
       eslint-plugin-simple-import-sort: 10.0.0(eslint@8.57.0)
       eslint-plugin-sort-keys-fix: 1.1.2
-      eslint-plugin-typescript-sort-keys: 3.2.0(@typescript-eslint/parser@6.21.0)(eslint@8.57.0)(typescript@5.6.2)
-      typescript: 5.6.2
+      eslint-plugin-typescript-sort-keys: 3.2.0(@typescript-eslint/parser@6.21.0)(eslint@8.57.0)(typescript@5.6.3)
+      typescript: 5.6.3
     dev: true
 
-  /@solana/eslint-config-solana@3.0.3(@typescript-eslint/eslint-plugin@8.4.0)(@typescript-eslint/parser@8.4.0)(eslint-plugin-jest@28.8.3)(eslint-plugin-react-hooks@4.6.0)(eslint-plugin-simple-import-sort@12.1.1)(eslint-plugin-sort-keys-fix@1.1.2)(eslint-plugin-typescript-sort-keys@3.2.0)(eslint@8.57.0)(typescript@5.6.2):
+  /@solana/eslint-config-solana@3.0.3(@typescript-eslint/eslint-plugin@8.4.0)(@typescript-eslint/parser@8.4.0)(eslint-plugin-jest@28.8.3)(eslint-plugin-react-hooks@4.6.0)(eslint-plugin-simple-import-sort@12.1.1)(eslint-plugin-sort-keys-fix@1.1.2)(eslint-plugin-typescript-sort-keys@3.2.0)(eslint@8.57.0)(typescript@5.6.3):
     resolution: {integrity: sha512-yTaeCbOBwjmK4oUkknixOpwOzzAK8+4YWvJEJFNHuueESetieDnAeEHV7rzJllFgHEWa9nXps9Q3aD4/XJp71A==}
     peerDependencies:
       '@typescript-eslint/eslint-plugin': ^6.0.0
@@ -2392,32 +2392,32 @@ packages:
       eslint-plugin-typescript-sort-keys: ^3.2.0
       typescript: ^5.1.6
     dependencies:
-      '@typescript-eslint/eslint-plugin': 8.4.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)(typescript@5.6.2)
-      '@typescript-eslint/parser': 8.4.0(eslint@8.57.0)(typescript@5.6.2)
+      '@typescript-eslint/eslint-plugin': 8.4.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)(typescript@5.6.3)
+      '@typescript-eslint/parser': 8.4.0(eslint@8.57.0)(typescript@5.6.3)
       eslint: 8.57.0
-      eslint-plugin-jest: 28.8.3(@typescript-eslint/eslint-plugin@8.4.0)(eslint@8.57.0)(jest@29.7.0)(typescript@5.6.2)
+      eslint-plugin-jest: 28.8.3(@typescript-eslint/eslint-plugin@8.4.0)(eslint@8.57.0)(jest@29.7.0)(typescript@5.6.3)
       eslint-plugin-react-hooks: 4.6.0(eslint@8.57.0)
       eslint-plugin-simple-import-sort: 12.1.1(eslint@8.57.0)
       eslint-plugin-sort-keys-fix: 1.1.2
-      eslint-plugin-typescript-sort-keys: 3.2.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)(typescript@5.6.2)
-      typescript: 5.6.2
+      eslint-plugin-typescript-sort-keys: 3.2.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)(typescript@5.6.3)
+      typescript: 5.6.3
     dev: true
 
-  /@solana/functional@2.0.0-rc.1(typescript@5.6.2):
+  /@solana/functional@2.0.0-rc.1(typescript@5.6.3):
     resolution: {integrity: sha512-BmedS5o8HTlU8/NA22I6urJqat9QYIw0oH6rKdMMBisDwX7MtgJhe38W8iLP7QCcxoJeS4526qaD8uD62+Pheg==}
     peerDependencies:
       typescript: '>=5'
     dependencies:
-      typescript: 5.6.2
+      typescript: 5.6.3
     dev: false
 
-  /@solana/instructions@2.0.0-rc.1(typescript@5.6.2):
+  /@solana/instructions@2.0.0-rc.1(typescript@5.6.3):
     resolution: {integrity: sha512-zkfL4WBHPbkMrYsuGZc/sekPa/oALIVvVGUw/gwAervMeLZ34cWCUE6WC2uUUh+bq3OFq0/FSFhAg2YbHHDyUw==}
     peerDependencies:
       typescript: '>=5'
     dependencies:
-      '@solana/errors': 2.0.0-rc.1(typescript@5.6.2)
-      typescript: 5.6.2
+      '@solana/errors': 2.0.0-rc.1(typescript@5.6.3)
+      typescript: 5.6.3
     dev: false
 
   /@solana/options@2.0.0-preview.2:
@@ -2426,17 +2426,17 @@ packages:
       '@solana/codecs-core': 2.0.0-preview.2
       '@solana/codecs-numbers': 2.0.0-preview.2
 
-  /@solana/options@2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.2):
+  /@solana/options@2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3):
     resolution: {integrity: sha512-mLUcR9mZ3qfHlmMnREdIFPf9dpMc/Bl66tLSOOWxw4ml5xMT2ohFn7WGqoKcu/UHkT9CrC6+amEdqCNvUqI7AA==}
     peerDependencies:
       typescript: '>=5'
     dependencies:
-      '@solana/codecs-core': 2.0.0-rc.1(typescript@5.6.2)
-      '@solana/codecs-data-structures': 2.0.0-rc.1(typescript@5.6.2)
-      '@solana/codecs-numbers': 2.0.0-rc.1(typescript@5.6.2)
-      '@solana/codecs-strings': 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.2)
-      '@solana/errors': 2.0.0-rc.1(typescript@5.6.2)
-      typescript: 5.6.2
+      '@solana/codecs-core': 2.0.0-rc.1(typescript@5.6.3)
+      '@solana/codecs-data-structures': 2.0.0-rc.1(typescript@5.6.3)
+      '@solana/codecs-numbers': 2.0.0-rc.1(typescript@5.6.3)
+      '@solana/codecs-strings': 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
+      '@solana/errors': 2.0.0-rc.1(typescript@5.6.3)
+      typescript: 5.6.3
     transitivePeerDependencies:
       - fastestsmallesttextencoderdecoder
 
@@ -2448,17 +2448,17 @@ packages:
       prettier: 3.3.3
     dev: true
 
-  /@solana/rpc-types@2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.2):
+  /@solana/rpc-types@2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3):
     resolution: {integrity: sha512-EcGx9VXqA0+uYEdaa1lKTaGBVxLyNL8nkecE4GkqQ+ntRyYlNBPecd4b8siQGSleUQa+Tk/VSPUawSkHqNTLug==}
     peerDependencies:
       typescript: '>=5'
     dependencies:
-      '@solana/addresses': 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.2)
-      '@solana/codecs-core': 2.0.0-rc.1(typescript@5.6.2)
-      '@solana/codecs-numbers': 2.0.0-rc.1(typescript@5.6.2)
-      '@solana/codecs-strings': 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.2)
-      '@solana/errors': 2.0.0-rc.1(typescript@5.6.2)
-      typescript: 5.6.2
+      '@solana/addresses': 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
+      '@solana/codecs-core': 2.0.0-rc.1(typescript@5.6.3)
+      '@solana/codecs-numbers': 2.0.0-rc.1(typescript@5.6.3)
+      '@solana/codecs-strings': 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
+      '@solana/errors': 2.0.0-rc.1(typescript@5.6.3)
+      typescript: 5.6.3
     transitivePeerDependencies:
       - fastestsmallesttextencoderdecoder
     dev: false
@@ -2475,20 +2475,20 @@ packages:
     transitivePeerDependencies:
       - fastestsmallesttextencoderdecoder
 
-  /@solana/spl-token-metadata@0.1.5(@solana/web3.js@1.95.3)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.2):
+  /@solana/spl-token-metadata@0.1.5(@solana/web3.js@1.95.3)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3):
     resolution: {integrity: sha512-DSBlo7vjuLe/xvNn75OKKndDBkFxlqjLdWlq6rf40StnrhRn7TDntHGLZpry1cf3uzQFShqeLROGNPAJwvkPnA==}
     engines: {node: '>=16'}
     peerDependencies:
       '@solana/web3.js': ^1.95.3
     dependencies:
-      '@solana/codecs': 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.2)
+      '@solana/codecs': 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
       '@solana/spl-type-length-value': 0.1.0
       '@solana/web3.js': 1.95.3
     transitivePeerDependencies:
       - fastestsmallesttextencoderdecoder
       - typescript
 
-  /@solana/spl-token@0.4.6(@solana/web3.js@1.95.3)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.2):
+  /@solana/spl-token@0.4.6(@solana/web3.js@1.95.3)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3):
     resolution: {integrity: sha512-1nCnUqfHVtdguFciVWaY/RKcQz1IF4b31jnKgAmjU9QVN1q7dRUkTEWJZgTYIEtsULjVnC9jRqlhgGN39WbKKA==}
     engines: {node: '>=16'}
     peerDependencies:
@@ -2497,7 +2497,7 @@ packages:
       '@solana/buffer-layout': 4.0.1
       '@solana/buffer-layout-utils': 0.2.0
       '@solana/spl-token-group': 0.0.4(@solana/web3.js@1.95.3)(fastestsmallesttextencoderdecoder@1.0.22)
-      '@solana/spl-token-metadata': 0.1.5(@solana/web3.js@1.95.3)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.2)
+      '@solana/spl-token-metadata': 0.1.5(@solana/web3.js@1.95.3)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
       '@solana/web3.js': 1.95.3
       buffer: 6.0.3
     transitivePeerDependencies:
@@ -2513,20 +2513,20 @@ packages:
     dependencies:
       buffer: 6.0.3
 
-  /@solana/transaction-messages@2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.2):
+  /@solana/transaction-messages@2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3):
     resolution: {integrity: sha512-pZTetOtRDwfuK/fyE8FKbtRsLQOTgEIQld3tskB85npUHaEgrnCYzp3nJtMhKOLel3w3f/27VtWLNSrRyyAiew==}
     peerDependencies:
       typescript: '>=5'
     dependencies:
-      '@solana/addresses': 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.2)
-      '@solana/codecs-core': 2.0.0-rc.1(typescript@5.6.2)
-      '@solana/codecs-data-structures': 2.0.0-rc.1(typescript@5.6.2)
-      '@solana/codecs-numbers': 2.0.0-rc.1(typescript@5.6.2)
-      '@solana/errors': 2.0.0-rc.1(typescript@5.6.2)
-      '@solana/functional': 2.0.0-rc.1(typescript@5.6.2)
-      '@solana/instructions': 2.0.0-rc.1(typescript@5.6.2)
-      '@solana/rpc-types': 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.2)
-      typescript: 5.6.2
+      '@solana/addresses': 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
+      '@solana/codecs-core': 2.0.0-rc.1(typescript@5.6.3)
+      '@solana/codecs-data-structures': 2.0.0-rc.1(typescript@5.6.3)
+      '@solana/codecs-numbers': 2.0.0-rc.1(typescript@5.6.3)
+      '@solana/errors': 2.0.0-rc.1(typescript@5.6.3)
+      '@solana/functional': 2.0.0-rc.1(typescript@5.6.3)
+      '@solana/instructions': 2.0.0-rc.1(typescript@5.6.3)
+      '@solana/rpc-types': 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
+      typescript: 5.6.3
     transitivePeerDependencies:
       - fastestsmallesttextencoderdecoder
     dev: false
@@ -2764,7 +2764,7 @@ packages:
       '@types/yargs-parser': 21.0.3
     dev: true
 
-  /@typescript-eslint/eslint-plugin@6.21.0(@typescript-eslint/parser@6.21.0)(eslint@8.57.0)(typescript@5.6.2):
+  /@typescript-eslint/eslint-plugin@6.21.0(@typescript-eslint/parser@6.21.0)(eslint@8.57.0)(typescript@5.6.3):
     resolution: {integrity: sha512-oy9+hTPCUFpngkEZUSzbf9MxI65wbKFoQYsgPdILTfbUldp5ovUuphZVe4i30emU9M/kP+T64Di0mxl7dSw3MA==}
     engines: {node: ^16.0.0 || >=18.0.0}
     peerDependencies:
@@ -2776,10 +2776,10 @@ packages:
         optional: true
     dependencies:
       '@eslint-community/regexpp': 4.10.0
-      '@typescript-eslint/parser': 6.21.0(eslint@8.57.0)(typescript@5.6.2)
+      '@typescript-eslint/parser': 6.21.0(eslint@8.57.0)(typescript@5.6.3)
       '@typescript-eslint/scope-manager': 6.21.0
-      '@typescript-eslint/type-utils': 6.21.0(eslint@8.57.0)(typescript@5.6.2)
-      '@typescript-eslint/utils': 6.21.0(eslint@8.57.0)(typescript@5.6.2)
+      '@typescript-eslint/type-utils': 6.21.0(eslint@8.57.0)(typescript@5.6.3)
+      '@typescript-eslint/utils': 6.21.0(eslint@8.57.0)(typescript@5.6.3)
       '@typescript-eslint/visitor-keys': 6.21.0
       debug: 4.3.7
       eslint: 8.57.0
@@ -2787,13 +2787,13 @@ packages:
       ignore: 5.3.1
       natural-compare: 1.4.0
       semver: 7.6.3
-      ts-api-utils: 1.3.0(typescript@5.6.2)
-      typescript: 5.6.2
+      ts-api-utils: 1.3.0(typescript@5.6.3)
+      typescript: 5.6.3
     transitivePeerDependencies:
       - supports-color
     dev: true
 
-  /@typescript-eslint/eslint-plugin@8.4.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)(typescript@5.6.2):
+  /@typescript-eslint/eslint-plugin@8.4.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)(typescript@5.6.3):
     resolution: {integrity: sha512-rg8LGdv7ri3oAlenMACk9e+AR4wUV0yrrG+XKsGKOK0EVgeEDqurkXMPILG2836fW4ibokTB5v4b6Z9+GYQDEw==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
     peerDependencies:
@@ -2805,35 +2805,35 @@ packages:
         optional: true
     dependencies:
       '@eslint-community/regexpp': 4.10.0
-      '@typescript-eslint/parser': 8.4.0(eslint@8.57.0)(typescript@5.6.2)
+      '@typescript-eslint/parser': 8.4.0(eslint@8.57.0)(typescript@5.6.3)
       '@typescript-eslint/scope-manager': 8.4.0
-      '@typescript-eslint/type-utils': 8.4.0(eslint@8.57.0)(typescript@5.6.2)
-      '@typescript-eslint/utils': 8.4.0(eslint@8.57.0)(typescript@5.6.2)
+      '@typescript-eslint/type-utils': 8.4.0(eslint@8.57.0)(typescript@5.6.3)
+      '@typescript-eslint/utils': 8.4.0(eslint@8.57.0)(typescript@5.6.3)
       '@typescript-eslint/visitor-keys': 8.4.0
       eslint: 8.57.0
       graphemer: 1.4.0
       ignore: 5.3.1
       natural-compare: 1.4.0
-      ts-api-utils: 1.3.0(typescript@5.6.2)
-      typescript: 5.6.2
+      ts-api-utils: 1.3.0(typescript@5.6.3)
+      typescript: 5.6.3
     transitivePeerDependencies:
       - supports-color
     dev: true
 
-  /@typescript-eslint/experimental-utils@5.62.0(eslint@8.57.0)(typescript@5.6.2):
+  /@typescript-eslint/experimental-utils@5.62.0(eslint@8.57.0)(typescript@5.6.3):
     resolution: {integrity: sha512-RTXpeB3eMkpoclG3ZHft6vG/Z30azNHuqY6wKPBHlVMZFuEvrtlEDe8gMqDb+SO+9hjC/pLekeSCryf9vMZlCw==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
     peerDependencies:
       eslint: ^6.0.0 || ^7.0.0 || ^8.0.0
     dependencies:
-      '@typescript-eslint/utils': 5.62.0(eslint@8.57.0)(typescript@5.6.2)
+      '@typescript-eslint/utils': 5.62.0(eslint@8.57.0)(typescript@5.6.3)
       eslint: 8.57.0
     transitivePeerDependencies:
       - supports-color
       - typescript
     dev: true
 
-  /@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.6.2):
+  /@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.6.3):
     resolution: {integrity: sha512-tbsV1jPne5CkFQCgPBcDOt30ItF7aJoZL997JSF7MhGQqOeT3svWRYxiqlfA5RUdlHN6Fi+EI9bxqbdyAUZjYQ==}
     engines: {node: ^16.0.0 || >=18.0.0}
     peerDependencies:
@@ -2845,16 +2845,16 @@ packages:
     dependencies:
       '@typescript-eslint/scope-manager': 6.21.0
       '@typescript-eslint/types': 6.21.0
-      '@typescript-eslint/typescript-estree': 6.21.0(typescript@5.6.2)
+      '@typescript-eslint/typescript-estree': 6.21.0(typescript@5.6.3)
       '@typescript-eslint/visitor-keys': 6.21.0
       debug: 4.3.7
       eslint: 8.57.0
-      typescript: 5.6.2
+      typescript: 5.6.3
     transitivePeerDependencies:
       - supports-color
     dev: true
 
-  /@typescript-eslint/parser@8.4.0(eslint@8.57.0)(typescript@5.6.2):
+  /@typescript-eslint/parser@8.4.0(eslint@8.57.0)(typescript@5.6.3):
     resolution: {integrity: sha512-NHgWmKSgJk5K9N16GIhQ4jSobBoJwrmURaLErad0qlLjrpP5bECYg+wxVTGlGZmJbU03jj/dfnb6V9bw+5icsA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
     peerDependencies:
@@ -2866,11 +2866,11 @@ packages:
     dependencies:
       '@typescript-eslint/scope-manager': 8.4.0
       '@typescript-eslint/types': 8.4.0
-      '@typescript-eslint/typescript-estree': 8.4.0(typescript@5.6.2)
+      '@typescript-eslint/typescript-estree': 8.4.0(typescript@5.6.3)
       '@typescript-eslint/visitor-keys': 8.4.0
       debug: 4.3.6(supports-color@8.1.1)
       eslint: 8.57.0
-      typescript: 5.6.2
+      typescript: 5.6.3
     transitivePeerDependencies:
       - supports-color
     dev: true
@@ -2907,7 +2907,7 @@ packages:
       '@typescript-eslint/visitor-keys': 8.4.0
     dev: true
 
-  /@typescript-eslint/type-utils@6.21.0(eslint@8.57.0)(typescript@5.6.2):
+  /@typescript-eslint/type-utils@6.21.0(eslint@8.57.0)(typescript@5.6.3):
     resolution: {integrity: sha512-rZQI7wHfao8qMX3Rd3xqeYSMCL3SoiSQLBATSiVKARdFGCYSRvmViieZjqc58jKgs8Y8i9YvVVhRbHSTA4VBag==}
     engines: {node: ^16.0.0 || >=18.0.0}
     peerDependencies:
@@ -2917,17 +2917,17 @@ packages:
       typescript:
         optional: true
     dependencies:
-      '@typescript-eslint/typescript-estree': 6.21.0(typescript@5.6.2)
-      '@typescript-eslint/utils': 6.21.0(eslint@8.57.0)(typescript@5.6.2)
+      '@typescript-eslint/typescript-estree': 6.21.0(typescript@5.6.3)
+      '@typescript-eslint/utils': 6.21.0(eslint@8.57.0)(typescript@5.6.3)
       debug: 4.3.7
       eslint: 8.57.0
-      ts-api-utils: 1.3.0(typescript@5.6.2)
-      typescript: 5.6.2
+      ts-api-utils: 1.3.0(typescript@5.6.3)
+      typescript: 5.6.3
     transitivePeerDependencies:
       - supports-color
     dev: true
 
-  /@typescript-eslint/type-utils@8.4.0(eslint@8.57.0)(typescript@5.6.2):
+  /@typescript-eslint/type-utils@8.4.0(eslint@8.57.0)(typescript@5.6.3):
     resolution: {integrity: sha512-pu2PAmNrl9KX6TtirVOrbLPLwDmASpZhK/XU7WvoKoCUkdtq9zF7qQ7gna0GBZFN0hci0vHaSusiL2WpsQk37A==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
     peerDependencies:
@@ -2936,11 +2936,11 @@ packages:
       typescript:
         optional: true
     dependencies:
-      '@typescript-eslint/typescript-estree': 8.4.0(typescript@5.6.2)
-      '@typescript-eslint/utils': 8.4.0(eslint@8.57.0)(typescript@5.6.2)
+      '@typescript-eslint/typescript-estree': 8.4.0(typescript@5.6.3)
+      '@typescript-eslint/utils': 8.4.0(eslint@8.57.0)(typescript@5.6.3)
       debug: 4.3.7
-      ts-api-utils: 1.3.0(typescript@5.6.2)
-      typescript: 5.6.2
+      ts-api-utils: 1.3.0(typescript@5.6.3)
+      typescript: 5.6.3
     transitivePeerDependencies:
       - eslint
       - supports-color
@@ -2966,7 +2966,7 @@ packages:
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
     dev: true
 
-  /@typescript-eslint/typescript-estree@5.62.0(typescript@5.6.2):
+  /@typescript-eslint/typescript-estree@5.62.0(typescript@5.6.3):
     resolution: {integrity: sha512-CmcQ6uY7b9y694lKdRB8FEel7JbU/40iSAPomu++SjLMntB+2Leay2LO6i8VnJk58MtE9/nQSFIH6jpyRWyYzA==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
     peerDependencies:
@@ -2981,13 +2981,13 @@ packages:
       globby: 11.1.0
       is-glob: 4.0.3
       semver: 7.6.3
-      tsutils: 3.21.0(typescript@5.6.2)
-      typescript: 5.6.2
+      tsutils: 3.21.0(typescript@5.6.3)
+      typescript: 5.6.3
     transitivePeerDependencies:
       - supports-color
     dev: true
 
-  /@typescript-eslint/typescript-estree@6.21.0(typescript@5.6.2):
+  /@typescript-eslint/typescript-estree@6.21.0(typescript@5.6.3):
     resolution: {integrity: sha512-6npJTkZcO+y2/kr+z0hc4HwNfrrP4kNYh57ek7yCNlrBjWQ1Y0OS7jiZTkgumrvkX5HkEKXFZkkdFNkaW2wmUQ==}
     engines: {node: ^16.0.0 || >=18.0.0}
     peerDependencies:
@@ -3003,13 +3003,13 @@ packages:
       is-glob: 4.0.3
       minimatch: 9.0.3
       semver: 7.6.3
-      ts-api-utils: 1.3.0(typescript@5.6.2)
-      typescript: 5.6.2
+      ts-api-utils: 1.3.0(typescript@5.6.3)
+      typescript: 5.6.3
     transitivePeerDependencies:
       - supports-color
     dev: true
 
-  /@typescript-eslint/typescript-estree@8.2.0(typescript@5.6.2):
+  /@typescript-eslint/typescript-estree@8.2.0(typescript@5.6.3):
     resolution: {integrity: sha512-kiG4EDUT4dImplOsbh47B1QnNmXSoUqOjWDvCJw/o8LgfD0yr7k2uy54D5Wm0j4t71Ge1NkynGhpWdS0dEIAUA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
     peerDependencies:
@@ -3025,13 +3025,13 @@ packages:
       is-glob: 4.0.3
       minimatch: 9.0.5
       semver: 7.6.3
-      ts-api-utils: 1.3.0(typescript@5.6.2)
-      typescript: 5.6.2
+      ts-api-utils: 1.3.0(typescript@5.6.3)
+      typescript: 5.6.3
     transitivePeerDependencies:
       - supports-color
     dev: true
 
-  /@typescript-eslint/typescript-estree@8.4.0(typescript@5.6.2):
+  /@typescript-eslint/typescript-estree@8.4.0(typescript@5.6.3):
     resolution: {integrity: sha512-kJ2OIP4dQw5gdI4uXsaxUZHRwWAGpREJ9Zq6D5L0BweyOrWsL6Sz0YcAZGWhvKnH7fm1J5YFE1JrQL0c9dd53A==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
     peerDependencies:
@@ -3047,13 +3047,13 @@ packages:
       is-glob: 4.0.3
       minimatch: 9.0.5
       semver: 7.6.3
-      ts-api-utils: 1.3.0(typescript@5.6.2)
-      typescript: 5.6.2
+      ts-api-utils: 1.3.0(typescript@5.6.3)
+      typescript: 5.6.3
     transitivePeerDependencies:
       - supports-color
     dev: true
 
-  /@typescript-eslint/utils@5.62.0(eslint@8.57.0)(typescript@5.6.2):
+  /@typescript-eslint/utils@5.62.0(eslint@8.57.0)(typescript@5.6.3):
     resolution: {integrity: sha512-n8oxjeb5aIbPFEtmQxQYOLI0i9n5ySBEY/ZEHHZqKQSFnxio1rv6dthascc9dLuwrL0RC5mPCxB7vnAVGAYWAQ==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
     peerDependencies:
@@ -3064,7 +3064,7 @@ packages:
       '@types/semver': 7.5.8
       '@typescript-eslint/scope-manager': 5.62.0
       '@typescript-eslint/types': 5.62.0
-      '@typescript-eslint/typescript-estree': 5.62.0(typescript@5.6.2)
+      '@typescript-eslint/typescript-estree': 5.62.0(typescript@5.6.3)
       eslint: 8.57.0
       eslint-scope: 5.1.1
       semver: 7.6.3
@@ -3073,7 +3073,7 @@ packages:
       - typescript
     dev: true
 
-  /@typescript-eslint/utils@6.21.0(eslint@8.57.0)(typescript@5.6.2):
+  /@typescript-eslint/utils@6.21.0(eslint@8.57.0)(typescript@5.6.3):
     resolution: {integrity: sha512-NfWVaC8HP9T8cbKQxHcsJBY5YE1O33+jpMwN45qzWWaPDZgLIbo12toGMWnmhvCpd3sIxkpDw3Wv1B3dYrbDQQ==}
     engines: {node: ^16.0.0 || >=18.0.0}
     peerDependencies:
@@ -3084,7 +3084,7 @@ packages:
       '@types/semver': 7.5.8
       '@typescript-eslint/scope-manager': 6.21.0
       '@typescript-eslint/types': 6.21.0
-      '@typescript-eslint/typescript-estree': 6.21.0(typescript@5.6.2)
+      '@typescript-eslint/typescript-estree': 6.21.0(typescript@5.6.3)
       eslint: 8.57.0
       semver: 7.6.3
     transitivePeerDependencies:
@@ -3092,7 +3092,7 @@ packages:
       - typescript
     dev: true
 
-  /@typescript-eslint/utils@8.2.0(eslint@8.57.0)(typescript@5.6.2):
+  /@typescript-eslint/utils@8.2.0(eslint@8.57.0)(typescript@5.6.3):
     resolution: {integrity: sha512-O46eaYKDlV3TvAVDNcoDzd5N550ckSe8G4phko++OCSC1dYIb9LTc3HDGYdWqWIAT5qDUKphO6sd9RrpIJJPfg==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
     peerDependencies:
@@ -3101,14 +3101,14 @@ packages:
       '@eslint-community/eslint-utils': 4.4.0(eslint@8.57.0)
       '@typescript-eslint/scope-manager': 8.2.0
       '@typescript-eslint/types': 8.2.0
-      '@typescript-eslint/typescript-estree': 8.2.0(typescript@5.6.2)
+      '@typescript-eslint/typescript-estree': 8.2.0(typescript@5.6.3)
       eslint: 8.57.0
     transitivePeerDependencies:
       - supports-color
       - typescript
     dev: true
 
-  /@typescript-eslint/utils@8.4.0(eslint@8.57.0)(typescript@5.6.2):
+  /@typescript-eslint/utils@8.4.0(eslint@8.57.0)(typescript@5.6.3):
     resolution: {integrity: sha512-swULW8n1IKLjRAgciCkTCafyTHHfwVQFt8DovmaF69sKbOxTSFMmIZaSHjqO9i/RV0wIblaawhzvtva8Nmm7lQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
     peerDependencies:
@@ -3117,7 +3117,7 @@ packages:
       '@eslint-community/eslint-utils': 4.4.0(eslint@8.57.0)
       '@typescript-eslint/scope-manager': 8.4.0
       '@typescript-eslint/types': 8.4.0
-      '@typescript-eslint/typescript-estree': 8.4.0(typescript@5.6.2)
+      '@typescript-eslint/typescript-estree': 8.4.0(typescript@5.6.3)
       eslint: 8.57.0
     transitivePeerDependencies:
       - supports-color
@@ -4555,7 +4555,7 @@ packages:
       eslint-import-resolver-webpack:
         optional: true
     dependencies:
-      '@typescript-eslint/parser': 8.4.0(eslint@8.57.0)(typescript@5.6.2)
+      '@typescript-eslint/parser': 8.4.0(eslint@8.57.0)(typescript@5.6.3)
       debug: 3.2.7
       eslint: 8.57.0
       eslint-import-resolver-node: 0.3.9
@@ -4574,7 +4574,7 @@ packages:
       ignore: 5.2.4
     dev: true
 
-  /eslint-plugin-functional@7.0.2(eslint@8.57.0)(typescript@5.6.2):
+  /eslint-plugin-functional@7.0.2(eslint@8.57.0)(typescript@5.6.3):
     resolution: {integrity: sha512-IBriPyU3Uc1EieU5YVyiqrwHzw2yl4bRW58Xf5RP8x3pf80MoqObgfNu9DERwSIgvFOm93jdalUITc96Ysnx7g==}
     engines: {node: '>=v18.18.0'}
     peerDependencies:
@@ -4584,14 +4584,14 @@ packages:
       typescript:
         optional: true
     dependencies:
-      '@typescript-eslint/utils': 8.2.0(eslint@8.57.0)(typescript@5.6.2)
+      '@typescript-eslint/utils': 8.2.0(eslint@8.57.0)(typescript@5.6.3)
       deepmerge-ts: 7.1.0
       escape-string-regexp: 5.0.0
       eslint: 8.57.0
-      is-immutable-type: 5.0.0(eslint@8.57.0)(typescript@5.6.2)
-      ts-api-utils: 1.3.0(typescript@5.6.2)
-      ts-declaration-location: 1.0.4(typescript@5.6.2)
-      typescript: 5.6.2
+      is-immutable-type: 5.0.0(eslint@8.57.0)(typescript@5.6.3)
+      ts-api-utils: 1.3.0(typescript@5.6.3)
+      ts-declaration-location: 1.0.4(typescript@5.6.3)
+      typescript: 5.6.3
     transitivePeerDependencies:
       - supports-color
     dev: true
@@ -4607,7 +4607,7 @@ packages:
         optional: true
     dependencies:
       '@rtsao/scc': 1.1.0
-      '@typescript-eslint/parser': 8.4.0(eslint@8.57.0)(typescript@5.6.2)
+      '@typescript-eslint/parser': 8.4.0(eslint@8.57.0)(typescript@5.6.3)
       array-includes: 3.1.8
       array.prototype.findlastindex: 1.2.5
       array.prototype.flat: 1.3.2
@@ -4633,7 +4633,7 @@ packages:
       - supports-color
     dev: true
 
-  /eslint-plugin-jest@27.9.0(@typescript-eslint/eslint-plugin@6.21.0)(eslint@8.57.0)(typescript@5.6.2):
+  /eslint-plugin-jest@27.9.0(@typescript-eslint/eslint-plugin@6.21.0)(eslint@8.57.0)(typescript@5.6.3):
     resolution: {integrity: sha512-QIT7FH7fNmd9n4se7FFKHbsLKGQiw885Ds6Y/sxKgCZ6natwCsXdgPOADnYVxN2QrRweF0FZWbJ6S7Rsn7llug==}
     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
     peerDependencies:
@@ -4646,15 +4646,15 @@ packages:
       jest:
         optional: true
     dependencies:
-      '@typescript-eslint/eslint-plugin': 6.21.0(@typescript-eslint/parser@6.21.0)(eslint@8.57.0)(typescript@5.6.2)
-      '@typescript-eslint/utils': 5.62.0(eslint@8.57.0)(typescript@5.6.2)
+      '@typescript-eslint/eslint-plugin': 6.21.0(@typescript-eslint/parser@6.21.0)(eslint@8.57.0)(typescript@5.6.3)
+      '@typescript-eslint/utils': 5.62.0(eslint@8.57.0)(typescript@5.6.3)
       eslint: 8.57.0
     transitivePeerDependencies:
       - supports-color
       - typescript
     dev: true
 
-  /eslint-plugin-jest@28.8.3(@typescript-eslint/eslint-plugin@8.4.0)(eslint@8.57.0)(jest@29.7.0)(typescript@5.6.2):
+  /eslint-plugin-jest@28.8.3(@typescript-eslint/eslint-plugin@8.4.0)(eslint@8.57.0)(jest@29.7.0)(typescript@5.6.3):
     resolution: {integrity: sha512-HIQ3t9hASLKm2IhIOqnu+ifw7uLZkIlR7RYNv7fMcEi/p0CIiJmfriStQS2LDkgtY4nyLbIZAD+JL347Yc2ETQ==}
     engines: {node: ^16.10.0 || ^18.12.0 || >=20.0.0}
     peerDependencies:
@@ -4667,8 +4667,8 @@ packages:
       jest:
         optional: true
     dependencies:
-      '@typescript-eslint/eslint-plugin': 8.4.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)(typescript@5.6.2)
-      '@typescript-eslint/utils': 8.4.0(eslint@8.57.0)(typescript@5.6.2)
+      '@typescript-eslint/eslint-plugin': 8.4.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)(typescript@5.6.3)
+      '@typescript-eslint/utils': 8.4.0(eslint@8.57.0)(typescript@5.6.3)
       eslint: 8.57.0
       jest: 29.7.0(@types/node@22.7.5)(ts-node@10.9.2)
     transitivePeerDependencies:
@@ -4762,7 +4762,7 @@ packages:
       eslint: 8.57.0
     dev: true
 
-  /eslint-plugin-typescript-sort-keys@3.2.0(@typescript-eslint/parser@6.21.0)(eslint@8.57.0)(typescript@5.6.2):
+  /eslint-plugin-typescript-sort-keys@3.2.0(@typescript-eslint/parser@6.21.0)(eslint@8.57.0)(typescript@5.6.3):
     resolution: {integrity: sha512-GutszvriaVtwmn7pQjuj9/9o0iXhD7XZs0/424+zsozdRr/fdg5e8206t478Vnqnqi1GjuxcAolj1kf74KnhPA==}
     engines: {node: '>= 16'}
     peerDependencies:
@@ -4770,17 +4770,17 @@ packages:
       eslint: ^7 || ^8
       typescript: ^3 || ^4 || ^5
     dependencies:
-      '@typescript-eslint/experimental-utils': 5.62.0(eslint@8.57.0)(typescript@5.6.2)
-      '@typescript-eslint/parser': 6.21.0(eslint@8.57.0)(typescript@5.6.2)
+      '@typescript-eslint/experimental-utils': 5.62.0(eslint@8.57.0)(typescript@5.6.3)
+      '@typescript-eslint/parser': 6.21.0(eslint@8.57.0)(typescript@5.6.3)
       eslint: 8.57.0
       json-schema: 0.4.0
       natural-compare-lite: 1.4.0
-      typescript: 5.6.2
+      typescript: 5.6.3
     transitivePeerDependencies:
       - supports-color
     dev: true
 
-  /eslint-plugin-typescript-sort-keys@3.2.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)(typescript@5.6.2):
+  /eslint-plugin-typescript-sort-keys@3.2.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)(typescript@5.6.3):
     resolution: {integrity: sha512-GutszvriaVtwmn7pQjuj9/9o0iXhD7XZs0/424+zsozdRr/fdg5e8206t478Vnqnqi1GjuxcAolj1kf74KnhPA==}
     engines: {node: '>= 16'}
     peerDependencies:
@@ -4788,12 +4788,12 @@ packages:
       eslint: ^7 || ^8
       typescript: ^3 || ^4 || ^5
     dependencies:
-      '@typescript-eslint/experimental-utils': 5.62.0(eslint@8.57.0)(typescript@5.6.2)
-      '@typescript-eslint/parser': 8.4.0(eslint@8.57.0)(typescript@5.6.2)
+      '@typescript-eslint/experimental-utils': 5.62.0(eslint@8.57.0)(typescript@5.6.3)
+      '@typescript-eslint/parser': 8.4.0(eslint@8.57.0)(typescript@5.6.3)
       eslint: 8.57.0
       json-schema: 0.4.0
       natural-compare-lite: 1.4.0
-      typescript: 5.6.2
+      typescript: 5.6.3
     transitivePeerDependencies:
       - supports-color
     dev: true
@@ -5717,17 +5717,17 @@ packages:
       is-extglob: 2.1.1
     dev: true
 
-  /is-immutable-type@5.0.0(eslint@8.57.0)(typescript@5.6.2):
+  /is-immutable-type@5.0.0(eslint@8.57.0)(typescript@5.6.3):
     resolution: {integrity: sha512-mcvHasqbRBWJznuPqqHRKiJgYAz60sZ0mvO3bN70JbkuK7ksfmgc489aKZYxMEjIbRvyOseaTjaRZLRF/xFeRA==}
     peerDependencies:
       eslint: '*'
       typescript: '>=4.7.4'
     dependencies:
-      '@typescript-eslint/type-utils': 8.4.0(eslint@8.57.0)(typescript@5.6.2)
+      '@typescript-eslint/type-utils': 8.4.0(eslint@8.57.0)(typescript@5.6.3)
       eslint: 8.57.0
-      ts-api-utils: 1.3.0(typescript@5.6.2)
-      ts-declaration-location: 1.0.4(typescript@5.6.2)
-      typescript: 5.6.2
+      ts-api-utils: 1.3.0(typescript@5.6.3)
+      ts-declaration-location: 1.0.4(typescript@5.6.3)
+      typescript: 5.6.3
     transitivePeerDependencies:
       - supports-color
     dev: true
@@ -6062,7 +6062,7 @@ packages:
       pretty-format: 29.7.0
       slash: 3.0.0
       strip-json-comments: 3.1.1
-      ts-node: 10.9.2(@types/node@22.7.5)(typescript@5.6.2)
+      ts-node: 10.9.2(@types/node@22.7.5)(typescript@5.6.3)
     transitivePeerDependencies:
       - babel-plugin-macros
       - supports-color
@@ -7367,7 +7367,7 @@ packages:
       package-json-from-dist: 1.0.0
     dev: true
 
-  /rollup-plugin-dts@6.1.1(rollup@4.24.0)(typescript@5.6.2):
+  /rollup-plugin-dts@6.1.1(rollup@4.24.0)(typescript@5.6.3):
     resolution: {integrity: sha512-aSHRcJ6KG2IHIioYlvAOcEq6U99sVtqDDKVhnwt70rW6tsz3tv5OSjEiWcgzfsHdLyGXZ/3b/7b/+Za3Y6r1XA==}
     engines: {node: '>=16'}
     peerDependencies:
@@ -7376,7 +7376,7 @@ packages:
     dependencies:
       magic-string: 0.30.10
       rollup: 4.24.0
-      typescript: 5.6.2
+      typescript: 5.6.3
     optionalDependencies:
       '@babel/code-frame': 7.24.2
     dev: true
@@ -7984,22 +7984,22 @@ packages:
       escape-string-regexp: 1.0.5
     dev: true
 
-  /ts-api-utils@1.3.0(typescript@5.6.2):
+  /ts-api-utils@1.3.0(typescript@5.6.3):
     resolution: {integrity: sha512-UQMIo7pb8WRomKR1/+MFVLTroIvDVtMX3K6OUir8ynLyzB8Jeriont2bTAtmNPa1ekAgN7YPDyf6V+ygrdU+eQ==}
     engines: {node: '>=16'}
     peerDependencies:
       typescript: '>=4.2.0'
     dependencies:
-      typescript: 5.6.2
+      typescript: 5.6.3
     dev: true
 
-  /ts-declaration-location@1.0.4(typescript@5.6.2):
+  /ts-declaration-location@1.0.4(typescript@5.6.3):
     resolution: {integrity: sha512-r4JoxYhKULbZuH81Pjrp9OEG5St7XWk7zXwGkLKhmVcjiBVHTJXV5wK6dEa9JKW5QGSTW6b1lOjxAKp8R1SQhg==}
     peerDependencies:
       typescript: '>=4.0.0'
     dependencies:
       minimatch: 10.0.1
-      typescript: 5.6.2
+      typescript: 5.6.3
     dev: true
 
   /ts-jest-resolver@2.0.1:
@@ -8008,7 +8008,7 @@ packages:
       jest-resolve: 29.7.0
     dev: true
 
-  /ts-jest@29.2.5(@babel/core@7.23.2)(jest@29.7.0)(typescript@5.6.2):
+  /ts-jest@29.2.5(@babel/core@7.23.2)(jest@29.7.0)(typescript@5.6.3):
     resolution: {integrity: sha512-KD8zB2aAZrcKIdGk4OwpJggeLcH1FgrICqDSROWqlnJXGCXK4Mn6FcdK2B6670Xr73lHMG1kHw8R87A0ecZ+vA==}
     engines: {node: ^14.15.0 || ^16.10.0 || ^18.0.0 || >=20.0.0}
     hasBin: true
@@ -8042,11 +8042,11 @@ packages:
       lodash.memoize: 4.1.2
       make-error: 1.3.6
       semver: 7.6.3
-      typescript: 5.6.2
+      typescript: 5.6.3
       yargs-parser: 21.1.1
     dev: true
 
-  /ts-node@10.9.2(@types/node@22.7.5)(typescript@5.6.2):
+  /ts-node@10.9.2(@types/node@22.7.5)(typescript@5.6.3):
     resolution: {integrity: sha512-f0FFpIdcHgn8zcPSbf1dRevwt047YMnaiJM3u2w2RewrB+fob/zePZcrOyQoLMMO7aBIddLcQIEK5dYjkLnGrQ==}
     hasBin: true
     peerDependencies:
@@ -8072,7 +8072,7 @@ packages:
       create-require: 1.1.1
       diff: 4.0.2
       make-error: 1.3.6
-      typescript: 5.6.2
+      typescript: 5.6.3
       v8-compile-cache-lib: 3.0.1
       yn: 3.1.1
     dev: true
@@ -8093,14 +8093,14 @@ packages:
   /tslib@2.7.0:
     resolution: {integrity: sha512-gLXCKdN1/j47AiHiOkJN69hJmcbGTHI0ImLmbYLHykhgeN0jVGola9yVjFgzCUklsZQMW55o+dW7IXv3RCXDzA==}
 
-  /tsutils@3.21.0(typescript@5.6.2):
+  /tsutils@3.21.0(typescript@5.6.3):
     resolution: {integrity: sha512-mHKK3iUXL+3UF6xL5k0PEhKRUBKPBCv/+RkEOpjRWxxx27KKRBmmA60A9pgOUvMi8GKhRMPEmjBRPzs2W7O1OA==}
     engines: {node: '>= 6'}
     peerDependencies:
       typescript: '>=2.8.0 || >= 3.2.0-dev || >= 3.3.0-dev || >= 3.4.0-dev || >= 3.5.0-dev || >= 3.6.0-dev || >= 3.6.0-beta || >= 3.7.0-dev || >= 3.7.0-beta'
     dependencies:
       tslib: 1.14.1
-      typescript: 5.6.2
+      typescript: 5.6.3
     dev: true
 
   /tsx@4.19.1:
@@ -8245,7 +8245,7 @@ packages:
       possible-typed-array-names: 1.0.0
     dev: true
 
-  /typedoc@0.26.8(typescript@5.6.2):
+  /typedoc@0.26.8(typescript@5.6.3):
     resolution: {integrity: sha512-QBF0BMbnNeUc6U7pRHY7Jb8pjhmiNWZNQT8LU6uk9qP9t3goP9bJptdlNqMC0wBB2w9sQrxjZt835bpRSSq1LA==}
     engines: {node: '>= 18'}
     hasBin: true
@@ -8256,7 +8256,7 @@ packages:
       markdown-it: 14.1.0
       minimatch: 9.0.5
       shiki: 1.16.2
-      typescript: 5.6.2
+      typescript: 5.6.3
       yaml: 2.5.1
     dev: true
 
@@ -8264,8 +8264,8 @@ packages:
     resolution: {integrity: sha512-7sI4e/bZijOzyURng88oOFZCISQPTHozfE2sUu5AviFYk5QV7fYGb6YiDl+vKjF/pICA354JImBImL9XJWUvdQ==}
     dev: false
 
-  /typescript@5.6.2:
-    resolution: {integrity: sha512-NW8ByodCSNCwZeghjN3o+JX5OFH0Ojg6sadjEKY4huZ52TqbJTJnDo5+Tw98lSy63NZvi4n+ez5m2u5d4PkZyw==}
+  /typescript@5.6.3:
+    resolution: {integrity: sha512-hjcS1mhfuyi4WW8IWtjP7brDrG2cuDZukyrYrSauoXGNgx0S7zceP07adYkJycEr56BOUTNPzbInooiN3fn1qw==}
     engines: {node: '>=14.17'}
     hasBin: true
 
