@@ -27,7 +27,6 @@ use {
         instruction::{decode_instruction_data, decode_instruction_type},
         pod::{PodAccount, PodMint},
         processor::Processor,
-        proof::verify_and_extract_context,
         solana_zk_sdk::encryption::pod::elgamal::PodElGamalPubkey,
     },
     bytemuck::Zeroable,
@@ -39,6 +38,7 @@ use {
         pubkey::Pubkey,
     },
     spl_pod::optional_keys::OptionalNonZeroPubkey,
+    spl_token_confidential_transfer_proof_extraction::verify_and_extract_context,
 };
 
 /// Processes an [InitializeConfidentialTransferFeeConfig] instruction.
