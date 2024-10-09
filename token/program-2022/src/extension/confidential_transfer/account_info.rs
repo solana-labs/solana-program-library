@@ -241,7 +241,6 @@ impl TransferAccountInfo {
 
     /// Create a transfer proof data that is split into equality, ciphertext
     /// validity, and range proofs.
-    #[allow(clippy::type_complexity)]
     pub fn generate_split_transfer_proof_data(
         &self,
         transfer_amount: u64,
