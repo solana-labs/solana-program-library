@@ -49,16 +49,11 @@ impl SupplyAccountInfo {
         if self.supply_elgamal_pubkey.is_none() {
             return Err(TokenError::InvalidState);
         }
-        // fresh mints are initialized with a zeroed decryptable_supply
-        let current_decyptable_supply = if self.decryptable_supply != PodAeCiphertext::default() {
-            // decrypt the current supply
-            TryInto::<AeCiphertext>::try_into(self.decryptable_supply)
-                .map_err(|_| TokenError::MalformedCiphertext)?
-                .decrypt(aes_key)
-                .ok_or(TokenError::MalformedCiphertext)?
-        } else {
-            0
-        };
+        // decrypt the decryptable supply
+        let current_decyptable_supply = TryInto::<AeCiphertext>::try_into(self.decryptable_supply)
+            .map_err(|_| TokenError::MalformedCiphertext)?
+            .decrypt(aes_key)
+            .ok_or(TokenError::MalformedCiphertext)?;
 
         // get the difference between the supply ciphertext and the decryptable supply
         // explanation see https://github.com/solana-labs/solana-program-library/pull/6881#issuecomment-2385579058
