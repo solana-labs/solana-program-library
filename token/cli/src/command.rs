@@ -73,7 +73,14 @@ use {
     },
     spl_token_group_interface::state::TokenGroup,
     spl_token_metadata_interface::state::{Field, TokenMetadata},
-    std::{collections::HashMap, fmt::Display, process::exit, rc::Rc, str::FromStr, sync::Arc},
+    std::{
+        collections::HashMap,
+        fmt::Display,
+        process::exit,
+        rc::Rc,
+        str::{self, FromStr},
+        sync::Arc,
+    },
 };
 
 fn print_error_and_exit<T, E: Display>(e: E) -> T {
