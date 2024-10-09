@@ -1,6 +1,7 @@
 // Remove feature once zk ops syscalls are enabled on all networks
 #[cfg(feature = "zk-ops")]
 use {
+    crate::extension::confidential_mint_burn::ConfidentialMintBurn,
     crate::extension::non_transferable::NonTransferableAccount,
     spl_token_confidential_transfer_ciphertext_arithmetic as ciphertext_arithmetic,
 };
@@ -139,6 +140,7 @@ fn process_configure_account(
     // `ConfidentialTransferAccount` extension
     let confidential_transfer_account =
         token_account.init_extension::<ConfidentialTransferAccount>(false)?;
+
     confidential_transfer_account.approved = confidential_transfer_mint.auto_approve_new_accounts;
     confidential_transfer_account.elgamal_pubkey = proof_context.pubkey;
     confidential_transfer_account.maximum_pending_balance_credit_counter =
@@ -276,6 +278,10 @@ fn process_deposit(
         return Err(TokenError::MintDecimalsMismatch.into());
     }
 
+    if mint.get_extension::<ConfidentialMintBurn>().is_ok() {
+        return Err(TokenError::IllegalMintBurnConversion.into());
+    }
+
     check_program_account(token_account_info.owner)?;
     let token_account_data = &mut token_account_info.data.borrow_mut();
     let mut token_account = PodStateWithExtensionsMut::<PodAccount>::unpack(token_account_data)?;
@@ -383,6 +389,10 @@ fn process_withdraw(
 
     if expected_decimals != mint.base.decimals {
         return Err(TokenError::MintDecimalsMismatch.into());
+    }
+
+    if mint.get_extension::<ConfidentialMintBurn>().is_ok() {
+        return Err(TokenError::IllegalMintBurnConversion.into());
     }
 
     check_program_account(token_account_info.owner)?;
@@ -634,6 +644,7 @@ fn process_transfer(
     Ok(())
 }
 
+/// Processes the changes for the sending party of a confidential transfer
 #[cfg(feature = "zk-ops")]
 fn process_source_for_transfer(
     program_id: &Pubkey,
