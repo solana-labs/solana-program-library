@@ -50,7 +50,6 @@ impl SupplyAccountInfo {
             return Err(TokenError::InvalidState);
         }
         // fresh mints are initialized with a zeroed decryptable_supply
-        // TODO: include decryptable supply in InitMint instruction
         let current_decyptable_supply = if self.decryptable_supply != PodAeCiphertext::default() {
             // decrypt the current supply
             TryInto::<AeCiphertext>::try_into(self.decryptable_supply)

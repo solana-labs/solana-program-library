@@ -97,6 +97,9 @@ pub enum ConfidentialMintBurnInstruction {
     UpdateDecryptableSupply,
     /// Mints tokens to confidential balance
     ///
+    /// Fails if the destination account is frozen.
+    /// Fails if the associated mint is extended as `NonTransferable`.
+    ///
     /// Accounts expected by this instruction:
     ///
     ///   * Single authority
@@ -134,6 +137,9 @@ pub enum ConfidentialMintBurnInstruction {
     ///   `MintInstructionData`
     ConfidentialMint,
     /// Burn tokens from confidential balance
+    ///
+    /// Fails if the destination account is frozen.
+    /// Fails if the associated mint is extended as `NonTransferable`.
     ///
     /// Accounts expected by this instruction:
     ///
