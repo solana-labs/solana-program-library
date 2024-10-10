@@ -7636,7 +7636,7 @@ version = "4.1.1"
 dependencies = [
  "assert_cmd",
  "base64 0.22.1",
- "clap 2.34.0",
+ "clap 3.2.25",
  "console",
  "futures 0.3.31",
  "libtest-mimic",
@@ -7645,7 +7645,7 @@ dependencies = [
  "serde_json",
  "serial_test",
  "solana-account-decoder",
- "solana-clap-utils",
+ "solana-clap-v3-utils",
  "solana-cli-config",
  "solana-cli-output",
  "solana-client",
