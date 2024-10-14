@@ -55,7 +55,7 @@
         "rollup": "^4.24.0",
         "ts-node": "^10.9.2",
         "tslib": "^2.7.0",
-        "typedoc": "^0.26.8",
+        "typedoc": "^0.26.9",
         "typescript": "^5.6.3"
     }
 }
