@@ -15,7 +15,7 @@ body = """
 {% for group, commits in commits | group_by(attribute="group") %}\
     {% for commit in commits %}
         - {{ commit.message | upper_first | split(pat="\n") | first | trim }}\
-        {% if commit.github.username %} by @{{ commit.github.username }}{%- endif %}\
+        {% if commit.remote.username %} by @{{ commit.remote.username }}{%- endif %}\
     {% endfor %}\
 {% endfor %}
 """
