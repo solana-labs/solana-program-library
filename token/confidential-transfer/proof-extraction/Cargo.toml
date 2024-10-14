@@ -8,7 +8,7 @@ license = "Apache-2.0"
 edition = "2021"
 
 [dependencies]
-bytemuck = "1.18.0"
+bytemuck = "1.19.0"
 solana-curve25519 = "2.0.3"
 solana-zk-sdk = "2.0.3"
 thiserror = "1.0.64"
