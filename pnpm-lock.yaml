@@ -462,10 +462,10 @@ importers:
       '@solana/codecs':
         specifier: 2.0.0-rc.1
         version: 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
-      '@solana/spl-type-length-value':
-        specifier: 0.1.0
-        version: 0.1.0
     devDependencies:
+      '@solana/spl-type-length-value':
+        specifier: 0.2.0
+        version: link:../../libraries/type-length-value/js
       '@solana/web3.js':
         specifier: ^1.95.3
         version: 1.95.3
@@ -584,10 +584,10 @@ importers:
       '@solana/codecs':
         specifier: 2.0.0-rc.1
         version: 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
-      '@solana/spl-type-length-value':
-        specifier: 0.1.0
-        version: 0.1.0
     devDependencies:
+      '@solana/spl-type-length-value':
+        specifier: 0.2.0
+        version: link:../../libraries/type-length-value/js
       '@solana/web3.js':
         specifier: ^1.95.3
         version: 1.95.3
