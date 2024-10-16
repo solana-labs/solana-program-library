@@ -409,8 +409,8 @@ importers:
         specifier: ^0.4.4
         version: 0.4.4(rollup@4.24.0)
       '@rollup/plugin-typescript':
-        specifier: ^12.1.0
-        version: 12.1.0(rollup@4.24.0)(tslib@2.7.0)(typescript@5.6.3)
+        specifier: ^12.1.1
+        version: 12.1.1(rollup@4.24.0)(tslib@2.7.0)(typescript@5.6.3)
       '@types/bn.js':
         specifier: ^5.1.6
         version: 5.1.6
@@ -534,8 +534,8 @@ importers:
         specifier: ^15.3.0
         version: 15.3.0(rollup@4.24.0)
       '@rollup/plugin-typescript':
-        specifier: ^12.1.0
-        version: 12.1.0(rollup@4.24.0)(tslib@2.7.0)(typescript@5.6.3)
+        specifier: ^12.1.1
+        version: 12.1.1(rollup@4.24.0)(tslib@2.7.0)(typescript@5.6.3)
       '@solana/spl-token':
         specifier: 0.4.6
         version: 0.4.6(@solana/web3.js@1.95.3)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
@@ -1971,8 +1971,8 @@ packages:
       terser: 5.24.0
     dev: true
 
-  /@rollup/plugin-typescript@12.1.0(rollup@4.24.0)(tslib@2.7.0)(typescript@5.6.3):
-    resolution: {integrity: sha512-Kzs8KGJofe7cfTRODsnG1jNGxSvU8gVoNNd7Z/QaY25AYwe2LSSUpx/kPxqF38NYkpR8de3m51r9uwJpDlz6dg==}
+  /@rollup/plugin-typescript@12.1.1(rollup@4.24.0)(tslib@2.7.0)(typescript@5.6.3):
+    resolution: {integrity: sha512-t7O653DpfB5MbFrqPe/VcKFFkvRuFNp9qId3xq4Eth5xlyymzxNpye2z8Hrl0RIMuXTSr5GGcFpkdlMeacUiFQ==}
     engines: {node: '>=14.0.0'}
     peerDependencies:
       rollup: ^2.14.0||^3.0.0||^4.0.0
