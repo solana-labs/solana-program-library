@@ -162,6 +162,14 @@ impl From<OptionalNonZeroElGamalPubkey> for Option<PodElGamalPubkey> {
         }
     }
 }
+impl OptionalNonZeroElGamalPubkey {
+    pub fn is_none(&self) -> bool {
+        self.0 == PodElGamalPubkey::default()
+    }
+    pub fn is_some(&self) -> bool {
+        self.0 != PodElGamalPubkey::default()
+    }
+}
 
 #[cfg(feature = "serde-traits")]
 impl Serialize for OptionalNonZeroElGamalPubkey {
