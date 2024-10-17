@@ -1,6 +1,6 @@
 {
     "name": "@solana/spl-token-lending",
-    "version": "0.3.9",
+    "version": "0.3.10",
     "description": "SPL Token Lending JavaScript API",
     "license": "MIT",
     "author": "Solana Labs Maintainers <maintainers@solanalabs.com>",
