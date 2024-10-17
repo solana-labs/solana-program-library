@@ -7158,6 +7158,7 @@ dependencies = [
  "anchor-lang",
  "bytemuck",
  "solana-program 1.18.25",
+ "solana-security-txt",
  "spl-concurrent-merkle-tree",
  "spl-noop",
 ]

@@ -49,6 +49,7 @@ use crate::state::{
     merkle_tree_get_size, ConcurrentMerkleTreeHeader, CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1,
 };
 use crate::zero_copy::ZeroCopy;
+use solana_security_txt::security_txt;
 
 /// Exported for Anchor / Solita
 pub use spl_concurrent_merkle_tree::{
@@ -58,6 +59,21 @@ pub use spl_concurrent_merkle_tree::{
 };
 
 declare_id!("cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK");
+
+security_txt! {
+    // Required fields
+    name: "SPL Account Compression",
+    project_url: "https://spl.solana.com/token-2022",
+    contacts: "link:https://github.com/solana-labs/solana-program-library/security/advisories/new,mailto:security@solana.com,discord:https://solana.com/discord",
+    policy: "https://github.com/solana-labs/solana-program-library/blob/master/SECURITY.md",
+
+    // Optional Fields
+    preferred_languages: "en",
+    source_code: "https://github.com/solana-labs/solana-program-library/tree/master/account-compression",
+    branch: "ac-mainnet-tag",
+    auditors: "https://github.com/solana-labs/security-audits#account-compression"
+}
+
 
 /// Context for initializing a new SPL ConcurrentMerkleTree
 #[derive(Accounts)]
