@@ -42,7 +42,7 @@
     "lint:fix": "npm run pretty:fix && eslint . --fix --ext .js,.ts",
     "docs": "rm -rf docs/ && typedoc --out docs",
     "deploy:docs": "npm run docs && gh-pages --dest account-compression/sdk --dist docs --dotfiles",
-    "start-validator": "solana-test-validator --reset --quiet --bpf-program cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK ../target/deploy/spl_account_compression.so --bpf-program noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV ../target/deploy/spl_noop.so",
+    "start-validator": "solana-test-validator --reset --quiet --bpf-program cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK ../../target/deploy/spl_account_compression.so --bpf-program noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV ../../target/deploy/spl_noop.so",
     "run-tests": "jest tests --detectOpenHandles",
     "run-tests:events": "jest tests/events --detectOpenHandles",
     "run-tests:accounts": "jest tests/accounts --detectOpenHandles",
