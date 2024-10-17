@@ -2,7 +2,6 @@ use {
     crate::{
         error::TokenError,
         extension::{confidential_transfer::instruction::*, transfer_fee::TransferFee},
-        proof::verify_and_extract_context,
     },
     solana_program::{
         account_info::{next_account_info, AccountInfo},
@@ -10,7 +9,7 @@ use {
     },
     spl_token_confidential_transfer_proof_extraction::{
         transfer::TransferProofContext, transfer_with_fee::TransferWithFeeProofContext,
-        withdraw::WithdrawProofContext,
+        verify_and_extract_context, withdraw::WithdrawProofContext,
     },
     std::slice::Iter,
 };

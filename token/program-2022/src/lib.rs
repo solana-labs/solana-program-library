@@ -14,7 +14,6 @@ pub mod onchain;
 pub mod pod;
 pub mod pod_instruction;
 pub mod processor;
-pub mod proof;
 #[cfg(feature = "serde-traits")]
 pub mod serialization;
 pub mod state;
@@ -126,6 +125,16 @@ pub fn check_zk_elgamal_proof_program_account(
 /// Checks if the spplied program ID is that of the system program
 pub fn check_system_program_account(system_program_id: &Pubkey) -> ProgramResult {
     if system_program_id != &system_program::id() {
+        return Err(ProgramError::IncorrectProgramId);
+    }
+    Ok(())
+}
+
+/// Checks if the supplied program ID is that of the ElGamal registry program
+pub fn check_elgamal_registry_program_account(
+    elgamal_registry_account_program_id: &Pubkey,
+) -> ProgramResult {
+    if elgamal_registry_account_program_id != &spl_elgamal_registry::id() {
         return Err(ProgramError::IncorrectProgramId);
     }
     Ok(())
