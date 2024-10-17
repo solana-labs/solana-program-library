@@ -8,7 +8,7 @@
     "type": "module",
     "sideEffects": false,
     "engines": {
-        "node": ">=16"
+        "node": ">=19"
     },
     "files": [
         "lib",
