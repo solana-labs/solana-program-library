@@ -1,15 +1,15 @@
 //! Helper for processing instruction data from ZK ElGamal proof program
 
 use {
-    crate::check_zk_elgamal_proof_program_account,
+    crate::{check_zk_elgamal_proof_program_account, error::TokenError},
     bytemuck::Pod,
     solana_program::{
         account_info::{next_account_info, AccountInfo},
-        instruction::Instruction,
+        instruction::{AccountMeta, Instruction},
         msg,
         program_error::ProgramError,
         pubkey::Pubkey,
-        sysvar::instructions::get_instruction_relative,
+        sysvar::{self, instructions::get_instruction_relative},
     },
     solana_zk_sdk::zk_elgamal_proof_program::{
         self,
@@ -131,6 +131,54 @@ pub fn verify_and_extract_context<'a, T: Pod + ZkProofData<U>, U: Pod>(
             expected_proof_type,
             &zkp_instruction,
         )?)
+    }
+}
+
+/// Processes a proof location for instruction creation. Adds relevant accounts
+/// to supplied account vector
+///
+/// If the proof location is an instruction offset the corresponding proof
+/// instruction is created and added to the `proof_instructions` vector.
+pub fn process_proof_location<T, U>(
+    accounts: &mut Vec<AccountMeta>,
+    expected_instruction_offset: &mut i8,
+    proof_instructions: &mut Vec<Instruction>,
+    proof_location: ProofLocation<T>,
+    push_sysvar_to_accounts: bool,
+    proof_instruction_type: ProofInstruction,
+) -> Result<i8, ProgramError>
+where
+    T: Pod + ZkProofData<U>,
+    U: Pod,
+{
+    match proof_location {
+        ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) => {
+            let proof_instruction_offset: i8 = proof_instruction_offset.into();
+            if &proof_instruction_offset != expected_instruction_offset {
+                return Err(TokenError::InvalidProofInstructionOffset.into());
+            }
+
+            if push_sysvar_to_accounts {
+                accounts.push(AccountMeta::new_readonly(sysvar::instructions::id(), false));
+            }
+            match proof_data {
+                ProofData::InstructionData(data) => proof_instructions
+                    .push(proof_instruction_type.encode_verify_proof::<T, U>(None, data)),
+                ProofData::RecordAccount(address, offset) => {
+                    accounts.push(AccountMeta::new_readonly(*address, false));
+                    proof_instructions.push(
+                        proof_instruction_type
+                            .encode_verify_proof_from_account(None, address, offset),
+                    )
+                }
+            };
+            *expected_instruction_offset += 1;
+            Ok(proof_instruction_offset)
+        }
+        ProofLocation::ContextStateAccount(context_state_account) => {
+            accounts.push(AccountMeta::new_readonly(*context_state_account, false));
+            Ok(0)
+        }
     }
 }
 

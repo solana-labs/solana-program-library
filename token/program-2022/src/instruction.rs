@@ -708,6 +708,9 @@ pub enum TokenInstruction<'a> {
     /// for further details about the extended instructions that share this
     /// instruction prefix
     GroupMemberPointerExtension,
+    /// Instruction prefix for instructions to the confidential-mint-burn
+    /// extension
+    ConfidentialMintBurnExtension,
 }
 impl<'a> TokenInstruction<'a> {
     /// Unpacks a byte buffer into a
@@ -847,6 +850,7 @@ impl<'a> TokenInstruction<'a> {
             39 => Self::MetadataPointerExtension,
             40 => Self::GroupPointerExtension,
             41 => Self::GroupMemberPointerExtension,
+            42 => Self::ConfidentialMintBurnExtension,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -1018,6 +1022,9 @@ impl<'a> TokenInstruction<'a> {
             &Self::GroupMemberPointerExtension => {
                 buf.push(41);
             }
+            &Self::ConfidentialMintBurnExtension => {
+                buf.push(42);
+            }
         };
         buf
     }
@@ -1115,6 +1122,8 @@ pub enum AuthorityType {
     GroupPointer,
     /// Authority to set the group member address
     GroupMemberPointer,
+    /// Authority to mint new confidential tokens
+    MintConfidentialTokens,
 }
 
 impl AuthorityType {
@@ -1135,6 +1144,7 @@ impl AuthorityType {
             AuthorityType::MetadataPointer => 12,
             AuthorityType::GroupPointer => 13,
             AuthorityType::GroupMemberPointer => 14,
+            AuthorityType::MintConfidentialTokens => 15,
         }
     }
 
@@ -1155,6 +1165,7 @@ impl AuthorityType {
             12 => Ok(AuthorityType::MetadataPointer),
             13 => Ok(AuthorityType::GroupPointer),
             14 => Ok(AuthorityType::GroupMemberPointer),
+            15 => Ok(AuthorityType::MintConfidentialTokens),
             _ => Err(TokenError::InvalidInstruction.into()),
         }
     }
