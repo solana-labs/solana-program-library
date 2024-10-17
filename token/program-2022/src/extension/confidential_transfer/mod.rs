@@ -23,6 +23,9 @@ pub const MAXIMUM_DEPOSIT_TRANSFER_AMOUNT: u64 = (u16::MAX as u64) + (1 << 16) *
 /// Bit length of the low bits of pending balance plaintext
 pub const PENDING_BALANCE_LO_BIT_LENGTH: u32 = 16;
 
+/// The default maximum pending balance credit counter.
+pub const DEFAULT_MAXIMUM_PENDING_BALANCE_CREDIT_COUNTER: u64 = 65536;
+
 /// Confidential Transfer Extension instructions
 pub mod instruction;
 

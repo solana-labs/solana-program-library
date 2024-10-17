@@ -11,7 +11,6 @@ use {
         check_program_account,
         extension::confidential_transfer::*,
         instruction::{encode_instruction, TokenInstruction},
-        proof::{ProofData, ProofLocation},
     },
     bytemuck::Zeroable,
     num_enum::{IntoPrimitive, TryFromPrimitive},
@@ -21,6 +20,7 @@ use {
         pubkey::Pubkey,
         sysvar,
     },
+    spl_token_confidential_transfer_proof_extraction::{ProofData, ProofLocation},
 };
 
 /// Confidential Transfer extension instructions
@@ -472,6 +472,29 @@ pub enum ConfidentialTransferInstruction {
     /// Data expected by this instruction:
     ///   `TransferWithFeeInstructionData`
     TransferWithFee,
+
+    /// Configures confidential transfers for a token account.
+    ///
+    /// This instruction is identical to the `ConfigureAccount` account except
+    /// that a valid `ElGamalRegistry` account is expected in place of the
+    /// `VerifyPubkeyValidity` proof.
+    ///
+    /// An `ElGamalRegistry` account is valid if it shares the same owner with
+    /// the token account. If a valid `ElGamalRegistry` account is provided,
+    /// then the program skips the verification of the ElGamal pubkey
+    /// validity proof as well as the token owner signature.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   * Single owner/delegate
+    ///   0. `[writeable]` The SPL Token account.
+    ///   1. `[]` The corresponding SPL Token mint.
+    ///   2. `[]` The ElGamal registry account.
+    ///   3. `[]` The account owner.
+    ///
+    /// Data expected by this instruction:
+    ///   None
+    ConfigureAccountWithRegistry,
 }
 
 /// Data expected by `ConfidentialTransferInstruction::InitializeMint`
@@ -1700,4 +1723,29 @@ pub fn transfer_with_fee(
     }
 
     Ok(instructions)
+}
+
+/// Create a `ConfigureAccountWithRegistry` instruction
+pub fn configure_account_with_registry(
+    token_program_id: &Pubkey,
+    token_account: &Pubkey,
+    mint: &Pubkey,
+    elgamal_registry_account: &Pubkey,
+    authority: &Pubkey,
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+    let accounts = vec![
+        AccountMeta::new(*token_account, false),
+        AccountMeta::new_readonly(*mint, false),
+        AccountMeta::new_readonly(*elgamal_registry_account, false),
+        AccountMeta::new_readonly(*authority, false),
+    ];
+
+    Ok(encode_instruction(
+        token_program_id,
+        accounts,
+        TokenInstruction::ConfidentialTransferExtension,
+        ConfidentialTransferInstruction::ConfigureAccountWithRegistry,
+        &(),
+    ))
 }
