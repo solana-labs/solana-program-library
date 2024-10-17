@@ -14,7 +14,6 @@ import {
     transformEncoder,
 } from '@solana/codecs';
 import type { VariableSizeEncoder } from '@solana/codecs';
-import { splDiscriminate } from '@solana/spl-type-length-value';
 import type { PublicKey } from '@solana/web3.js';
 import { SystemProgram, TransactionInstruction } from '@solana/web3.js';
 
@@ -66,7 +65,10 @@ export function createInitializeInstruction(args: InitializeInstructionArgs): Tr
         ],
         data: Buffer.from(
             getInstructionEncoder(
-                splDiscriminate('spl_token_metadata_interface:initialize_account'),
+                new Uint8Array([
+                    /* await splDiscriminate('spl_token_metadata_interface:initialize_account') */
+                    210, 225, 30, 162, 88, 184, 77, 141,
+                ]),
                 getStructEncoder([
                     ['name', getStringEncoder()],
                     ['symbol', getStringEncoder()],
@@ -99,7 +101,10 @@ export function createUpdateFieldInstruction(args: UpdateFieldInstruction): Tran
         ],
         data: Buffer.from(
             getInstructionEncoder(
-                splDiscriminate('spl_token_metadata_interface:updating_field'),
+                new Uint8Array([
+                    /* await splDiscriminate('spl_token_metadata_interface:updating_field') */
+                    221, 233, 49, 45, 181, 202, 220, 200,
+                ]),
                 getStructEncoder([
                     ['field', getDataEnumCodec(getFieldCodec())],
                     ['value', getStringEncoder()],
@@ -127,7 +132,10 @@ export function createRemoveKeyInstruction(args: RemoveKeyInstructionArgs) {
         ],
         data: Buffer.from(
             getInstructionEncoder(
-                splDiscriminate('spl_token_metadata_interface:remove_key_ix'),
+                new Uint8Array([
+                    /* await splDiscriminate('spl_token_metadata_interface:remove_key_ix') */
+                    234, 18, 32, 56, 89, 141, 37, 181,
+                ]),
                 getStructEncoder([
                     ['idempotent', getBooleanEncoder()],
                     ['key', getStringEncoder()],
@@ -155,7 +163,10 @@ export function createUpdateAuthorityInstruction(args: UpdateAuthorityInstructio
         ],
         data: Buffer.from(
             getInstructionEncoder(
-                splDiscriminate('spl_token_metadata_interface:update_the_authority'),
+                new Uint8Array([
+                    /* await splDiscriminate('spl_token_metadata_interface:update_the_authority') */
+                    215, 228, 166, 228, 84, 100, 86, 123,
+                ]),
                 getStructEncoder([['newAuthority', getPublicKeyEncoder()]]),
             ).encode({ newAuthority: newAuthority ?? SystemProgram.programId }),
         ),
@@ -176,7 +187,10 @@ export function createEmitInstruction(args: EmitInstructionArgs): TransactionIns
         keys: [{ isSigner: false, isWritable: false, pubkey: metadata }],
         data: Buffer.from(
             getInstructionEncoder(
-                splDiscriminate('spl_token_metadata_interface:emitter'),
+                new Uint8Array([
+                    /* await splDiscriminate('spl_token_metadata_interface:emitter') */
+                    250, 166, 180, 250, 13, 12, 184, 70,
+                ]),
                 getStructEncoder([
                     ['start', getOptionEncoder(getU64Encoder())],
                     ['end', getOptionEncoder(getU64Encoder())],

@@ -1,7 +1,7 @@
 {
     "name": "@solana/spl-token-metadata",
     "description": "SPL Token Metadata Interface JS API",
-    "version": "0.1.5",
+    "version": "0.1.6",
     "author": "Solana Labs Maintainers <maintainers@solanalabs.com>",
     "repository": "https://github.com/solana-labs/solana-program-library",
     "license": "Apache-2.0",
@@ -46,10 +46,10 @@
         "@solana/web3.js": "^1.95.3"
     },
     "dependencies": {
-        "@solana/codecs": "2.0.0-rc.1",
-        "@solana/spl-type-length-value": "0.1.0"
+        "@solana/codecs": "2.0.0-rc.1"
     },
     "devDependencies": {
+        "@solana/spl-type-length-value": "0.2.0",
         "@solana/web3.js": "^1.95.3",
         "@types/chai": "^5.0.0",
         "@types/mocha": "^10.0.9",
