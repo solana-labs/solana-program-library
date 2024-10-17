@@ -44,7 +44,7 @@
   "license": "ISC",
   "dependencies": {
     "@solana/buffer-layout": "^4.0.1",
-    "@solana/spl-token": "0.4.6",
+    "@solana/spl-token": "0.4.9",
     "@solana/web3.js": "^1.95.3",
     "bn.js": "^5.2.0",
     "buffer": "^6.0.3",
