@@ -11,7 +11,6 @@ use {
             instruction::CiphertextCiphertextEqualityProofData, DecryptableBalance,
         },
         instruction::{encode_instruction, TokenInstruction},
-        proof::{ProofData, ProofLocation},
         solana_zk_sdk::{
             encryption::pod::elgamal::PodElGamalPubkey,
             zk_elgamal_proof_program::instruction::ProofInstruction,
@@ -26,6 +25,7 @@ use {
         sysvar,
     },
     spl_pod::optional_keys::OptionalNonZeroPubkey,
+    spl_token_confidential_transfer_proof_extraction::{ProofData, ProofLocation},
     std::convert::TryFrom,
 };
 
