@@ -48,7 +48,6 @@ use crate::noop::wrap_event;
 use crate::state::{
     merkle_tree_get_size, ConcurrentMerkleTreeHeader, CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1,
 };
-use crate::zero_copy::ZeroCopy;
 use solana_security_txt::security_txt;
 
 /// Exported for Anchor / Solita
@@ -482,7 +481,7 @@ pub mod spl_account_compression {
         let (tree_bytes, canopy_bytes) = rest.split_at_mut(merkle_tree_size);
 
         let id = ctx.accounts.merkle_tree.key();
-        merkle_tree_apply_fn_mut!(header, id, tree_bytes, prove_tree_is_empty,)?;
+        merkle_tree_prove_tree_is_empty(&header, id, tree_bytes)?;
 
         // Close merkle tree account
         // 1. Move lamports

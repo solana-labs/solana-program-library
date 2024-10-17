@@ -86,3 +86,12 @@ pub fn merkle_tree_append_leaf(
 ) -> Result<Box<ChangeLogEvent>> {
     merkle_tree_apply_fn_mut!(header, tree_id, tree_bytes, append, *args)
 }
+
+#[inline(never)]
+pub fn merkle_tree_prove_tree_is_empty(
+    header: &ConcurrentMerkleTreeHeader,
+    tree_id: Pubkey,
+    tree_bytes: &mut [u8],
+) -> Result<Box<ChangeLogEvent>> {
+    merkle_tree_apply_fn_mut!(header, tree_id, tree_bytes, prove_tree_is_empty,)
+}
