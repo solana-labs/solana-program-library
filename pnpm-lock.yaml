@@ -133,7 +133,7 @@ importers:
   libraries/type-length-value/js:
     dependencies:
       '@solana/assertions':
-        specifier: ^2.0.0-rc.1
+        specifier: ^2.0.0-20241006045741
         version: 2.0.0-rc.1(typescript@5.6.3)
       buffer:
         specifier: ^6.0.3
