@@ -62,7 +62,7 @@ declare_id!("cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK");
 security_txt! {
     // Required fields
     name: "SPL Account Compression",
-    project_url: "https://spl.solana.com/token-2022",
+    project_url: "https://spl.solana.com/account-compression",
     contacts: "link:https://github.com/solana-labs/solana-program-library/security/advisories/new,mailto:security@solana.com,discord:https://solana.com/discord",
     policy: "https://github.com/solana-labs/solana-program-library/blob/master/SECURITY.md",
 

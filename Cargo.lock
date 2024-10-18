@@ -7153,7 +7153,7 @@ checksum = "511254be0c5bcf062b019a6c89c01a664aa359ded62f78aa72c6fc137c0590e5"
 
 [[package]]
 name = "spl-account-compression"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "anchor-lang",
  "bytemuck",
