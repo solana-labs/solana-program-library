@@ -1,11 +1,6 @@
 //! serialization module - contains helpers for serde types from other crates,
 //! deserialization visitors
 
-use {
-    base64::{prelude::BASE64_STANDARD, Engine},
-    serde::de::Error,
-};
-
 /// helper function to ser/deser COption wrapped values
 pub mod coption_fromstr {
     use {
@@ -125,6 +120,51 @@ pub mod aeciphertext_fromstr {
         D: Deserializer<'de>,
     {
         d.deserialize_str(AeCiphertextVisitor)
+    }
+}
+
+/// helper to ser/deser ElGamalCiphertext values
+pub mod elgamalciphertext_fromstr {
+    use {
+        serde::{
+            de::{Error, Visitor},
+            Deserializer, Serializer,
+        },
+        solana_zk_sdk::encryption::pod::elgamal::PodElGamalCiphertext,
+        std::{fmt, str::FromStr},
+    };
+
+    /// serialize AeCiphertext values supporting Display trait
+    pub fn serialie<S>(x: &PodElGamalCiphertext, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        s.serialize_str(&x.to_string())
+    }
+
+    struct ElGamalCiphertextVisitor;
+
+    impl<'de> Visitor<'de> for ElGamalCiphertextVisitor {
+        type Value = PodElGamalCiphertext;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("a FromStr type")
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: Error,
+        {
+            FromStr::from_str(v).map_err(Error::custom)
+        }
+    }
+
+    /// deserialize AeCiphertext values from str
+    pub fn deserialize<'de, D>(d: D) -> Result<PodElGamalCiphertext, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        d.deserialize_str(ElGamalCiphertextVisitor)
     }
 }
 
