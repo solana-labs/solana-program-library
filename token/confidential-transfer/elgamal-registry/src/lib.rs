@@ -6,7 +6,7 @@ pub mod state;
 use solana_program::pubkey::Pubkey;
 
 /// Seed for the ElGamal registry program-derived address
-pub const REGISTRY_ADDRESS_SEED: &[u8] = "elgamal-registry".as_bytes();
+pub const REGISTRY_ADDRESS_SEED: &[u8] = b"elgamal-registry";
 
 /// Derives the ElGamal registry account address and seed for the given wallet
 /// address

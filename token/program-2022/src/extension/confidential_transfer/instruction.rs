@@ -487,7 +487,7 @@ pub enum ConfidentialTransferInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   * Single owner/delegate
-    ///   0. `[writeable]` The SPL Token account.
+    ///   0. `[writable]` The SPL Token account.
     ///   1. `[]` The corresponding SPL Token mint.
     ///   2. `[]` The ElGamal registry account.
     ///   3. `[]` The account owner.

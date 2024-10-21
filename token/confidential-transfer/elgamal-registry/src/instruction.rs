@@ -17,7 +17,7 @@ use {
 pub enum RegistryInstruction {
     /// Initialize an ElGamal public key registry.
     ///
-    /// 0. `[writeable, signer]` The funding account (must be a system account)
+    /// 0. `[writable, signer]` The funding account (must be a system account)
     /// 1. `[writable]` The account to be created
     /// 2. `[]` The wallet address (will also be the owner address for the
     ///    registry account)
