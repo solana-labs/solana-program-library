@@ -128,13 +128,14 @@ pub fn create_registry(
 
 /// Create a `RegistryInstruction::UpdateRegistry` instruction
 pub fn update_registry(
-    registry_account: &Pubkey,
-    owner: &Pubkey,
+    owner_address: &Pubkey,
     proof_location: ProofLocation<PubkeyValidityProofData>,
 ) -> Result<Vec<Instruction>, ProgramError> {
-    let mut accounts = vec![AccountMeta::new(*registry_account, false)];
+    let elgamal_registry_address = get_elgamal_registry_address(owner_address, &id());
+
+    let mut accounts = vec![AccountMeta::new(elgamal_registry_address, false)];
     let proof_instruction_offset = proof_instruction_offset(&mut accounts, proof_location);
-    accounts.push(AccountMeta::new_readonly(*owner, true));
+    accounts.push(AccountMeta::new_readonly(*owner_address, true));
 
     let registry_instruction = Instruction {
         program_id: id(),

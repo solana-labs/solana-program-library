@@ -2884,12 +2884,9 @@ async fn confidential_transfer_configure_token_account_with_registry() {
         &spl_elgamal_registry::id(),
     );
 
-    let instructions = spl_elgamal_registry::instruction::update_registry(
-        &elgamal_registry_address,
-        &alice.pubkey(),
-        proof_location,
-    )
-    .unwrap();
+    let instructions =
+        spl_elgamal_registry::instruction::update_registry(&alice.pubkey(), proof_location)
+            .unwrap();
     let tx = Transaction::new_signed_with_payer(
         &instructions,
         Some(&ctx.payer.pubkey()),
