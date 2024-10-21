@@ -115,15 +115,16 @@ pub fn create_registry(
     ];
     let proof_instruction_offset = proof_instruction_offset(&mut accounts, proof_location);
 
-    let registry_instruction = Instruction {
+    let mut instructions = vec![Instruction {
         program_id: id(),
         accounts,
         data: RegistryInstruction::CreateRegistry {
             proof_instruction_offset,
         }
         .pack(),
-    };
-    append_zk_elgamal_proof(registry_instruction, proof_location)
+    }];
+    append_zk_elgamal_proof(&mut instructions, proof_location)?;
+    Ok(instructions)
 }
 
 /// Create a `RegistryInstruction::UpdateRegistry` instruction
@@ -137,15 +138,16 @@ pub fn update_registry(
     let proof_instruction_offset = proof_instruction_offset(&mut accounts, proof_location);
     accounts.push(AccountMeta::new_readonly(*owner_address, true));
 
-    let registry_instruction = Instruction {
+    let mut instructions = vec![Instruction {
         program_id: id(),
         accounts,
         data: RegistryInstruction::UpdateRegistry {
             proof_instruction_offset,
         }
         .pack(),
-    };
-    append_zk_elgamal_proof(registry_instruction, proof_location)
+    }];
+    append_zk_elgamal_proof(&mut instructions, proof_location)?;
+    Ok(instructions)
 }
 
 /// Takes a `ProofLocation`, updates the list of accounts, and returns a
@@ -172,11 +174,9 @@ fn proof_instruction_offset(
 /// Takes a `RegistryInstruction` and appends the pubkey validity proof
 /// instruction
 fn append_zk_elgamal_proof(
-    registry_instruction: Instruction,
+    instructions: &mut Vec<Instruction>,
     proof_data_location: ProofLocation<PubkeyValidityProofData>,
-) -> Result<Vec<Instruction>, ProgramError> {
-    let mut instructions = vec![registry_instruction];
-
+) -> Result<(), ProgramError> {
     if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
         proof_data_location
     {
@@ -193,5 +193,5 @@ fn append_zk_elgamal_proof(
             ),
         }
     }
-    Ok(instructions)
+    Ok(())
 }
