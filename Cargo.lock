@@ -7307,19 +7307,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "spl-pod"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "00e38c99f09d58df06ca9a29fc0211786a4c34f4d099c1df27b1abaa206569a4"
-dependencies = [
- "bytemuck",
- "bytemuck_derive",
- "solana-program",
- "solana-zk-sdk",
- "spl-program-error 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "spl-program-error"
 version = "0.5.0"
 dependencies = [
@@ -7763,7 +7750,7 @@ dependencies = [
  "solana-curve25519",
  "solana-program",
  "solana-zk-sdk",
- "spl-pod 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-pod 0.4.0",
  "thiserror",
 ]
 
