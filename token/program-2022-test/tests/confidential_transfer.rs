@@ -2862,7 +2862,7 @@ async fn confidential_transfer_configure_token_account_with_registry() {
     let tx = Transaction::new_signed_with_payer(
         &instructions,
         Some(&ctx.payer.pubkey()),
-        &[&ctx.payer],
+        &[&ctx.payer, &alice],
         ctx.last_blockhash,
     );
     ctx.banks_client.process_transaction(tx).await.unwrap();

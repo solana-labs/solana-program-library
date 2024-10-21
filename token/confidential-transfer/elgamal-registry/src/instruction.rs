@@ -19,7 +19,7 @@ pub enum RegistryInstruction {
     ///
     /// 0. `[writable, signer]` The funding account (must be a system account)
     /// 1. `[writable]` The account to be created
-    /// 2. `[]` The wallet address (will also be the owner address for the
+    /// 2. `[signer]` The wallet address (will also be the owner address for the
     ///    registry account)
     /// 3. `[]` System program
     /// 4. `[]` Instructions sysvar if `VerifyPubkeyValidity` is included in the
@@ -110,7 +110,7 @@ pub fn create_registry(
     let mut accounts = vec![
         AccountMeta::new(*funding_address, true),
         AccountMeta::new(elgamal_registry_address, false),
-        AccountMeta::new_readonly(*owner_address, false),
+        AccountMeta::new_readonly(*owner_address, true),
         AccountMeta::new_readonly(system_program::id(), false),
     ];
     let proof_instruction_offset = proof_instruction_offset(&mut accounts, proof_location);

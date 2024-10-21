@@ -35,6 +35,10 @@ pub fn process_create_registry_account(
     let wallet_account_info = next_account_info(account_info_iter)?;
     let system_program_info = next_account_info(account_info_iter)?;
 
+    if !wallet_account_info.is_signer {
+        return Err(ProgramError::MissingRequiredSignature);
+    }
+
     // zero-knowledge proof certifies that the supplied ElGamal public key is valid
     let proof_context = verify_and_extract_context::<
         PubkeyValidityProofData,
