@@ -16,7 +16,7 @@ base64 = "0.22.1"
 clap = "2.33.3"
 console = "0.15.8"
 futures = "0.3"
-serde = "1.0.210"
+serde = "1.0.211"
 serde_derive = "1.0.103"
 serde_json = "1.0.132"
 solana-account-decoder = "2.0.3"
@@ -44,7 +44,7 @@ spl-memo = { version = "5.0", path = "../../memo/program", features = [
 ] }
 strum = "0.26"
 strum_macros = "0.26"
-tokio = "1.40"
+tokio = "1.41"
 
 [dev-dependencies]
 solana-test-validator = "2.0.3"
