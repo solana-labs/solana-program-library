@@ -131,7 +131,7 @@ pub fn check_system_program_account(system_program_id: &Pubkey) -> ProgramResult
 }
 
 /// Checks if the supplied program ID is that of the ElGamal registry program
-pub fn check_elgamal_registry_program_account(
+pub(crate) fn check_elgamal_registry_program_account(
     elgamal_registry_account_program_id: &Pubkey,
 ) -> ProgramResult {
     if elgamal_registry_account_program_id != &spl_elgamal_registry::id() {
