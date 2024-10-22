@@ -150,7 +150,6 @@ pub fn create_pda_account<'a>(
     if new_pda_account.lamports() > 0 {
         let required_lamports = rent
             .minimum_balance(space)
-            .max(1)
             .saturating_sub(new_pda_account.lamports());
 
         if required_lamports > 0 {
@@ -180,7 +179,7 @@ pub fn create_pda_account<'a>(
             &system_instruction::create_account(
                 payer.key,
                 new_pda_account.key,
-                rent.minimum_balance(space).max(1),
+                rent.minimum_balance(space),
                 space as u64,
                 owner,
             ),
