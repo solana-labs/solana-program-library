@@ -490,7 +490,6 @@ pub enum ConfidentialTransferInstruction {
     ///   0. `[writable]` The SPL Token account.
     ///   1. `[]` The corresponding SPL Token mint.
     ///   2. `[]` The ElGamal registry account.
-    ///   3. `[]` The account owner.
     ///
     /// Data expected by this instruction:
     ///   None
@@ -1731,14 +1730,12 @@ pub fn configure_account_with_registry(
     token_account: &Pubkey,
     mint: &Pubkey,
     elgamal_registry_account: &Pubkey,
-    authority: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let accounts = vec![
         AccountMeta::new(*token_account, false),
         AccountMeta::new_readonly(*mint, false),
         AccountMeta::new_readonly(*elgamal_registry_account, false),
-        AccountMeta::new_readonly(*authority, false),
     ];
 
     Ok(encode_instruction(

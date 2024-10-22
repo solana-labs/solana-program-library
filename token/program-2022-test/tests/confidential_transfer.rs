@@ -2902,7 +2902,7 @@ async fn confidential_transfer_configure_token_account_with_registry() {
     token
         .create_auxiliary_token_account_with_extension_space(
             &alice_account_keypair,
-            &alice_token_account,
+            &alice.pubkey(),
             vec![ExtensionType::ConfidentialTransferAccount],
         )
         .await
@@ -2912,7 +2912,6 @@ async fn confidential_transfer_configure_token_account_with_registry() {
         .confidential_transfer_configure_token_account_with_registry(
             &alice_account_keypair.pubkey(),
             &elgamal_registry_address,
-            &alice.pubkey(),
         )
         .await
         .unwrap();

@@ -151,9 +151,6 @@ fn process_configure_account(
         }
     };
 
-    let authority_info = next_account_info(account_info_iter)?;
-    let authority_info_data_len = authority_info.data_len();
-
     check_program_account(token_account_info.owner)?;
     let token_account_data = &mut token_account_info.data.borrow_mut();
     let mut token_account = PodStateWithExtensionsMut::<PodAccount>::unpack(token_account_data)?;
@@ -164,6 +161,9 @@ fn process_configure_account(
 
     match elgamal_pubkey_source {
         ElGamalPubkeySource::ProofInstructionOffset(_) => {
+            let authority_info = next_account_info(account_info_iter)?;
+            let authority_info_data_len = authority_info.data_len();
+
             Processor::validate_owner(
                 program_id,
                 &token_account.base.owner,
@@ -176,7 +176,7 @@ fn process_configure_account(
             // if ElGamal registry was provided, then just verify that the owners of the
             // registry and token accounts match, then skip the signature
             // verification check
-            if elgamal_registry_account.owner != *authority_info.key {
+            if elgamal_registry_account.owner != token_account.base.owner {
                 return Err(TokenError::OwnerMismatch.into());
             }
         }
