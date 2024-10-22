@@ -38,7 +38,7 @@ use {
         pubkey::Pubkey,
     },
     spl_pod::optional_keys::OptionalNonZeroPubkey,
-    spl_token_confidential_transfer_proof_extraction::verify_and_extract_context,
+    spl_token_confidential_transfer_proof_extraction::instruction::verify_and_extract_context,
 };
 
 /// Processes an [InitializeConfidentialTransferFeeConfig] instruction.

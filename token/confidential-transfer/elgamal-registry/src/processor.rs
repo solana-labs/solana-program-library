@@ -20,7 +20,7 @@ use {
         PubkeyValidityProofContext, PubkeyValidityProofData,
     },
     spl_pod::bytemuck::pod_from_bytes_mut,
-    spl_token_confidential_transfer_proof_extraction::verify_and_extract_context,
+    spl_token_confidential_transfer_proof_extraction::instruction::verify_and_extract_context,
 };
 
 /// Processes `CreateRegistry` instruction

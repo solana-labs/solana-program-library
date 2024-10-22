@@ -62,7 +62,7 @@ use {
         },
         state::{Account, AccountState, Mint, Multisig},
     },
-    spl_token_confidential_transfer_proof_extraction::{
+    spl_token_confidential_transfer_proof_extraction::instruction::{
         zk_proof_type_to_instruction, ProofData, ProofLocation,
     },
     spl_token_confidential_transfer_proof_generation::{

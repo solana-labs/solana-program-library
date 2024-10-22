@@ -8,8 +8,8 @@ use {
         program_error::ProgramError,
     },
     spl_token_confidential_transfer_proof_extraction::{
-        transfer::TransferProofContext, transfer_with_fee::TransferWithFeeProofContext,
-        verify_and_extract_context, withdraw::WithdrawProofContext,
+        instruction::verify_and_extract_context, transfer::TransferProofContext,
+        transfer_with_fee::TransferWithFeeProofContext, withdraw::WithdrawProofContext,
     },
     std::slice::Iter,
 };

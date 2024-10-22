@@ -25,7 +25,7 @@ use {
         sysvar,
     },
     spl_pod::optional_keys::OptionalNonZeroPubkey,
-    spl_token_confidential_transfer_proof_extraction::{ProofData, ProofLocation},
+    spl_token_confidential_transfer_proof_extraction::instruction::{ProofData, ProofLocation},
     std::convert::TryFrom,
 };
 

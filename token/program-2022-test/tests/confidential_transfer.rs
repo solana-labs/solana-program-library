@@ -39,7 +39,7 @@ use {
             TokenResult,
         },
     },
-    spl_token_confidential_transfer_proof_extraction::{ProofData, ProofLocation},
+    spl_token_confidential_transfer_proof_extraction::instruction::{ProofData, ProofLocation},
     spl_token_confidential_transfer_proof_generation::{
         transfer::TransferProofData, transfer_with_fee::TransferWithFeeProofData,
         withdraw::WithdrawProofData,
