@@ -75,8 +75,24 @@ export async function getOrCreateAssociatedTokenAccount(
                 // instruction error if the associated account exists already.
             }
 
-            // Now this should always succeed
-            account = await getAccount(connection, associatedToken, commitment, programId);
+            const maxRetries = 3;
+            let retries = 0;
+            let retrievedAccount: Account | null = null;
+
+            // Retry loop to handle the case where the account is created but not yet available for retrieval
+            while (retries < maxRetries) {
+                try {
+                    retrievedAccount = await getAccount(connection, associatedToken, commitment, programId);
+                    break; // Exit the loop if successful
+                } catch (err: unknown) {
+                    if (retries === maxRetries - 1) throw err;
+                    retries++;
+                    await new Promise(resolve => setTimeout(resolve, 500)); // Wait for 500ms before retrying
+                }
+            }
+
+            if (!retrievedAccount) throw new Error('Failed to retrieve account after multiple attempts');
+            account = retrievedAccount;
         } else {
             throw error;
         }
