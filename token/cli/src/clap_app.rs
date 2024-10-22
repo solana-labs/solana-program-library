@@ -839,7 +839,7 @@ pub fn app<'a>(
                         .number_of_values(1)
                         .conflicts_with("transfer_fee")
                         .requires("transfer_fee_basis_points")
-                        .value_parser(clap::value_parser!(f64))
+                        .validator(|s| is_amount(s))
                         .help(
                             "Add a UI amount maximum transfer fee to the mint. \
                             The mint authority can set and collect fees"
@@ -1434,7 +1434,7 @@ pub fn app<'a>(
                 .arg(
                     Arg::with_name("expected_fee")
                         .long("expected-fee")
-                        .value_parser(clap::value_parser!(f64))
+                        .validator(|s| is_amount(s))
                         .value_name("TOKEN_AMOUNT")
                         .takes_value(true)
                         .help("Expected fee amount collected during the transfer"),

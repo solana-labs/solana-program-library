@@ -3535,8 +3535,11 @@ pub async fn process_command<'a>(
 
             let transfer_fee_basis_point = arg_matches.get_one::<u16>("transfer_fee_basis_points");
             let transfer_fee_maximum_fee = arg_matches
-                .get_one::<f64>("transfer_fee_maximum_fee")
-                .map(|v| spl_token::ui_amount_to_amount(*v, decimals));
+                .get_one::<String>("transfer_fee_maximum_fee")
+                .map(|str| {
+                    let v = str.parse::<f64>().unwrap(); // inputs are validated so this is safe
+                    spl_token::ui_amount_to_amount(v, decimals)
+                });
             let transfer_fee = transfer_fee_basis_point
                 .map(|v| (*v, transfer_fee_maximum_fee.unwrap()))
                 .or(transfer_fee);
@@ -3870,7 +3873,9 @@ pub async fn process_command<'a>(
                 println_display(config, "recipient-is-ata-owner is now the default behavior. The option has been deprecated and will be removed in a future release.".to_string());
             }
             let use_unchecked_instruction = arg_matches.is_present("use_unchecked_instruction");
-            let expected_fee = arg_matches.get_one::<f64>("expected_fee").copied();
+            let expected_fee = arg_matches
+                .get_one::<String>("expected_fee")
+                .map(|str| str.parse::<f64>().unwrap()); // unwrap safe since inputs are validated
             let memo = value_t!(arg_matches, "memo", String).ok();
             let transfer_hook_accounts = arg_matches.values_of("transfer_hook_account").map(|v| {
                 v.into_iter()
