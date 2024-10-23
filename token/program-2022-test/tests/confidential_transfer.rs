@@ -2892,6 +2892,7 @@ async fn confidential_transfer_configure_token_account_with_registry() {
         ProofData::InstructionData(&proof_data),
     );
 
+    let payer_pubkey = ctx.payer.pubkey();
     let instructions =
         spl_elgamal_registry::instruction::update_registry(&alice.pubkey(), proof_location)
             .unwrap();
@@ -2911,7 +2912,7 @@ async fn confidential_transfer_configure_token_account_with_registry() {
         .create_auxiliary_token_account_with_extension_space(
             &alice_account_keypair,
             &alice.pubkey(),
-            vec![ExtensionType::ConfidentialTransferAccount],
+            vec![], // do not allocate space for confidential transfers
         )
         .await
         .unwrap();
@@ -2920,6 +2921,7 @@ async fn confidential_transfer_configure_token_account_with_registry() {
         .confidential_transfer_configure_token_account_with_registry(
             &alice_account_keypair.pubkey(),
             &elgamal_registry_address,
+            Some(&payer_pubkey), // test account allocation
         )
         .await
         .unwrap();

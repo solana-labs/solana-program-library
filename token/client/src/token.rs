@@ -1980,6 +1980,7 @@ where
         &self,
         account: &Pubkey,
         elgamal_registry_account: &Pubkey,
+        payer: Option<&Pubkey>,
     ) -> TokenResult<T::Output> {
         self.process_ixs::<[&dyn Signer; 0]>(
             &[
@@ -1988,6 +1989,7 @@ where
                     account,
                     &self.pubkey,
                     elgamal_registry_account,
+                    payer,
                 )?,
             ],
             &[],

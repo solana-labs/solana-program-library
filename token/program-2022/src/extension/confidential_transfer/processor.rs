@@ -15,22 +15,26 @@ use {
                 EncryptedWithheldAmount,
             },
             memo_transfer::{check_previous_sibling_instruction_is_memo, memo_required},
+            set_account_type,
             transfer_fee::TransferFeeConfig,
             transfer_hook, BaseStateWithExtensions, BaseStateWithExtensionsMut,
-            PodStateWithExtensions, PodStateWithExtensionsMut,
+            PodStateWithExtensions, PodStateWithExtensionsMut, StateWithExtensions,
         },
         instruction::{decode_instruction_data, decode_instruction_type},
         pod::{PodAccount, PodMint},
         processor::Processor,
+        state::Account,
     },
     solana_program::{
         account_info::{next_account_info, AccountInfo},
         clock::Clock,
         entrypoint::ProgramResult,
         msg,
+        program::invoke,
         program_error::ProgramError,
         pubkey::Pubkey,
-        sysvar::Sysvar,
+        system_instruction,
+        sysvar::{rent::Rent, Sysvar},
     },
     spl_elgamal_registry::state::ElGamalRegistry,
     spl_pod::bytemuck::pod_from_bytes,
@@ -103,9 +107,24 @@ enum ElGamalPubkeySource<'a> {
 fn process_configure_account_with_registry(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
+    reallocate: bool,
 ) -> ProgramResult {
-    let elgamal_registry_account = accounts.get(2).ok_or(ProgramError::NotEnoughAccountKeys)?;
+    let account_info_iter = &mut accounts.iter();
+    let token_account_info = next_account_info(account_info_iter)?;
+    let _mint_info = next_account_info(account_info_iter)?;
+    let elgamal_registry_account = next_account_info(account_info_iter)?;
+
     check_elgamal_registry_program_account(elgamal_registry_account.owner)?;
+
+    if reallocate {
+        let payer_info = next_account_info(account_info_iter)?;
+        let system_program_info = next_account_info(account_info_iter)?;
+        reallocate_for_configure_account_with_registry(
+            token_account_info,
+            payer_info,
+            system_program_info,
+        )?;
+    }
 
     let elgamal_registry_account_data = &elgamal_registry_account.data.borrow();
     let elgamal_registry_account =
@@ -122,6 +141,56 @@ fn process_configure_account_with_registry(
         &maximum_pending_balance_credit_counter,
         ElGamalPubkeySource::ElGamalRegistry(elgamal_registry_account),
     )
+}
+
+fn reallocate_for_configure_account_with_registry<'a>(
+    token_account_info: &AccountInfo<'a>,
+    payer_info: &AccountInfo<'a>,
+    system_program_info: &AccountInfo<'a>,
+) -> ProgramResult {
+    let mut current_extension_types = {
+        let token_account = token_account_info.data.borrow();
+        let account = StateWithExtensions::<Account>::unpack(&token_account)?;
+        account.get_extension_types()?
+    };
+    current_extension_types.push(ExtensionType::ConfidentialTransferAccount);
+    let needed_account_len =
+        ExtensionType::try_calculate_account_len::<Account>(&current_extension_types)?;
+
+    // if account is already large enough, return early
+    if token_account_info.data_len() >= needed_account_len {
+        return Ok(());
+    }
+
+    // reallocate
+    msg!(
+        "account needs realloc, +{:?} bytes",
+        needed_account_len - token_account_info.data_len()
+    );
+    token_account_info.realloc(needed_account_len, false)?;
+
+    // if additional lamports needed to remain rent-exempt, transfer them
+    let rent = Rent::get()?;
+    let new_rent_exempt_reserve = rent.minimum_balance(needed_account_len);
+
+    let current_lamport_reserve = token_account_info.lamports();
+    let lamports_diff = new_rent_exempt_reserve.saturating_sub(current_lamport_reserve);
+    if lamports_diff > 0 {
+        invoke(
+            &system_instruction::transfer(payer_info.key, token_account_info.key, lamports_diff),
+            &[
+                payer_info.clone(),
+                token_account_info.clone(),
+                system_program_info.clone(),
+            ],
+        )?;
+    }
+
+    // set account_type, if needed
+    let mut token_account_data = token_account_info.data.borrow_mut();
+    set_account_type::<Account>(&mut token_account_data)?;
+
+    Ok(())
 }
 
 /// Processes a [ConfigureAccount] instruction.
@@ -1272,7 +1341,13 @@ pub(crate) fn process_instruction(
         }
         ConfidentialTransferInstruction::ConfigureAccountWithRegistry => {
             msg!("ConfidentialTransferInstruction::ConfigureAccountWithRegistry");
-            process_configure_account_with_registry(program_id, accounts)
+            let data =
+                decode_instruction_data::<ConfigureAccountWithRegistryInstructionData>(input)?;
+            process_configure_account_with_registry(
+                program_id,
+                accounts,
+                data.reallocate_account.into(),
+            )
         }
     }
 }
