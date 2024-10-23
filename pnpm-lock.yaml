@@ -155,8 +155,8 @@ importers:
         specifier: ^8.4.0
         version: 8.4.0(eslint@8.57.0)(typescript@5.6.3)
       chai:
-        specifier: ^5.1.1
-        version: 5.1.1
+        specifier: ^5.1.2
+        version: 5.1.2
       eslint:
         specifier: ^8.57.0
         version: 8.57.0
@@ -210,8 +210,8 @@ importers:
         specifier: ^8.4.0
         version: 8.4.0(eslint@8.57.0)(typescript@5.6.3)
       chai:
-        specifier: ^5.1.1
-        version: 5.1.1
+        specifier: ^5.1.2
+        version: 5.1.2
       eslint:
         specifier: ^8.57.0
         version: 8.57.0
@@ -485,8 +485,8 @@ importers:
         specifier: ^8.4.0
         version: 8.4.0(eslint@8.57.0)(typescript@5.6.3)
       chai:
-        specifier: ^5.1.1
-        version: 5.1.1
+        specifier: ^5.1.2
+        version: 5.1.2
       eslint:
         specifier: ^8.57.0
         version: 8.57.0
@@ -607,8 +607,8 @@ importers:
         specifier: ^8.4.0
         version: 8.4.0(eslint@8.57.0)(typescript@5.6.3)
       chai:
-        specifier: ^5.1.1
-        version: 5.1.1
+        specifier: ^5.1.2
+        version: 5.1.2
       eslint:
         specifier: ^8.57.0
         version: 8.57.0
@@ -741,11 +741,11 @@ importers:
         specifier: ^8.4.0
         version: 8.4.0(eslint@8.57.0)(typescript@5.6.3)
       chai:
-        specifier: ^5.1.1
-        version: 5.1.1
+        specifier: ^5.1.2
+        version: 5.1.2
       chai-as-promised:
         specifier: ^8.0.0
-        version: 8.0.0(chai@5.1.1)
+        version: 8.0.0(chai@5.1.2)
       eslint:
         specifier: ^8.57.0
         version: 8.57.0
@@ -3666,17 +3666,17 @@ packages:
       nofilter: 3.1.0
     dev: true
 
-  /chai-as-promised@8.0.0(chai@5.1.1):
+  /chai-as-promised@8.0.0(chai@5.1.2):
     resolution: {integrity: sha512-sMsGXTrS3FunP/wbqh/KxM8Kj/aLPXQGkNtvE5wPfSToq8wkkvBpTZo1LIiEVmC4BwkKpag+l5h/20lBMk6nUg==}
     peerDependencies:
       chai: '>= 2.1.2 < 6'
     dependencies:
-      chai: 5.1.1
+      chai: 5.1.2
       check-error: 2.1.1
     dev: true
 
-  /chai@5.1.1:
-    resolution: {integrity: sha512-pT1ZgP8rPNqUgieVaEY+ryQr6Q4HXNg8Ei9UnLUrjN4IA7dvQC5JB+/kxVcPNDHyBcc/26CXPkbNzq3qwrOEKA==}
+  /chai@5.1.2:
+    resolution: {integrity: sha512-aGtmf24DW6MLHHG5gCx4zaI3uBq3KRtxeVs0DjFH6Z0rDNbsvTxFASFvdj79pxjxZ8/5u3PIiN3IwEIQkiiuPw==}
     engines: {node: '>=12'}
     dependencies:
       assertion-error: 2.0.1
