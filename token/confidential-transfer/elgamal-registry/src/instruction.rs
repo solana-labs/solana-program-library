@@ -17,15 +17,14 @@ use {
 pub enum RegistryInstruction {
     /// Initialize an ElGamal public key registry.
     ///
-    /// 0. `[writable, signer]` The funding account (must be a system account)
-    /// 1. `[writable]` The account to be created
-    /// 2. `[signer]` The wallet address (will also be the owner address for the
+    /// 0. `[writable]` The account to be created
+    /// 1. `[signer]` The wallet address (will also be the owner address for the
     ///    registry account)
-    /// 3. `[]` System program
-    /// 4. `[]` Instructions sysvar if `VerifyPubkeyValidity` is included in the
+    /// 2. `[]` System program
+    /// 3. `[]` Instructions sysvar if `VerifyPubkeyValidity` is included in the
     ///    same transaction or context state account if `VerifyPubkeyValidity`
     ///    is pre-verified into a context state account.
-    /// 5. `[]` (Optional) Record account if the accompanying proof is to be
+    /// 4. `[]` (Optional) Record account if the accompanying proof is to be
     ///    read from a record account.
     CreateRegistry {
         /// Relative location of the `ProofInstruction::PubkeyValidityProof`
@@ -101,14 +100,12 @@ impl RegistryInstruction {
 
 /// Create a `RegistryInstruction::CreateRegistry` instruction
 pub fn create_registry(
-    funding_address: &Pubkey,
     owner_address: &Pubkey,
     proof_location: ProofLocation<PubkeyValidityProofData>,
 ) -> Result<Vec<Instruction>, ProgramError> {
     let elgamal_registry_address = get_elgamal_registry_address(owner_address, &id());
 
     let mut accounts = vec![
-        AccountMeta::new(*funding_address, true),
         AccountMeta::new(elgamal_registry_address, false),
         AccountMeta::new_readonly(*owner_address, true),
         AccountMeta::new_readonly(system_program::id(), false),

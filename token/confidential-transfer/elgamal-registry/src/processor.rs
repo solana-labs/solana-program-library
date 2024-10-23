@@ -9,7 +9,7 @@ use {
         account_info::{next_account_info, AccountInfo},
         entrypoint::ProgramResult,
         msg,
-        program::{invoke, invoke_signed},
+        program::invoke_signed,
         program_error::ProgramError,
         pubkey::Pubkey,
         rent::Rent,
@@ -30,7 +30,6 @@ pub fn process_create_registry_account(
     proof_instruction_offset: i64,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
-    let funding_account_info = next_account_info(account_info_iter)?;
     let elgamal_registry_account_info = next_account_info(account_info_iter)?;
     let wallet_account_info = next_account_info(account_info_iter)?;
     let system_program_info = next_account_info(account_info_iter)?;
@@ -60,7 +59,6 @@ pub fn process_create_registry_account(
     let rent = Rent::get()?;
 
     create_pda_account(
-        funding_account_info,
         &rent,
         ELGAMAL_REGISTRY_ACCOUNT_LEN,
         program_id,
@@ -136,10 +134,9 @@ fn validate_owner(owner_info: &AccountInfo, expected_owner: &Pubkey) -> ProgramR
     Ok(())
 }
 
-/// Creates ElGamal registry account using Program Derived Address for the given
-/// seeds
+/// Allocate ElGamal registry account using Program Derived Address for the
+/// given seeds
 pub fn create_pda_account<'a>(
-    payer: &AccountInfo<'a>,
     rent: &Rent,
     space: usize,
     owner: &Pubkey,
@@ -147,48 +144,23 @@ pub fn create_pda_account<'a>(
     new_pda_account: &AccountInfo<'a>,
     new_pda_signer_seeds: &[&[u8]],
 ) -> ProgramResult {
-    if new_pda_account.lamports() > 0 {
-        let required_lamports = rent
-            .minimum_balance(space)
-            .saturating_sub(new_pda_account.lamports());
+    let required_lamports = rent
+        .minimum_balance(space)
+        .saturating_sub(new_pda_account.lamports());
 
-        if required_lamports > 0 {
-            invoke(
-                &system_instruction::transfer(payer.key, new_pda_account.key, required_lamports),
-                &[
-                    payer.clone(),
-                    new_pda_account.clone(),
-                    system_program.clone(),
-                ],
-            )?;
-        }
-
-        invoke_signed(
-            &system_instruction::allocate(new_pda_account.key, space as u64),
-            &[new_pda_account.clone(), system_program.clone()],
-            &[new_pda_signer_seeds],
-        )?;
-
-        invoke_signed(
-            &system_instruction::assign(new_pda_account.key, owner),
-            &[new_pda_account.clone(), system_program.clone()],
-            &[new_pda_signer_seeds],
-        )
-    } else {
-        invoke_signed(
-            &system_instruction::create_account(
-                payer.key,
-                new_pda_account.key,
-                rent.minimum_balance(space),
-                space as u64,
-                owner,
-            ),
-            &[
-                payer.clone(),
-                new_pda_account.clone(),
-                system_program.clone(),
-            ],
-            &[new_pda_signer_seeds],
-        )
+    if required_lamports > 0 {
+        return Err(ProgramError::AccountNotRentExempt);
     }
+
+    invoke_signed(
+        &system_instruction::allocate(new_pda_account.key, space as u64),
+        &[new_pda_account.clone(), system_program.clone()],
+        &[new_pda_signer_seeds],
+    )?;
+
+    invoke_signed(
+        &system_instruction::assign(new_pda_account.key, owner),
+        &[new_pda_account.clone(), system_program.clone()],
+        &[new_pda_signer_seeds],
+    )
 }

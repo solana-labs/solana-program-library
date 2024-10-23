@@ -13,9 +13,11 @@ use {
         pubkey::Pubkey,
         signature::Signer,
         signer::{keypair::Keypair, signers::Signers},
+        system_instruction,
         transaction::{Transaction, TransactionError},
         transport::TransportError,
     },
+    spl_elgamal_registry::state::ELGAMAL_REGISTRY_ACCOUNT_LEN,
     spl_record::state::RecordData,
     spl_token_2022::{
         error::TokenError,
@@ -2853,12 +2855,23 @@ async fn confidential_transfer_configure_token_account_with_registry() {
         ProofData::InstructionData(&proof_data),
     );
 
-    let instructions = spl_elgamal_registry::instruction::create_registry(
-        &ctx.payer.pubkey(),
+    let elgamal_registry_address = spl_elgamal_registry::get_elgamal_registry_address(
         &alice.pubkey(),
-        proof_location,
-    )
-    .unwrap();
+        &spl_elgamal_registry::id(),
+    );
+
+    let rent = ctx.banks_client.get_rent().await.unwrap();
+    let space = ELGAMAL_REGISTRY_ACCOUNT_LEN;
+    let system_instruction = system_instruction::transfer(
+        &ctx.payer.pubkey(),
+        &elgamal_registry_address,
+        rent.minimum_balance(space),
+    );
+    let create_registry_instructions =
+        spl_elgamal_registry::instruction::create_registry(&alice.pubkey(), proof_location)
+            .unwrap();
+
+    let instructions = [&[system_instruction], &create_registry_instructions[..]].concat();
     let tx = Transaction::new_signed_with_payer(
         &instructions,
         Some(&ctx.payer.pubkey()),
@@ -2877,11 +2890,6 @@ async fn confidential_transfer_configure_token_account_with_registry() {
     let proof_location = ProofLocation::InstructionOffset(
         1.try_into().unwrap(),
         ProofData::InstructionData(&proof_data),
-    );
-
-    let elgamal_registry_address = spl_elgamal_registry::get_elgamal_registry_address(
-        &alice.pubkey(),
-        &spl_elgamal_registry::id(),
     );
 
     let instructions =
