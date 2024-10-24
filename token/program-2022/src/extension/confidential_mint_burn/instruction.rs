@@ -274,7 +274,7 @@ pub struct BurnInstructionData {
 pub fn initialize_mint(
     token_program_id: &Pubkey,
     mint: &Pubkey,
-    authority: Pubkey,
+    authority: &Pubkey,
     confidential_supply_pubkey: Option<PodElGamalPubkey>,
     decryptable_supply: Option<PodAeCiphertext>,
 ) -> Result<Instruction, ProgramError> {
