@@ -112,13 +112,13 @@ pub fn process_instruction(
         RegistryInstruction::CreateRegistry {
             proof_instruction_offset,
         } => {
-            msg!("RegistryInstruction::CreateRegistry");
+            msg!("ElGamalRegistryInstruction::CreateRegistry");
             process_create_registry_account(program_id, accounts, proof_instruction_offset as i64)
         }
         RegistryInstruction::UpdateRegistry {
             proof_instruction_offset,
         } => {
-            msg!("RegistryInstruction::UpdateRegistry");
+            msg!("ElGamalRegistryInstruction::UpdateRegistry");
             process_update_registry_account(program_id, accounts, proof_instruction_offset as i64)
         }
     }
