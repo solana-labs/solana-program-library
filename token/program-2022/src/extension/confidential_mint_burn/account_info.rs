@@ -19,7 +19,7 @@ use {
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct SupplyAccountInfo {
-    /// The available balance (encrypted by `encrypiton_pubkey`)
+    /// The available balance (encrypted by `supply_elgamal_pubkey`)
     pub current_supply: PodElGamalCiphertext,
     /// The decryptable supply
     pub decryptable_supply: PodAeCiphertext,
