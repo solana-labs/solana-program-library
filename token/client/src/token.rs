@@ -62,6 +62,8 @@ use {
             zk_elgamal_proof_program::{
                 self,
                 instruction::{close_context_state, ContextStateInfo},
+                proof_data::*,
+                state::ProofContextState,
             },
         },
         state::{Account, AccountState, Mint, Multisig},

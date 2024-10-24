@@ -7,11 +7,13 @@ use {
             auth_encryption::{AeCiphertext, AeKey},
             elgamal::{ElGamalCiphertext, ElGamalKeypair},
             pedersen::PedersenOpening,
-            pod::{auth_encryption::PodAeCiphertext, elgamal::PodElGamalCiphertext},
+            pod::{
+                auth_encryption::PodAeCiphertext,
+                elgamal::{PodElGamalCiphertext, PodElGamalPubkey},
+            },
         },
         zk_elgamal_proof_program::proof_data::CiphertextCiphertextEqualityProofData,
     },
-    spl_pod::optional_keys::OptionalNonZeroElGamalPubkey,
 };
 
 /// Confidential Mint Burn extension information needed to construct a
@@ -24,7 +26,7 @@ pub struct SupplyAccountInfo {
     /// The decryptable supply
     pub decryptable_supply: PodAeCiphertext,
     /// The supply's elgamal pubkey
-    pub supply_elgamal_pubkey: OptionalNonZeroElGamalPubkey,
+    pub supply_elgamal_pubkey: PodElGamalPubkey,
 }
 
 impl SupplyAccountInfo {
@@ -46,11 +48,8 @@ impl SupplyAccountInfo {
         aes_key: &AeKey,
         elgamal_keypair: &ElGamalKeypair,
     ) -> Result<u64, TokenError> {
-        if self.supply_elgamal_pubkey.is_none() {
-            return Err(TokenError::InvalidState);
-        }
         // decrypt the decryptable supply
-        let current_decyptable_supply = TryInto::<AeCiphertext>::try_into(self.decryptable_supply)
+        let current_decyptable_supply = AeCiphertext::try_from(self.decryptable_supply)
             .map_err(|_| TokenError::MalformedCiphertext)?
             .decrypt(aes_key)
             .ok_or(TokenError::MalformedCiphertext)?;
@@ -61,8 +60,8 @@ impl SupplyAccountInfo {
             elgamal_keypair.pubkey().encrypt(current_decyptable_supply);
         #[allow(clippy::arithmetic_side_effects)]
         let supply_delta_ciphertext = decryptable_supply_ciphertext
-            - (TryInto::<ElGamalCiphertext>::try_into(self.current_supply)
-                .map_err(|_| TokenError::MalformedCiphertext)?);
+            - ElGamalCiphertext::try_from(self.current_supply)
+                .map_err(|_| TokenError::MalformedCiphertext)?;
         let decryptable_to_current_diff = elgamal_keypair
             .secret()
             .decrypt_u32(&supply_delta_ciphertext)
