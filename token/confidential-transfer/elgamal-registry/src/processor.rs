@@ -53,7 +53,7 @@ pub fn process_create_registry_account(
 
     let elgamal_registry_account_seeds: &[&[_]] = &[
         REGISTRY_ADDRESS_SEED,
-        &wallet_account_info.key.to_bytes(),
+        wallet_account_info.key.as_ref(),
         &[bump_seed],
     ];
     let rent = Rent::get()?;

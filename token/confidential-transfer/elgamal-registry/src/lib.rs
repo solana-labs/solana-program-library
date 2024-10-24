@@ -15,7 +15,7 @@ pub fn get_elgamal_registry_address_and_bump_seed(
     program_id: &Pubkey,
 ) -> (Pubkey, u8) {
     Pubkey::find_program_address(
-        &[REGISTRY_ADDRESS_SEED, &wallet_address.to_bytes()],
+        &[REGISTRY_ADDRESS_SEED, wallet_address.as_ref()],
         program_id,
     )
 }
