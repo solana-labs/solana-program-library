@@ -261,7 +261,7 @@ pub enum TokenError {
 
     //65
     /// Withdraw / Deposit not allowed for confidential-mint-burn
-    #[error("When the confidential-mint-burn extension is enabled, mints are only allowed into the confidential balance. Likewise conversions confidential token balance to normal balance and vice versa are illegal.")]
+    #[error("Withdraw / Deposit not allowed for confidential-mint-burn")]
     IllegalMintBurnConversion,
     /// Undecryptable supply when trying to generate confidential-mint proofs
     #[error("Could not decrypt difference between current supply and decryptable supply when generating mint proofs")]
