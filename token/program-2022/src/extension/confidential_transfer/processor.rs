@@ -107,7 +107,6 @@ enum ElGamalPubkeySource<'a> {
 fn process_configure_account_with_registry(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    reallocate: bool,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let token_account_info = next_account_info(account_info_iter)?;
@@ -116,8 +115,8 @@ fn process_configure_account_with_registry(
 
     check_elgamal_registry_program_account(elgamal_registry_account.owner)?;
 
-    if reallocate {
-        let payer_info = next_account_info(account_info_iter)?;
+    // if a payer account for reallcation is provided, then reallocate
+    if let Ok(payer_info) = next_account_info(account_info_iter) {
         let system_program_info = next_account_info(account_info_iter)?;
         reallocate_for_configure_account_with_registry(
             token_account_info,
@@ -1341,13 +1340,7 @@ pub(crate) fn process_instruction(
         }
         ConfidentialTransferInstruction::ConfigureAccountWithRegistry => {
             msg!("ConfidentialTransferInstruction::ConfigureAccountWithRegistry");
-            let data =
-                decode_instruction_data::<ConfigureAccountWithRegistryInstructionData>(input)?;
-            process_configure_account_with_registry(
-                program_id,
-                accounts,
-                data.reallocate_account.into(),
-            )
+            process_configure_account_with_registry(program_id, accounts)
         }
     }
 }

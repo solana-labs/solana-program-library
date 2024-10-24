@@ -486,7 +486,9 @@ pub enum ConfidentialTransferInstruction {
     ///
     /// If the token account is not large enough to include the new
     /// cconfidential transfer extension, then optionally reallocate the
-    /// account to increase the data size.
+    /// account to increase the data size. To reallocate, a payer account to
+    /// fund the reallocation and the system account should be included in the
+    /// instruction.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -499,7 +501,7 @@ pub enum ConfidentialTransferInstruction {
     ///   4. `[]` (Optional) System program for reallocation funding
     ///
     /// Data expected by this instruction:
-    ///   `ConfigureAccountWithRegistryInstructionData`
+    ///   None
     ConfigureAccountWithRegistry,
 }
 
@@ -674,17 +676,6 @@ pub struct TransferWithFeeInstructionData {
     /// If the offset is `0`, then use a context state account for the
     /// proof.
     pub range_proof_instruction_offset: i8,
-}
-
-/// Data expected by
-/// `ConfidentialTransferInstruction::ConfigureAccountWithRegistry`
-#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
-#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
-#[repr(C)]
-pub struct ConfigureAccountWithRegistryInstructionData {
-    /// Reallocate token account if it is not large enough for the
-    /// `ConfidentialTransfer` extension.
-    pub reallocate_account: PodBool,
 }
 
 /// Create a `InitializeMint` instruction
@@ -1756,21 +1747,16 @@ pub fn configure_account_with_registry(
         AccountMeta::new_readonly(*mint, false),
         AccountMeta::new_readonly(*elgamal_registry_account, false),
     ];
-    let reallocate_account = if let Some(payer) = payer {
+    if let Some(payer) = payer {
         accounts.push(AccountMeta::new(*payer, true));
         accounts.push(AccountMeta::new_readonly(system_program::id(), false));
-        true
-    } else {
-        false
-    };
+    }
 
     Ok(encode_instruction(
         token_program_id,
         accounts,
         TokenInstruction::ConfidentialTransferExtension,
         ConfidentialTransferInstruction::ConfigureAccountWithRegistry,
-        &ConfigureAccountWithRegistryInstructionData {
-            reallocate_account: reallocate_account.into(),
-        },
+        &(),
     ))
 }
