@@ -18,7 +18,7 @@ use {
             set_account_type,
             transfer_fee::TransferFeeConfig,
             transfer_hook, BaseStateWithExtensions, BaseStateWithExtensionsMut,
-            PodStateWithExtensions, PodStateWithExtensionsMut, StateWithExtensions,
+            PodStateWithExtensions, PodStateWithExtensionsMut,
         },
         instruction::{decode_instruction_data, decode_instruction_type},
         pod::{PodAccount, PodMint},
@@ -149,7 +149,7 @@ fn reallocate_for_configure_account_with_registry<'a>(
 ) -> ProgramResult {
     let mut current_extension_types = {
         let token_account = token_account_info.data.borrow();
-        let account = StateWithExtensions::<Account>::unpack(&token_account)?;
+        let account = PodStateWithExtensions::<PodAccount>::unpack(&token_account)?;
         account.get_extension_types()?
     };
     current_extension_types.push(ExtensionType::ConfidentialTransferAccount);
