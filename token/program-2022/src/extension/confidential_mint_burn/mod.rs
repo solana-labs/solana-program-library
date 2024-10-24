@@ -2,9 +2,10 @@ use {
     crate::extension::{Extension, ExtensionType},
     bytemuck::{Pod, Zeroable},
     solana_zk_sdk::encryption::pod::{
-        auth_encryption::PodAeCiphertext, elgamal::PodElGamalCiphertext,
+        auth_encryption::PodAeCiphertext,
+        elgamal::{PodElGamalCiphertext, PodElGamalPubkey},
     },
-    spl_pod::optional_keys::{OptionalNonZeroElGamalPubkey, OptionalNonZeroPubkey},
+    spl_pod::optional_keys::OptionalNonZeroPubkey,
 };
 
 /// Maximum bit length of any mint or burn amount
@@ -40,7 +41,7 @@ pub struct ConfidentialMintBurn {
     /// The decryptable confidential supply of the mint
     pub decryptable_supply: PodAeCiphertext,
     /// The ElGamal pubkey used to encrypt the confidential supply
-    pub supply_elgamal_pubkey: OptionalNonZeroElGamalPubkey,
+    pub supply_elgamal_pubkey: PodElGamalPubkey,
 }
 
 impl Extension for ConfidentialMintBurn {

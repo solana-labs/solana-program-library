@@ -10,6 +10,4 @@ pub enum TokenProofGenerationError {
     IllegalAmountBitLength,
     #[error("fee calculation failed")]
     FeeCalculation,
-    #[error("supply decryption failed")]
-    SupplyDecryption,
 }

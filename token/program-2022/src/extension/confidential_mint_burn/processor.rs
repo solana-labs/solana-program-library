@@ -15,7 +15,6 @@ use {
                 ConfidentialMintBurn,
             },
             confidential_transfer::{ConfidentialTransferAccount, ConfidentialTransferMint},
-            non_transferable::NonTransferableAccount,
             BaseStateWithExtensions, BaseStateWithExtensionsMut, PodStateWithExtensionsMut,
         },
         instruction::{decode_instruction_data, decode_instruction_type},
@@ -107,7 +106,7 @@ fn process_rotate_supply_elgamal_pubkey(
         account_info_iter.as_slice(),
     )?;
 
-    mint_burn_extension.supply_elgamal_pubkey = Some(proof_context.second_pubkey).try_into()?;
+    mint_burn_extension.supply_elgamal_pubkey = proof_context.second_pubkey;
     mint_burn_extension.confidential_supply = proof_context.second_ciphertext;
 
     Ok(())
@@ -190,13 +189,6 @@ fn process_confidential_mint(
         account_info_iter.as_slice(),
     )?;
 
-    if token_account
-        .get_extension::<NonTransferableAccount>()
-        .is_ok()
-    {
-        return Err(TokenError::NonTransferable.into());
-    }
-
     if token_account.base.is_frozen() {
         return Err(TokenError::AccountFrozen.into());
     }
@@ -215,7 +207,7 @@ fn process_confidential_mint(
         return Err(ProgramError::InvalidInstructionData);
     }
 
-    if let Some(auditor_pubkey) = Into::<Option<PodElGamalPubkey>>::into(auditor_elgamal_pubkey) {
+    if let Some(auditor_pubkey) = Option::<PodElGamalPubkey>::from(auditor_elgamal_pubkey) {
         if auditor_pubkey != proof_context.mint_pubkeys.auditor {
             return Err(ProgramError::InvalidInstructionData);
         }
@@ -241,27 +233,23 @@ fn process_confidential_mint(
     confidential_transfer_account.increment_pending_balance_credit_counter()?;
 
     // update supply
-    if let Some(supply_pubkey) =
-        Into::<Option<PodElGamalPubkey>>::into(mint_burn_extension.supply_elgamal_pubkey)
-    {
-        if supply_pubkey != proof_context.mint_pubkeys.supply {
-            return Err(ProgramError::InvalidInstructionData);
-        }
-        let current_supply = mint_burn_extension.confidential_supply;
-        mint_burn_extension.confidential_supply = ciphertext_arithmetic::add_with_lo_hi(
-            &current_supply,
-            &proof_context
-                .mint_amount_ciphertext_lo
-                .try_extract_ciphertext(2)
-                .map_err(|_| ProgramError::InvalidAccountData)?,
-            &proof_context
-                .mint_amount_ciphertext_hi
-                .try_extract_ciphertext(2)
-                .map_err(|_| ProgramError::InvalidAccountData)?,
-        )
-        .ok_or(TokenError::CiphertextArithmeticFailed)?;
-        mint_burn_extension.decryptable_supply = data.new_decryptable_supply;
+    if mint_burn_extension.supply_elgamal_pubkey != proof_context.mint_pubkeys.supply {
+        return Err(ProgramError::InvalidInstructionData);
     }
+    let current_supply = mint_burn_extension.confidential_supply;
+    mint_burn_extension.confidential_supply = ciphertext_arithmetic::add_with_lo_hi(
+        &current_supply,
+        &proof_context
+            .mint_amount_ciphertext_lo
+            .try_extract_ciphertext(2)
+            .map_err(|_| ProgramError::InvalidAccountData)?,
+        &proof_context
+            .mint_amount_ciphertext_hi
+            .try_extract_ciphertext(2)
+            .map_err(|_| ProgramError::InvalidAccountData)?,
+    )
+    .ok_or(TokenError::CiphertextArithmeticFailed)?;
+    mint_burn_extension.decryptable_supply = data.new_decryptable_supply;
 
     Ok(())
 }
@@ -308,13 +296,6 @@ fn process_confidential_burn(
         account_info_iter.as_slice(),
     )?;
 
-    if token_account
-        .get_extension::<NonTransferableAccount>()
-        .is_ok()
-    {
-        return Err(TokenError::NonTransferable.into());
-    }
-
     if token_account.base.is_frozen() {
         return Err(TokenError::AccountFrozen.into());
     }
@@ -359,33 +340,29 @@ fn process_confidential_burn(
     confidential_transfer_account.decryptable_available_balance =
         data.new_decryptable_available_balance;
 
-    if let Some(auditor_pubkey) = Into::<Option<PodElGamalPubkey>>::into(auditor_elgamal_pubkey) {
+    if let Some(auditor_pubkey) = Option::<PodElGamalPubkey>::from(auditor_elgamal_pubkey) {
         if auditor_pubkey != proof_context.burn_pubkeys.auditor {
             return Err(ProgramError::InvalidInstructionData);
         }
     }
 
     // update supply
-    if let Some(supply_pubkey) =
-        Into::<Option<PodElGamalPubkey>>::into(mint_burn_extension.supply_elgamal_pubkey)
-    {
-        if supply_pubkey != proof_context.burn_pubkeys.supply {
-            return Err(ProgramError::InvalidInstructionData);
-        }
-        let current_supply = mint_burn_extension.confidential_supply;
-        mint_burn_extension.confidential_supply = ciphertext_arithmetic::subtract_with_lo_hi(
-            &current_supply,
-            &proof_context
-                .burn_amount_ciphertext_lo
-                .try_extract_ciphertext(2)
-                .map_err(|_| ProgramError::InvalidAccountData)?,
-            &proof_context
-                .burn_amount_ciphertext_hi
-                .try_extract_ciphertext(2)
-                .map_err(|_| ProgramError::InvalidAccountData)?,
-        )
-        .ok_or(TokenError::CiphertextArithmeticFailed)?;
+    if mint_burn_extension.supply_elgamal_pubkey != proof_context.burn_pubkeys.supply {
+        return Err(ProgramError::InvalidInstructionData);
     }
+    let current_supply = mint_burn_extension.confidential_supply;
+    mint_burn_extension.confidential_supply = ciphertext_arithmetic::subtract_with_lo_hi(
+        &current_supply,
+        &proof_context
+            .burn_amount_ciphertext_lo
+            .try_extract_ciphertext(2)
+            .map_err(|_| ProgramError::InvalidAccountData)?,
+        &proof_context
+            .burn_amount_ciphertext_hi
+            .try_extract_ciphertext(2)
+            .map_err(|_| ProgramError::InvalidAccountData)?,
+    )
+    .ok_or(TokenError::CiphertextArithmeticFailed)?;
 
     Ok(())
 }
@@ -414,12 +391,12 @@ pub(crate) fn process_instruction(
             let data = decode_instruction_data::<UpdateDecryptableSupplyData>(input)?;
             process_update_decryptable_supply(program_id, accounts, data.new_decryptable_supply)
         }
-        ConfidentialMintBurnInstruction::ConfidentialMint => {
+        ConfidentialMintBurnInstruction::Mint => {
             msg!("ConfidentialMintBurnInstruction::ConfidentialMint");
             let data = decode_instruction_data::<MintInstructionData>(input)?;
             process_confidential_mint(program_id, accounts, data)
         }
-        ConfidentialMintBurnInstruction::ConfidentialBurn => {
+        ConfidentialMintBurnInstruction::Burn => {
             msg!("ConfidentialMintBurnInstruction::ConfidentialBurn");
             let data = decode_instruction_data::<BurnInstructionData>(input)?;
             process_confidential_burn(program_id, accounts, data)

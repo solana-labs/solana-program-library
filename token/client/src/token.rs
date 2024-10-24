@@ -36,7 +36,6 @@ use {
                     ApplyPendingBalanceAccountInfo, EmptyAccountAccountInfo, TransferAccountInfo,
                     WithdrawAccountInfo,
                 },
-                instruction::{ProofContextState, ZkProofData},
                 ConfidentialTransferAccount, DecryptableBalance,
             },
             confidential_transfer_fee::{
@@ -58,6 +57,8 @@ use {
             zk_elgamal_proof_program::{
                 self,
                 instruction::{close_context_state, ContextStateInfo},
+                proof_data::*,
+                state::ProofContextState,
             },
         },
         state::{Account, AccountState, Mint, Multisig},
@@ -110,7 +111,6 @@ pub enum TokenError {
     #[error("decimals specified, but incorrect")]
     InvalidDecimals,
 }
-
 impl PartialEq for TokenError {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {

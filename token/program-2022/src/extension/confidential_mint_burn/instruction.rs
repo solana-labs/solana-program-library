@@ -1,18 +1,20 @@
 #[cfg(not(target_os = "solana"))]
-use crate::proof::{process_proof_location, ProofLocation};
-#[cfg(not(target_os = "solana"))]
-use solana_zk_sdk::encryption::{auth_encryption::AeCiphertext, elgamal::ElGamalPubkey};
-#[cfg(not(target_os = "solana"))]
-use solana_zk_sdk::zk_elgamal_proof_program::{
-    instruction::ProofInstruction,
-    proof_data::{
-        BatchedGroupedCiphertext3HandlesValidityProofData, BatchedRangeProofU128Data,
-        CiphertextCiphertextEqualityProofData, CiphertextCommitmentEqualityProofData,
+use {
+    crate::proof::{process_proof_location, ProofLocation},
+    solana_zk_sdk::{
+        encryption::{auth_encryption::AeCiphertext, elgamal::ElGamalPubkey},
+        zk_elgamal_proof_program::{
+            instruction::ProofInstruction,
+            proof_data::{
+                BatchedGroupedCiphertext3HandlesValidityProofData, BatchedRangeProofU128Data,
+                CiphertextCiphertextEqualityProofData, CiphertextCommitmentEqualityProofData,
+            },
+        },
     },
 };
 #[cfg(feature = "serde-traits")]
 use {
-    crate::serialization::aeciphertext_fromstr,
+    crate::serialization::{aeciphertext_fromstr, elgamalpubkey_fromstr},
     serde::{Deserialize, Serialize},
 };
 use {
@@ -29,7 +31,7 @@ use {
         pubkey::Pubkey,
     },
     solana_zk_sdk::encryption::pod::{auth_encryption::PodAeCiphertext, elgamal::PodElGamalPubkey},
-    spl_pod::optional_keys::{OptionalNonZeroElGamalPubkey, OptionalNonZeroPubkey},
+    spl_pod::optional_keys::OptionalNonZeroPubkey,
 };
 
 /// Confidential Transfer extension instructions
@@ -98,7 +100,6 @@ pub enum ConfidentialMintBurnInstruction {
     /// Mints tokens to confidential balance
     ///
     /// Fails if the destination account is frozen.
-    /// Fails if the associated mint is extended as `NonTransferable`.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -135,11 +136,10 @@ pub enum ConfidentialMintBurnInstruction {
     ///
     /// Data expected by this instruction:
     ///   `MintInstructionData`
-    ConfidentialMint,
+    Mint,
     /// Burn tokens from confidential balance
     ///
     /// Fails if the destination account is frozen.
-    /// Fails if the associated mint is extended as `NonTransferable`.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -176,7 +176,7 @@ pub enum ConfidentialMintBurnInstruction {
     ///
     /// Data expected by this instruction:
     ///   `BurnInstructionData`
-    ConfidentialBurn,
+    Burn,
 }
 
 /// Data expected by `ConfidentialMintBurnInstruction::InitializeMint`
@@ -189,7 +189,8 @@ pub struct InitializeMintData {
     /// configuration and mint new tokens
     pub authority: OptionalNonZeroPubkey,
     /// The ElGamal pubkey used to encrypt the confidential supply
-    pub supply_elgamal_pubkey: OptionalNonZeroElGamalPubkey,
+    #[cfg_attr(feature = "serde-traits", serde(with = "elgamalpubkey_fromstr"))]
+    pub supply_elgamal_pubkey: PodElGamalPubkey,
     /// The initial 0 supply ecrypted with the supply aes key
     #[cfg_attr(feature = "serde-traits", serde(with = "aeciphertext_fromstr"))]
     pub decryptable_supply: PodAeCiphertext,
@@ -202,7 +203,8 @@ pub struct InitializeMintData {
 #[repr(C)]
 pub struct RotateSupplyElGamalPubkeyData {
     /// The new ElGamal pubkey for supply encryption
-    pub new_supply_elgamal_pubkey: OptionalNonZeroElGamalPubkey,
+    #[cfg_attr(feature = "serde-traits", serde(with = "elgamalpubkey_fromstr"))]
+    pub new_supply_elgamal_pubkey: PodElGamalPubkey,
     /// The location of the
     /// `ProofInstruction::VerifyCiphertextCiphertextEquality` instruction
     /// relative to the `RotateSupplyElGamal` instruction in the transaction
@@ -275,19 +277,13 @@ pub fn initialize_mint(
     token_program_id: &Pubkey,
     mint: &Pubkey,
     authority: &Pubkey,
-    confidential_supply_pubkey: Option<PodElGamalPubkey>,
-    decryptable_supply: Option<PodAeCiphertext>,
+    supply_elgamal_pubkey: PodElGamalPubkey,
+    decryptable_supply: PodAeCiphertext,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let accounts = vec![AccountMeta::new(*mint, false)];
 
-    let decryptable_supply = if confidential_supply_pubkey.is_some() {
-        decryptable_supply.ok_or(ProgramError::InvalidInstructionData)?
-    } else {
-        PodAeCiphertext::zeroed()
-    };
-
-    let authority = Some(authority);
+    let authority = Some(*authority);
     Ok(encode_instruction(
         token_program_id,
         accounts,
@@ -295,7 +291,7 @@ pub fn initialize_mint(
         ConfidentialMintBurnInstruction::InitializeMint,
         &InitializeMintData {
             authority: authority.try_into()?,
-            supply_elgamal_pubkey: confidential_supply_pubkey.try_into()?,
+            supply_elgamal_pubkey,
             decryptable_supply,
         },
     ))
@@ -341,10 +337,7 @@ pub fn rotate_supply_elgamal_pubkey(
         TokenInstruction::ConfidentialMintBurnExtension,
         ConfidentialMintBurnInstruction::RotateSupplyElGamalPubkey,
         &RotateSupplyElGamalPubkeyData {
-            new_supply_elgamal_pubkey: Some(Into::<PodElGamalPubkey>::into(
-                new_supply_elgamal_pubkey,
-            ))
-            .try_into()?,
+            new_supply_elgamal_pubkey: PodElGamalPubkey::from(new_supply_elgamal_pubkey),
             proof_instruction_offset,
         },
     )];
@@ -464,7 +457,7 @@ pub fn confidential_mint_with_split_proofs(
         token_program_id,
         accounts,
         TokenInstruction::ConfidentialMintBurnExtension,
-        ConfidentialMintBurnInstruction::ConfidentialMint,
+        ConfidentialMintBurnInstruction::Mint,
         &MintInstructionData {
             new_decryptable_supply: new_decryptable_supply.into(),
             equality_proof_instruction_offset,
@@ -546,7 +539,7 @@ pub fn confidential_burn_with_split_proofs(
         token_program_id,
         accounts,
         TokenInstruction::ConfidentialMintBurnExtension,
-        ConfidentialMintBurnInstruction::ConfidentialBurn,
+        ConfidentialMintBurnInstruction::Burn,
         &BurnInstructionData {
             new_decryptable_available_balance,
             equality_proof_instruction_offset,

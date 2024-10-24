@@ -1304,6 +1304,7 @@ impl ExtensionType {
         let mut transfer_fee_config = false;
         let mut confidential_transfer_mint = false;
         let mut confidential_transfer_fee_config = false;
+        let mut confidential_mint_burn = false;
 
         for extension_type in mint_extension_types {
             match extension_type {
@@ -1312,6 +1313,7 @@ impl ExtensionType {
                 ExtensionType::ConfidentialTransferFeeConfig => {
                     confidential_transfer_fee_config = true
                 }
+                ExtensionType::ConfidentialMintBurn => confidential_mint_burn = true,
                 _ => (),
             }
         }
@@ -1322,6 +1324,10 @@ impl ExtensionType {
         }
 
         if transfer_fee_config && confidential_transfer_mint && !confidential_transfer_fee_config {
+            return Err(TokenError::InvalidExtensionCombination);
+        }
+
+        if confidential_mint_burn && !confidential_transfer_mint {
             return Err(TokenError::InvalidExtensionCombination);
         }
 
