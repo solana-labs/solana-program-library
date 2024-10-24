@@ -6,6 +6,7 @@ use {
     crate::{
         error::TokenError,
         extension::{
+            confidential_mint_burn::ConfidentialMintBurn,
             confidential_transfer::{ConfidentialTransferAccount, ConfidentialTransferMint},
             confidential_transfer_fee::{
                 ConfidentialTransferFeeAmount, ConfidentialTransferFeeConfig,
@@ -83,6 +84,9 @@ pub mod token_metadata;
 pub mod transfer_fee;
 /// Transfer Hook extension
 pub mod transfer_hook;
+
+/// Confidential mint-burn extension
+pub mod confidential_mint_burn;
 
 /// Length in TLV structure
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
@@ -1101,6 +1105,9 @@ pub enum ExtensionType {
     GroupMemberPointer,
     /// Mint contains token group member configurations
     TokenGroupMember,
+    /// Mint allowing the minting and burning of confidential tokens
+    ConfidentialMintBurn,
+
     /// Test variable-length mint extension
     #[cfg(test)]
     VariableLenMintTest = u16::MAX - 2,
@@ -1181,6 +1188,7 @@ impl ExtensionType {
             ExtensionType::TokenGroup => pod_get_packed_len::<TokenGroup>(),
             ExtensionType::GroupMemberPointer => pod_get_packed_len::<GroupMemberPointer>(),
             ExtensionType::TokenGroupMember => pod_get_packed_len::<TokenGroupMember>(),
+            ExtensionType::ConfidentialMintBurn => pod_get_packed_len::<ConfidentialMintBurn>(),
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => pod_get_packed_len::<AccountPaddingTest>(),
             #[cfg(test)]
@@ -1244,6 +1252,7 @@ impl ExtensionType {
             | ExtensionType::GroupPointer
             | ExtensionType::TokenGroup
             | ExtensionType::GroupMemberPointer
+            | ExtensionType::ConfidentialMintBurn
             | ExtensionType::TokenGroupMember => AccountType::Mint,
             ExtensionType::ImmutableOwner
             | ExtensionType::TransferFeeAmount
@@ -1295,6 +1304,7 @@ impl ExtensionType {
         let mut transfer_fee_config = false;
         let mut confidential_transfer_mint = false;
         let mut confidential_transfer_fee_config = false;
+        let mut confidential_mint_burn = false;
 
         for extension_type in mint_extension_types {
             match extension_type {
@@ -1303,6 +1313,7 @@ impl ExtensionType {
                 ExtensionType::ConfidentialTransferFeeConfig => {
                     confidential_transfer_fee_config = true
                 }
+                ExtensionType::ConfidentialMintBurn => confidential_mint_burn = true,
                 _ => (),
             }
         }
@@ -1313,6 +1324,10 @@ impl ExtensionType {
         }
 
         if transfer_fee_config && confidential_transfer_mint && !confidential_transfer_fee_config {
+            return Err(TokenError::InvalidExtensionCombination);
+        }
+
+        if confidential_mint_burn && !confidential_transfer_mint {
             return Err(TokenError::InvalidExtensionCombination);
         }
 
