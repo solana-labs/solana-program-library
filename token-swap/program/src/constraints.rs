@@ -1,7 +1,7 @@
 //! Various constraints as required for production environments
 
 #[cfg(feature = "production")]
-use std::env;
+use std::option_env;
 use {
     crate::{
         curve::{
@@ -21,7 +21,7 @@ use {
 /// cannot be used, so we have to split the curves based on their types.
 pub struct SwapConstraints<'a> {
     /// Owner of the program
-    pub owner_key: &'a str,
+    pub owner_key: Option<&'a str>,
     /// Valid curve types
     pub valid_curve_types: &'a [CurveType],
     /// Valid fees
@@ -61,7 +61,7 @@ impl<'a> SwapConstraints<'a> {
 }
 
 #[cfg(feature = "production")]
-const OWNER_KEY: &str = env!("SWAP_PROGRAM_OWNER_FEE_ADDRESS");
+const OWNER_KEY: Option<&str> = option_env!("SWAP_PROGRAM_OWNER_FEE_ADDRESS");
 #[cfg(feature = "production")]
 const FEES: &Fees = &Fees {
     trade_fee_numerator: 0,
@@ -115,7 +115,7 @@ mod tests {
         let owner_withdraw_fee_denominator = 10;
         let host_fee_numerator = 10;
         let host_fee_denominator = 100;
-        let owner_key = "";
+        let owner_key = Some("");
         let curve_type = CurveType::ConstantProduct;
         let valid_fees = Fees {
             trade_fee_numerator,

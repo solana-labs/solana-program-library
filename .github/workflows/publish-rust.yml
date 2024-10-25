@@ -84,7 +84,7 @@ jobs:
         run: ./ci/install-build-deps.sh
 
       - name: Run clippy
-        run: ./cargo-nightly clippy -Zunstable-options --workspace --all-targets --features test-sbf -- --deny=warnings --deny=clippy::arithmetic_side_effects
+        run: ./cargo-nightly clippy -Zunstable-options --workspace --all-targets --all-features -- --deny=warnings --deny=clippy::arithmetic_side_effects
 
   cargo-build-test:
     runs-on: ubuntu-latest

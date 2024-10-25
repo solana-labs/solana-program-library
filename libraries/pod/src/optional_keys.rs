@@ -101,7 +101,7 @@ impl<'de> Visitor<'de> for OptionalNonZeroPubkeyVisitor {
     where
         E: Error,
     {
-        let pkey = Pubkey::from_str(&v)
+        let pkey = Pubkey::from_str(v)
             .map_err(|_| Error::invalid_value(Unexpected::Str(v), &"value string"))?;
 
         OptionalNonZeroPubkey::try_from(Some(pkey))
