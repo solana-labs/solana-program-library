@@ -6,7 +6,7 @@ use {
 };
 use {
     crate::{
-        check_program_account,
+        check_elgamal_registry_program_account, check_program_account,
         error::TokenError,
         extension::{
             confidential_transfer::{instruction::*, verify_proof::*, *},
@@ -15,6 +15,7 @@ use {
                 EncryptedWithheldAmount,
             },
             memo_transfer::{check_previous_sibling_instruction_is_memo, memo_required},
+            set_account_type,
             transfer_fee::TransferFeeConfig,
             transfer_hook, BaseStateWithExtensions, BaseStateWithExtensionsMut,
             PodStateWithExtensions, PodStateWithExtensionsMut,
@@ -22,19 +23,24 @@ use {
         instruction::{decode_instruction_data, decode_instruction_type},
         pod::{PodAccount, PodMint},
         processor::Processor,
-        proof::verify_and_extract_context,
+        state::Account,
     },
     solana_program::{
         account_info::{next_account_info, AccountInfo},
         clock::Clock,
         entrypoint::ProgramResult,
         msg,
+        program::invoke,
         program_error::ProgramError,
         pubkey::Pubkey,
-        sysvar::Sysvar,
+        system_instruction,
+        sysvar::{rent::Rent, Sysvar},
     },
+    spl_elgamal_registry::state::ElGamalRegistry,
+    spl_pod::bytemuck::pod_from_bytes,
     spl_token_confidential_transfer_proof_extraction::{
-        transfer::TransferProofContext, transfer_with_fee::TransferWithFeeProofContext,
+        instruction::verify_and_extract_context, transfer::TransferProofContext,
+        transfer_with_fee::TransferWithFeeProofContext,
     },
 };
 
@@ -92,26 +98,128 @@ fn process_update_mint(
     Ok(())
 }
 
+enum ElGamalPubkeySource<'a> {
+    ProofInstructionOffset(i64),
+    ElGamalRegistry(&'a ElGamalRegistry),
+}
+
+/// Processes a [ConfigureAccountWithRegistry] instruction.
+fn process_configure_account_with_registry(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+    let token_account_info = next_account_info(account_info_iter)?;
+    let _mint_info = next_account_info(account_info_iter)?;
+    let elgamal_registry_account = next_account_info(account_info_iter)?;
+
+    check_elgamal_registry_program_account(elgamal_registry_account.owner)?;
+
+    // if a payer account for reallcation is provided, then reallocate
+    if let Ok(payer_info) = next_account_info(account_info_iter) {
+        let system_program_info = next_account_info(account_info_iter)?;
+        reallocate_for_configure_account_with_registry(
+            token_account_info,
+            payer_info,
+            system_program_info,
+        )?;
+    }
+
+    let elgamal_registry_account_data = &elgamal_registry_account.data.borrow();
+    let elgamal_registry_account =
+        pod_from_bytes::<ElGamalRegistry>(elgamal_registry_account_data)?;
+
+    let decryptable_zero_balance = PodAeCiphertext::default();
+    let maximum_pending_balance_credit_counter =
+        DEFAULT_MAXIMUM_PENDING_BALANCE_CREDIT_COUNTER.into();
+
+    process_configure_account(
+        program_id,
+        accounts,
+        &decryptable_zero_balance,
+        &maximum_pending_balance_credit_counter,
+        ElGamalPubkeySource::ElGamalRegistry(elgamal_registry_account),
+    )
+}
+
+fn reallocate_for_configure_account_with_registry<'a>(
+    token_account_info: &AccountInfo<'a>,
+    payer_info: &AccountInfo<'a>,
+    system_program_info: &AccountInfo<'a>,
+) -> ProgramResult {
+    let mut current_extension_types = {
+        let token_account = token_account_info.data.borrow();
+        let account = PodStateWithExtensions::<PodAccount>::unpack(&token_account)?;
+        account.get_extension_types()?
+    };
+    // `try_calculate_account_len` dedupes extension types, so always push
+    // the `ConfidentialTransferAccount` type
+    current_extension_types.push(ExtensionType::ConfidentialTransferAccount);
+    let needed_account_len =
+        ExtensionType::try_calculate_account_len::<Account>(&current_extension_types)?;
+
+    // if account is already large enough, return early
+    if token_account_info.data_len() >= needed_account_len {
+        return Ok(());
+    }
+
+    // reallocate
+    msg!(
+        "account needs realloc, +{:?} bytes",
+        needed_account_len - token_account_info.data_len()
+    );
+    token_account_info.realloc(needed_account_len, false)?;
+
+    // if additional lamports needed to remain rent-exempt, transfer them
+    let rent = Rent::get()?;
+    let new_rent_exempt_reserve = rent.minimum_balance(needed_account_len);
+
+    let current_lamport_reserve = token_account_info.lamports();
+    let lamports_diff = new_rent_exempt_reserve.saturating_sub(current_lamport_reserve);
+    if lamports_diff > 0 {
+        invoke(
+            &system_instruction::transfer(payer_info.key, token_account_info.key, lamports_diff),
+            &[
+                payer_info.clone(),
+                token_account_info.clone(),
+                system_program_info.clone(),
+            ],
+        )?;
+    }
+
+    // set account_type, if needed
+    let mut token_account_data = token_account_info.data.borrow_mut();
+    set_account_type::<Account>(&mut token_account_data)?;
+
+    Ok(())
+}
+
 /// Processes a [ConfigureAccount] instruction.
 fn process_configure_account(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     decryptable_zero_balance: &DecryptableBalance,
     maximum_pending_balance_credit_counter: &PodU64,
-    proof_instruction_offset: i64,
+    elgamal_pubkey_source: ElGamalPubkeySource,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let token_account_info = next_account_info(account_info_iter)?;
     let mint_info = next_account_info(account_info_iter)?;
 
-    // zero-knowledge proof certifies that the supplied ElGamal public key is valid
-    let proof_context = verify_and_extract_context::<
-        PubkeyValidityProofData,
-        PubkeyValidityProofContext,
-    >(account_info_iter, proof_instruction_offset, None)?;
-
-    let authority_info = next_account_info(account_info_iter)?;
-    let authority_info_data_len = authority_info.data_len();
+    let elgamal_pubkey = match elgamal_pubkey_source {
+        ElGamalPubkeySource::ProofInstructionOffset(offset) => {
+            // zero-knowledge proof certifies that the supplied ElGamal public key is valid
+            let proof_context = verify_and_extract_context::<
+                PubkeyValidityProofData,
+                PubkeyValidityProofContext,
+            >(account_info_iter, offset, None)?;
+            proof_context.pubkey
+        }
+        ElGamalPubkeySource::ElGamalRegistry(elgamal_registry_account) => {
+            let _elgamal_registry_account = next_account_info(account_info_iter)?;
+            elgamal_registry_account.elgamal_pubkey
+        }
+    };
 
     check_program_account(token_account_info.owner)?;
     let token_account_data = &mut token_account_info.data.borrow_mut();
@@ -121,13 +229,28 @@ fn process_configure_account(
         return Err(TokenError::MintMismatch.into());
     }
 
-    Processor::validate_owner(
-        program_id,
-        &token_account.base.owner,
-        authority_info,
-        authority_info_data_len,
-        account_info_iter.as_slice(),
-    )?;
+    match elgamal_pubkey_source {
+        ElGamalPubkeySource::ProofInstructionOffset(_) => {
+            let authority_info = next_account_info(account_info_iter)?;
+            let authority_info_data_len = authority_info.data_len();
+
+            Processor::validate_owner(
+                program_id,
+                &token_account.base.owner,
+                authority_info,
+                authority_info_data_len,
+                account_info_iter.as_slice(),
+            )?;
+        }
+        ElGamalPubkeySource::ElGamalRegistry(elgamal_registry_account) => {
+            // if ElGamal registry was provided, then just verify that the owners of the
+            // registry and token accounts match, then skip the signature
+            // verification check
+            if elgamal_registry_account.owner != token_account.base.owner {
+                return Err(TokenError::OwnerMismatch.into());
+            }
+        }
+    };
 
     check_program_account(mint_info.owner)?;
     let mint_data = &mut mint_info.data.borrow();
@@ -140,7 +263,7 @@ fn process_configure_account(
     let confidential_transfer_account =
         token_account.init_extension::<ConfidentialTransferAccount>(false)?;
     confidential_transfer_account.approved = confidential_transfer_mint.auto_approve_new_accounts;
-    confidential_transfer_account.elgamal_pubkey = proof_context.pubkey;
+    confidential_transfer_account.elgamal_pubkey = elgamal_pubkey;
     confidential_transfer_account.maximum_pending_balance_credit_counter =
         *maximum_pending_balance_credit_counter;
 
@@ -1108,7 +1231,7 @@ pub(crate) fn process_instruction(
                 accounts,
                 &data.decryptable_zero_balance,
                 &data.maximum_pending_balance_credit_counter,
-                data.proof_instruction_offset as i64,
+                ElGamalPubkeySource::ProofInstructionOffset(data.proof_instruction_offset as i64),
             )
         }
         ConfidentialTransferInstruction::ApproveAccount => {
@@ -1216,6 +1339,10 @@ pub(crate) fn process_instruction(
             }
             #[cfg(not(feature = "zk-ops"))]
             Err(ProgramError::InvalidInstructionData)
+        }
+        ConfidentialTransferInstruction::ConfigureAccountWithRegistry => {
+            msg!("ConfidentialTransferInstruction::ConfigureAccountWithRegistry");
+            process_configure_account_with_registry(program_id, accounts)
         }
     }
 }

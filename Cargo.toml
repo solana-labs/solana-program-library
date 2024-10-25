@@ -75,6 +75,7 @@ members = [
   "token/confidential-transfer/proof-extraction",
   "token/confidential-transfer/proof-generation",
   "token/confidential-transfer/proof-tests",
+  "token/confidential-transfer/elgamal-registry",
   "token/client",
   "utils/cgen",
   "utils/test-client",

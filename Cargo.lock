@@ -6990,6 +6990,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-elgamal-registry"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "solana-program",
+ "solana-zk-sdk",
+ "spl-pod 0.4.0",
+ "spl-token-confidential-transfer-proof-extraction",
+]
+
+[[package]]
 name = "spl-example-cross-program-invocation"
 version = "1.0.0"
 dependencies = [
@@ -7588,6 +7599,7 @@ dependencies = [
  "solana-sdk",
  "solana-security-txt",
  "solana-zk-sdk",
+ "spl-elgamal-registry",
  "spl-memo 5.0.0",
  "spl-pod 0.4.0",
  "spl-tlv-account-resolution 0.8.1",
@@ -7614,6 +7626,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-associated-token-account 5.0.1",
+ "spl-elgamal-registry",
  "spl-instruction-padding",
  "spl-memo 5.0.0",
  "spl-pod 0.4.0",
@@ -7621,6 +7634,7 @@ dependencies = [
  "spl-tlv-account-resolution 0.8.1",
  "spl-token-2022 5.0.2",
  "spl-token-client",
+ "spl-token-confidential-transfer-proof-extraction",
  "spl-token-confidential-transfer-proof-generation",
  "spl-token-group-interface 0.4.2",
  "spl-token-metadata-interface 0.5.1",
@@ -7685,10 +7699,12 @@ dependencies = [
  "solana-rpc-client-api",
  "solana-sdk",
  "spl-associated-token-account-client",
+ "spl-elgamal-registry",
  "spl-memo 5.0.0",
  "spl-record",
  "spl-token 6.0.0",
  "spl-token-2022 5.0.2",
+ "spl-token-confidential-transfer-proof-extraction",
  "spl-token-confidential-transfer-proof-generation",
  "spl-token-group-interface 0.4.2",
  "spl-token-metadata-interface 0.5.1",
@@ -7732,7 +7748,9 @@ version = "0.1.0"
 dependencies = [
  "bytemuck",
  "solana-curve25519",
+ "solana-program",
  "solana-zk-sdk",
+ "spl-pod 0.4.0",
  "thiserror",
 ]
 

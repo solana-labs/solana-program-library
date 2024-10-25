@@ -47,7 +47,6 @@ use {
             BaseStateWithExtensions, Extension, ExtensionType, StateWithExtensionsOwned,
         },
         instruction, offchain,
-        proof::{zk_proof_type_to_instruction, ProofData, ProofLocation},
         solana_zk_sdk::{
             encryption::{
                 auth_encryption::AeKey,
@@ -62,6 +61,9 @@ use {
             },
         },
         state::{Account, AccountState, Mint, Multisig},
+    },
+    spl_token_confidential_transfer_proof_extraction::instruction::{
+        zk_proof_type_to_instruction, ProofData, ProofLocation,
     },
     spl_token_confidential_transfer_proof_generation::{
         transfer::TransferProofData, transfer_with_fee::TransferWithFeeProofData,
@@ -1968,6 +1970,29 @@ where
                 proof_location,
             )?,
             signing_keypairs,
+        )
+        .await
+    }
+
+    /// Configures confidential transfers for a token account using an ElGamal
+    /// registry account
+    pub async fn confidential_transfer_configure_token_account_with_registry(
+        &self,
+        account: &Pubkey,
+        elgamal_registry_account: &Pubkey,
+        payer: Option<&Pubkey>,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs::<[&dyn Signer; 0]>(
+            &[
+                confidential_transfer::instruction::configure_account_with_registry(
+                    &self.program_id,
+                    account,
+                    &self.pubkey,
+                    elgamal_registry_account,
+                    payer,
+                )?,
+            ],
+            &[],
         )
         .await
     }
