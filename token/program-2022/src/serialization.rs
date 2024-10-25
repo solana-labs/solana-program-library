@@ -1,11 +1,6 @@
 //! serialization module - contains helpers for serde types from other crates,
 //! deserialization visitors
 
-use {
-    base64::{prelude::BASE64_STANDARD, Engine},
-    serde::de::Error,
-};
-
 /// helper function to ser/deser COption wrapped values
 pub mod coption_fromstr {
     use {
@@ -77,9 +72,7 @@ pub mod coption_fromstr {
         D: Deserializer<'de>,
         T: FromStr,
     {
-        d.deserialize_option(COptionVisitor {
-            s: PhantomData::default(),
-        })
+        d.deserialize_option(COptionVisitor { s: PhantomData })
     }
 }
 
