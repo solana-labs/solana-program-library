@@ -167,7 +167,7 @@ jobs:
             cargo-publish-
 
       - name: Install Cargo Release
-        run: which cargo-release || cargo install cargo-release
+        run: which cargo-release || cargo install cargo-release --version 0.25.11
 
       - name: Ensure CARGO_REGISTRY_TOKEN variable is set
         env:
