@@ -64,7 +64,7 @@ fn serde_instruction_optional_nonzero_pubkeys_podbool() {
     };
 
     let serialized = serde_json::to_string(&inst).unwrap();
-    let serialized_expected = &"{{\"authority\":\"4uQeVj5tqViQh7yWWGStvkEG1Zmhx6uasJtWCJziofM\",\"autoApproveNewAccounts\":false,\"auditorElgamalPubkey\":\"ohdsJIKPEtvEhvKRszHlwUpAA55E63xY95Ck/uQMrVU=\"}}";
+    let serialized_expected = &"{\"authority\":\"4uQeVj5tqViQh7yWWGStvkEG1Zmhx6uasJtWCJziofM\",\"autoApproveNewAccounts\":false,\"auditorElgamalPubkey\":\"ohdsJIKPEtvEhvKRszHlwUpAA55E63xY95Ck/uQMrVU=\"}";
     assert_eq!(&serialized, serialized_expected);
 
     let deserialized =
@@ -90,7 +90,7 @@ fn serde_instruction_optional_nonzero_pubkeys_podbool_with_none() {
 
     let serialized = serde_json::to_string(&inst).unwrap();
     let serialized_expected =
-        &"{{\"authority\":null,\"autoApproveNewAccounts\":false,\"auditorElgamalPubkey\":null}}";
+        &"{\"authority\":null,\"autoApproveNewAccounts\":false,\"auditorElgamalPubkey\":null}";
     assert_eq!(&serialized, serialized_expected);
 
     let deserialized =
@@ -116,7 +116,7 @@ fn serde_instruction_decryptable_balance_podu64() {
     };
 
     let serialized = serde_json::to_string(&inst).unwrap();
-    let serialized_expected = &"{{\"decryptableZeroBalance\":\"OBZmMHBqOhkZ9MLZSYlJJhgaJBnr6kS1C1Kqo1nNcaA3ECOX\",\"maximumPendingBalanceCreditCounter\":1099,\"proofInstructionOffset\":100}}";
+    let serialized_expected = &"{\"decryptableZeroBalance\":\"OBZmMHBqOhkZ9MLZSYlJJhgaJBnr6kS1C1Kqo1nNcaA3ECOX\",\"maximumPendingBalanceCreditCounter\":1099,\"proofInstructionOffset\":100}";
     assert_eq!(&serialized, serialized_expected);
 
     let deserialized = serde_json::from_str::<
