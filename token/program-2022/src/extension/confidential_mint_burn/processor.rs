@@ -20,7 +20,6 @@ use {
         instruction::{decode_instruction_data, decode_instruction_type},
         pod::{PodAccount, PodMint},
         processor::Processor,
-        proof::verify_and_extract_context,
     },
     solana_program::{
         account_info::{next_account_info, AccountInfo},
@@ -35,6 +34,7 @@ use {
             CiphertextCiphertextEqualityProofContext, CiphertextCiphertextEqualityProofData,
         },
     },
+    spl_token_confidential_transfer_proof_extraction::instruction::verify_and_extract_context,
 };
 
 /// Processes an [InitializeMint] instruction.

@@ -1677,6 +1677,11 @@ require the Solana account being initialized also be a signer. The
 instruction that creates the Solana account by including both instructions in
 the same transaction.
 
+Also, multisignatures allow for duplicate accounts in the signer sets, for very
+simple weighting systems. For example, a 2 of 4 multisig can be constructed with
+3 unique pubkeys, and one pubkey specified twice to give that pubkey double
+voting power.
+
 ### Freezing accounts
 
 The Mint may also contain a `freeze_authority` which can be used to issue

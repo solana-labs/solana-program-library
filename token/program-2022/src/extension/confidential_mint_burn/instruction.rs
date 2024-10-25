@@ -1,17 +1,3 @@
-#[cfg(not(target_os = "solana"))]
-use {
-    crate::proof::{process_proof_location, ProofLocation},
-    solana_zk_sdk::{
-        encryption::{auth_encryption::AeCiphertext, elgamal::ElGamalPubkey},
-        zk_elgamal_proof_program::{
-            instruction::ProofInstruction,
-            proof_data::{
-                BatchedGroupedCiphertext3HandlesValidityProofData, BatchedRangeProofU128Data,
-                CiphertextCiphertextEqualityProofData, CiphertextCommitmentEqualityProofData,
-            },
-        },
-    },
-};
 #[cfg(feature = "serde-traits")]
 use {
     crate::serialization::{aeciphertext_fromstr, elgamalpubkey_fromstr},
@@ -32,6 +18,22 @@ use {
     },
     solana_zk_sdk::encryption::pod::{auth_encryption::PodAeCiphertext, elgamal::PodElGamalPubkey},
     spl_pod::optional_keys::OptionalNonZeroPubkey,
+};
+#[cfg(not(target_os = "solana"))]
+use {
+    solana_zk_sdk::{
+        encryption::{auth_encryption::AeCiphertext, elgamal::ElGamalPubkey},
+        zk_elgamal_proof_program::{
+            instruction::ProofInstruction,
+            proof_data::{
+                BatchedGroupedCiphertext3HandlesValidityProofData, BatchedRangeProofU128Data,
+                CiphertextCiphertextEqualityProofData, CiphertextCommitmentEqualityProofData,
+            },
+        },
+    },
+    spl_token_confidential_transfer_proof_extraction::instruction::{
+        process_proof_location, ProofLocation,
+    },
 };
 
 /// Confidential Transfer extension instructions

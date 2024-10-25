@@ -1,6 +1,6 @@
 {
   "name": "@solana/spl-token-swap",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "description": "SPL Token Swap JavaScript API",
   "license": "MIT",
   "type": "module",
@@ -46,23 +46,23 @@
     "@solana/buffer-layout-utils": "^0.2.0"
   },
   "peerDependencies": {
-    "@solana/web3.js": "^1.95.3"
+    "@solana/web3.js": "^1.95.4"
   },
   "devDependencies": {
-    "@solana/spl-token": "0.4.6",
-    "@solana/web3.js": "^1.95.3",
+    "@solana/spl-token": "0.4.9",
+    "@solana/web3.js": "^1.95.4",
     "@types/bn.js": "^5.1.6",
     "@types/chai-as-promised": "^8.0.1",
     "@types/chai": "^5.0.0",
-    "@types/mocha": "^10.0.8",
+    "@types/mocha": "^10.0.9",
     "@typescript-eslint/eslint-plugin": "^8.4.0",
     "@typescript-eslint/parser": "^8.4.0",
     "eslint": "^8.57.0",
-    "eslint-plugin-import": "^2.30.0",
+    "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-require-extensions": "^0.1.1",
     "mocha": "^10.7.3",
     "start-server-and-test": "^2.0.8",
     "ts-node": "^10.9.2",
-    "typescript": "^5.6.2"
+    "typescript": "^5.6.3"
   }
 }

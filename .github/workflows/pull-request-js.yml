@@ -44,21 +44,24 @@ jobs:
         package:
           [
             account-compression,
-            libraries,
             memo,
             name-service,
             stake-pool,
             token,
-            token-group,
-            token-metadata,
             token-swap,
           ]
         include:
-          # Restrict single-pool and token-lending to supported Node.js versions.
+          # Restrict certain packages to supported Node.js versions.
+          - package: libraries
+            node-version: 20.x
           - package: single-pool
             node-version: 20.5
+          - package: token-group
+            node-version: 20.x
           - package: token-lending
             node-version: 18.5
+          - package: token-metadata
+            node-version: 20.x
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -1,10 +1,11 @@
-//! Helper for processing instruction data from ZK ElGamal proof program
+//! Utility functions to simplify the handling of ZK ElGamal proof program
+//! instruction data in SPL crates
 
 use {
-    crate::{check_zk_elgamal_proof_program_account, error::TokenError},
     bytemuck::Pod,
     solana_program::{
         account_info::{next_account_info, AccountInfo},
+        entrypoint::ProgramResult,
         instruction::{AccountMeta, Instruction},
         msg,
         program_error::ProgramError,
@@ -20,6 +21,17 @@ use {
     spl_pod::bytemuck::pod_from_bytes,
     std::{num::NonZeroI8, slice::Iter},
 };
+
+/// Checks that the supplied program ID is correct for the ZK ElGamal proof
+/// program
+pub fn check_zk_elgamal_proof_program_account(
+    zk_elgamal_proof_program_id: &Pubkey,
+) -> ProgramResult {
+    if zk_elgamal_proof_program_id != &solana_zk_sdk::zk_elgamal_proof_program::id() {
+        return Err(ProgramError::IncorrectProgramId);
+    }
+    Ok(())
+}
 
 /// If a proof is to be read from a record account, the proof instruction data
 /// must be 5 bytes: 1 byte for the proof type and 4 bytes for the u32 offset
@@ -155,7 +167,7 @@ where
         ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) => {
             let proof_instruction_offset: i8 = proof_instruction_offset.into();
             if &proof_instruction_offset != expected_instruction_offset {
-                return Err(TokenError::InvalidProofInstructionOffset.into());
+                return Err(ProgramError::InvalidInstructionData);
             }
 
             if push_sysvar_to_accounts {
@@ -214,16 +226,4 @@ pub fn zk_proof_type_to_instruction(
         }
         ProofType::Uninitialized => Err(ProgramError::InvalidInstructionData),
     }
-}
-
-/// Instruction options for when using split context state accounts
-#[derive(Clone, Copy)]
-pub struct SplitContextStateAccountsConfig {
-    /// If true, execute no op when an associated split proof context state
-    /// account is not initialized. Otherwise, fail on an uninitialized
-    /// context state account.
-    pub no_op_on_uninitialized_split_context_state: bool,
-    /// Close associated context states after a complete execution of the
-    /// transfer instruction.
-    pub close_split_context_state_on_execution: bool,
 }
