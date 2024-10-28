@@ -135,6 +135,7 @@ pub fn initialize(
     program_id: &Pubkey,
     vote_account_address: &Pubkey,
     payer: &Pubkey,
+    token_program_id: &Pubkey,
     rent: &Rent,
     minimum_delegation: u64,
 ) -> Vec<Instruction> {
@@ -155,7 +156,7 @@ pub fn initialize(
         system_instruction::transfer(payer, &stake_address, stake_rent_plus_minimum),
         system_instruction::transfer(payer, &mint_address, mint_rent),
         initialize_pool(program_id, vote_account_address),
-        create_token_metadata(program_id, &pool_address, payer),
+        create_token_metadata(program_id, &pool_address, payer, token_program_id),
     ]
 }
 
@@ -409,6 +410,7 @@ pub fn create_token_metadata(
     program_id: &Pubkey,
     pool_address: &Pubkey,
     payer: &Pubkey,
+    token_program_id: &Pubkey,
 ) -> Instruction {
     let pool_mint = find_pool_mint_address(program_id, pool_address);
     let (token_metadata, _) = find_metadata_account(&pool_mint);
@@ -428,7 +430,9 @@ pub fn create_token_metadata(
         AccountMeta::new(*payer, true),
         AccountMeta::new(token_metadata, false),
         AccountMeta::new_readonly(inline_mpl_token_metadata::id(), false),
+        AccountMeta::new_readonly(solana_program::sysvar::instructions::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
+        AccountMeta::new_readonly(*token_program_id, false),
     ];
 
     Instruction {
@@ -443,6 +447,7 @@ pub fn update_token_metadata(
     program_id: &Pubkey,
     vote_account_address: &Pubkey,
     authorized_withdrawer: &Pubkey,
+    payer: &Pubkey,
     name: String,
     symbol: String,
     uri: String,
@@ -456,13 +461,17 @@ pub fn update_token_metadata(
     let accounts = vec![
         AccountMeta::new_readonly(*vote_account_address, false),
         AccountMeta::new_readonly(pool_address, false),
+        AccountMeta::new_readonly(pool_mint, false),
         AccountMeta::new_readonly(
             find_pool_mpl_authority_address(program_id, &pool_address),
             false,
         ),
         AccountMeta::new_readonly(*authorized_withdrawer, true),
+        AccountMeta::new(*payer, true),
         AccountMeta::new(token_metadata, false),
         AccountMeta::new_readonly(inline_mpl_token_metadata::id(), false),
+        AccountMeta::new_readonly(solana_program::sysvar::instructions::id(), false),
+        AccountMeta::new_readonly(system_program::id(), false),
     ];
 
     Instruction {

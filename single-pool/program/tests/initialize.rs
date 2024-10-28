@@ -43,6 +43,7 @@ async fn fail_double_init() {
         &id(),
         &accounts.vote_account.pubkey(),
         &context.payer.pubkey(),
+        &spl_token::id(),
         &rent,
         minimum_delegation,
     );
@@ -95,6 +96,7 @@ async fn fail_below_pool_minimum(enable_minimum_delegation: bool) {
         &id(),
         &accounts.vote_account.pubkey(),
         &context.payer.pubkey(),
+        &spl_token::id(),
         &rent,
         minimum_delegation - 1,
     );

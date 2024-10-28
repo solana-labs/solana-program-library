@@ -70,6 +70,7 @@ async fn build_instructions(
             &id(),
             &accounts.vote_account.pubkey(),
             &accounts.alice.pubkey(),
+            &spl_token::id(),
             &rent,
             minimum_delegation,
         )
@@ -226,13 +227,17 @@ fn make_basic_instruction(
             &Pubkey::default(),
             0,
         ),
-        SinglePoolInstruction::CreateTokenMetadata => {
-            instruction::create_token_metadata(&id(), &accounts.pool, &Pubkey::default())
-        }
+        SinglePoolInstruction::CreateTokenMetadata => instruction::create_token_metadata(
+            &id(),
+            &accounts.pool,
+            &Pubkey::default(),
+            &spl_token::id(),
+        ),
         SinglePoolInstruction::UpdateTokenMetadata { .. } => instruction::update_token_metadata(
             &id(),
             &accounts.vote_account.pubkey(),
             &accounts.withdrawer.pubkey(),
+            &Pubkey::default(),
             "".to_string(),
             "".to_string(),
             "".to_string(),

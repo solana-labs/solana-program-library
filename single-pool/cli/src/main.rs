@@ -125,6 +125,7 @@ async fn command_initialize(config: &Config, command_config: InitializeCli) -> C
         &spl_single_pool::id(),
         &vote_account_address,
         &payer.pubkey(),
+        &spl_token::id(),
         &quarantine::get_rent(config).await?,
         quarantine::get_minimum_delegation(config).await?,
     );
@@ -578,6 +579,7 @@ async fn command_create_metadata(
         &spl_single_pool::id(),
         &pool_address,
         &payer.pubkey(),
+        &spl_token::id(),
     );
 
     let transaction = Transaction::new_signed_with_payer(
@@ -649,6 +651,7 @@ async fn command_update_metadata(
         &spl_single_pool::id(),
         &vote_account_address,
         &authorized_withdrawer.pubkey(),
+        &payer.pubkey(),
         command_config.token_name,
         command_config.token_symbol,
         command_config.token_uri.unwrap_or_default(),

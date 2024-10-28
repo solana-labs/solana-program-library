@@ -24,6 +24,7 @@ async fn success_update_pool_token_metadata() {
         &id(),
         &accounts.vote_account.pubkey(),
         &accounts.withdrawer.pubkey(),
+        &context.payer.pubkey(),
         UPDATED_NAME.to_string(),
         UPDATED_SYMBOL.to_string(),
         UPDATED_URI.to_string(),
@@ -59,12 +60,13 @@ async fn fail_no_signature() {
         &id(),
         &accounts.vote_account.pubkey(),
         &accounts.withdrawer.pubkey(),
+        &context.payer.pubkey(),
         UPDATED_NAME.to_string(),
         UPDATED_SYMBOL.to_string(),
         UPDATED_URI.to_string(),
     );
-    assert_eq!(instruction.accounts[3].pubkey, accounts.withdrawer.pubkey());
-    instruction.accounts[3].is_signer = false;
+    assert_eq!(instruction.accounts[4].pubkey, accounts.withdrawer.pubkey());
+    instruction.accounts[4].is_signer = false;
 
     let transaction = Transaction::new_signed_with_payer(
         &[instruction],
@@ -106,6 +108,7 @@ async fn fail_bad_withdrawer(withdrawer_type: BadWithdrawer) {
         &id(),
         &accounts.vote_account.pubkey(),
         &withdrawer.pubkey(),
+        &context.payer.pubkey(),
         UPDATED_NAME.to_string(),
         UPDATED_SYMBOL.to_string(),
         UPDATED_URI.to_string(),
