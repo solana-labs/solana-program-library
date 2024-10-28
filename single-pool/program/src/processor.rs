@@ -1057,6 +1057,7 @@ impl Processor {
         check_mpl_metadata_program(mpl_token_metadata_program_info.key)?;
         check_mpl_metadata_account_address(metadata_info.key, pool_mint_info.key)?;
         check_sysvar_instructions(sysvar_instructions_info.key)?;
+        spl_token_2022::check_spl_token_program_account(token_program_info.key)?;
 
         if !payer_info.is_signer {
             msg!("Payer did not sign metadata creation");
@@ -1136,6 +1137,8 @@ impl Processor {
             return Err(SinglePoolError::InvalidPoolAccount.into());
         }
 
+        check_pool_mint_address(program_id, pool_info.key, mint_info.key)?;
+
         let mpl_authority_bump_seed = check_pool_mpl_authority_address(
             program_id,
             pool_info.key,
@@ -1144,8 +1147,14 @@ impl Processor {
         let pool_mint_address = crate::find_pool_mint_address(program_id, pool_info.key);
         check_mpl_metadata_program(mpl_token_metadata_program_info.key)?;
         check_mpl_metadata_account_address(metadata_info.key, &pool_mint_address)?;
+        check_account_owner(payer_info, &system_program::id())?;
         check_sysvar_instructions(sysvar_instructions_info.key)?;
         check_system_program(system_program_info.key)?;
+
+        if !payer_info.is_signer {
+            msg!("Payer did not sign metadata updates");
+            return Err(SinglePoolError::SignatureMissing.into());
+        }
 
         // we use authorized_withdrawer to authenticate the caller controls the vote
         // account this is safer than using an authorized_voter since those keys
