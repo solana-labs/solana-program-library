@@ -17,7 +17,6 @@ use {
         pubkey::Pubkey,
     },
     solana_zk_sdk::encryption::pod::{auth_encryption::PodAeCiphertext, elgamal::PodElGamalPubkey},
-    spl_pod::optional_keys::OptionalNonZeroPubkey,
 };
 #[cfg(not(target_os = "solana"))]
 use {
@@ -187,9 +186,6 @@ pub enum ConfidentialMintBurnInstruction {
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct InitializeMintData {
-    /// Authority used to modify the `ConfidentialMintBurn` mint
-    /// configuration and mint new tokens
-    pub authority: OptionalNonZeroPubkey,
     /// The ElGamal pubkey used to encrypt the confidential supply
     #[cfg_attr(feature = "serde-traits", serde(with = "elgamalpubkey_fromstr"))]
     pub supply_elgamal_pubkey: PodElGamalPubkey,
@@ -278,21 +274,18 @@ pub struct BurnInstructionData {
 pub fn initialize_mint(
     token_program_id: &Pubkey,
     mint: &Pubkey,
-    authority: &Pubkey,
     supply_elgamal_pubkey: PodElGamalPubkey,
     decryptable_supply: PodAeCiphertext,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let accounts = vec![AccountMeta::new(*mint, false)];
 
-    let authority = Some(*authority);
     Ok(encode_instruction(
         token_program_id,
         accounts,
         TokenInstruction::ConfidentialMintBurnExtension,
         ConfidentialMintBurnInstruction::InitializeMint,
         &InitializeMintData {
-            authority: authority.try_into()?,
             supply_elgamal_pubkey,
             decryptable_supply,
         },

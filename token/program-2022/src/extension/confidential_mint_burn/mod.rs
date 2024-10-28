@@ -5,7 +5,6 @@ use {
         auth_encryption::PodAeCiphertext,
         elgamal::{PodElGamalCiphertext, PodElGamalPubkey},
     },
-    spl_pod::optional_keys::OptionalNonZeroPubkey,
 };
 
 /// Maximum bit length of any mint or burn amount
@@ -33,9 +32,6 @@ pub mod account_info;
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct ConfidentialMintBurn {
-    /// Authority to modify the `ConfidentialMintBurnMint` configuration and to
-    /// mint new confidential tokens
-    pub authority: OptionalNonZeroPubkey,
     /// The confidential supply of the mint (encrypted by `encryption_pubkey`)
     pub confidential_supply: PodElGamalCiphertext,
     /// The decryptable confidential supply of the mint
