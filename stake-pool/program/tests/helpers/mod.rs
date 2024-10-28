@@ -64,12 +64,7 @@ pub fn program_test() -> ProgramTest {
 pub fn program_test_with_metadata_program() -> ProgramTest {
     let mut program_test = ProgramTest::default();
     program_test.add_program("spl_stake_pool", id(), processor!(Processor::process));
-    // program_test.add_program("mpl_token_metadata", inline_mpl_token_metadata::id(), None);
-    program_test.add_program(
-        "mpl_token_2022_metadata",
-        inline_mpl_token_metadata::id(),
-        None,
-    );
+    program_test.add_program("mpl_token_metadata", inline_mpl_token_metadata::id(), None);
     program_test.prefer_bpf(false);
     program_test.add_program(
         "spl_token_2022",
