@@ -35,6 +35,7 @@ use {
             CiphertextCiphertextEqualityProofContext, CiphertextCiphertextEqualityProofData,
         },
     },
+    spl_pod::optional_keys::OptionalNonZeroPubkey,
 };
 
 /// Processes an [InitializeMint] instruction.
@@ -48,7 +49,6 @@ fn process_initialize_mint(accounts: &[AccountInfo], data: &InitializeMintData) 
     let mut mint = PodStateWithExtensionsMut::<PodMint>::unpack_uninitialized(mint_data)?;
     let mint_burn_extension = mint.init_extension::<ConfidentialMintBurn>(true)?;
 
-    mint_burn_extension.authority = data.authority;
     mint_burn_extension.supply_elgamal_pubkey = data.supply_elgamal_pubkey;
     mint_burn_extension.decryptable_supply = data.decryptable_supply;
 
@@ -68,6 +68,7 @@ fn process_rotate_supply_elgamal_pubkey(
     check_program_account(mint_info.owner)?;
     let mint_data = &mut mint_info.data.borrow_mut();
     let mut mint = PodStateWithExtensionsMut::<PodMint>::unpack(mint_data)?;
+    let mint_authority = mint.base.mint_authority;
     let mint_burn_extension = mint.get_extension_mut::<ConfidentialMintBurn>()?;
 
     let proof_context = verify_and_extract_context::<
@@ -95,8 +96,8 @@ fn process_rotate_supply_elgamal_pubkey(
     let authority_info = next_account_info(account_info_iter)?;
     let authority_info_data_len = authority_info.data_len();
 
-    let authority = Option::<Pubkey>::from(mint_burn_extension.authority)
-        .ok_or(TokenError::NoAuthorityExists)?;
+    let authority = OptionalNonZeroPubkey::try_from(mint_authority)?;
+    let authority = Option::<Pubkey>::from(authority).ok_or(TokenError::NoAuthorityExists)?;
 
     Processor::validate_owner(
         program_id,
@@ -126,10 +127,11 @@ fn process_update_decryptable_supply(
     check_program_account(mint_info.owner)?;
     let mint_data = &mut mint_info.data.borrow_mut();
     let mut mint = PodStateWithExtensionsMut::<PodMint>::unpack(mint_data)?;
+    let mint_authority = mint.base.mint_authority;
     let mint_burn_extension = mint.get_extension_mut::<ConfidentialMintBurn>()?;
 
-    let authority = Option::<Pubkey>::from(mint_burn_extension.authority)
-        .ok_or(TokenError::NoAuthorityExists)?;
+    let authority = OptionalNonZeroPubkey::try_from(mint_authority)?;
+    let authority = Option::<Pubkey>::from(authority).ok_or(TokenError::NoAuthorityExists)?;
 
     Processor::validate_owner(
         program_id,
@@ -158,6 +160,7 @@ fn process_confidential_mint(
     check_program_account(mint_info.owner)?;
     let mint_data = &mut mint_info.data.borrow_mut();
     let mut mint = PodStateWithExtensionsMut::<PodMint>::unpack(mint_data)?;
+    let mint_authority = mint.base.mint_authority;
 
     let auditor_elgamal_pubkey = mint
         .get_extension::<ConfidentialTransferMint>()?
@@ -178,8 +181,8 @@ fn process_confidential_mint(
     let authority_info = next_account_info(account_info_iter)?;
     let authority_info_data_len = authority_info.data_len();
 
-    let authority = Option::<Pubkey>::from(mint_burn_extension.authority)
-        .ok_or(TokenError::NoAuthorityExists)?;
+    let authority = OptionalNonZeroPubkey::try_from(mint_authority)?;
+    let authority = Option::<Pubkey>::from(authority).ok_or(TokenError::NoAuthorityExists)?;
 
     Processor::validate_owner(
         program_id,
@@ -314,19 +317,19 @@ fn process_confidential_burn(
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
 
-    let source_transfer_amount_lo = &proof_context
+    let burn_amount_lo = &proof_context
         .burn_amount_ciphertext_lo
         .try_extract_ciphertext(0)
         .map_err(|_| ProgramError::InvalidAccountData)?;
-    let source_transfer_amount_hi = &proof_context
+    let burn_amount_hi = &proof_context
         .burn_amount_ciphertext_hi
         .try_extract_ciphertext(0)
         .map_err(|_| ProgramError::InvalidAccountData)?;
 
     let new_source_available_balance = ciphertext_arithmetic::subtract_with_lo_hi(
         &confidential_transfer_account.available_balance,
-        source_transfer_amount_lo,
-        source_transfer_amount_hi,
+        burn_amount_lo,
+        burn_amount_hi,
     )
     .ok_or(TokenError::CiphertextArithmeticFailed)?;
 
