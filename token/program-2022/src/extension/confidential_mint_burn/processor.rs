@@ -34,7 +34,6 @@ use {
             CiphertextCiphertextEqualityProofContext, CiphertextCiphertextEqualityProofData,
         },
     },
-    spl_pod::optional_keys::OptionalNonZeroPubkey,
     spl_token_confidential_transfer_proof_extraction::instruction::verify_and_extract_context,
 };
 
@@ -95,9 +94,7 @@ fn process_rotate_supply_elgamal_pubkey(
 
     let authority_info = next_account_info(account_info_iter)?;
     let authority_info_data_len = authority_info.data_len();
-
-    let authority = OptionalNonZeroPubkey::try_from(mint_authority)?;
-    let authority = Option::<Pubkey>::from(authority).ok_or(TokenError::NoAuthorityExists)?;
+    let authority = mint_authority.ok_or(TokenError::NoAuthorityExists)?;
 
     Processor::validate_owner(
         program_id,
@@ -121,8 +118,6 @@ fn process_update_decryptable_supply(
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let mint_info = next_account_info(account_info_iter)?;
-    let authority_info = next_account_info(account_info_iter)?;
-    let authority_info_data_len = authority_info.data_len();
 
     check_program_account(mint_info.owner)?;
     let mint_data = &mut mint_info.data.borrow_mut();
@@ -130,8 +125,9 @@ fn process_update_decryptable_supply(
     let mint_authority = mint.base.mint_authority;
     let mint_burn_extension = mint.get_extension_mut::<ConfidentialMintBurn>()?;
 
-    let authority = OptionalNonZeroPubkey::try_from(mint_authority)?;
-    let authority = Option::<Pubkey>::from(authority).ok_or(TokenError::NoAuthorityExists)?;
+    let authority_info = next_account_info(account_info_iter)?;
+    let authority_info_data_len = authority_info.data_len();
+    let authority = mint_authority.ok_or(TokenError::NoAuthorityExists)?;
 
     Processor::validate_owner(
         program_id,
@@ -180,9 +176,7 @@ fn process_confidential_mint(
 
     let authority_info = next_account_info(account_info_iter)?;
     let authority_info_data_len = authority_info.data_len();
-
-    let authority = OptionalNonZeroPubkey::try_from(mint_authority)?;
-    let authority = Option::<Pubkey>::from(authority).ok_or(TokenError::NoAuthorityExists)?;
+    let authority = mint_authority.ok_or(TokenError::NoAuthorityExists)?;
 
     Processor::validate_owner(
         program_id,

@@ -184,7 +184,9 @@ where
                     )
                 }
             };
-            *expected_instruction_offset += 1;
+            *expected_instruction_offset = expected_instruction_offset
+                .checked_add(1)
+                .ok_or(ProgramError::InvalidInstructionData)?;
             Ok(proof_instruction_offset)
         }
         ProofLocation::ContextStateAccount(context_state_account) => {
