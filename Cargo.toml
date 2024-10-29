@@ -50,6 +50,7 @@ members = [
   "shared-memory/program",
   "single-pool/cli",
   "single-pool/program",
+  "slashing/program",
   "stake-pool/cli",
   "stake-pool/program",
   "stateless-asks/program",
