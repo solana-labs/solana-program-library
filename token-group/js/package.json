@@ -51,7 +51,7 @@
     "devDependencies": {
         "@solana/spl-type-length-value": "0.2.0",
         "@solana/web3.js": "^1.95.4",
-        "@types/chai": "^5.0.0",
+        "@types/chai": "^5.0.1",
         "@types/mocha": "^10.0.9",
         "@types/node": "^22.8.2",
         "@typescript-eslint/eslint-plugin": "^8.4.0",
