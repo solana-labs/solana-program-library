@@ -440,9 +440,8 @@ where
         &multisig_member_help,
     )
     .get_matches_from(args);
-    let (sub_command, sub_matches) = app_matches.subcommand();
+    let (sub_command, matches) = app_matches.subcommand().unwrap();
     let sub_command = CommandName::from_str(sub_command).unwrap();
-    let matches = sub_matches.unwrap();
 
     let wallet_manager = None;
     let bulk_signers: Vec<Arc<dyn Signer>> = vec![Arc::new(clone_keypair(payer))];
@@ -460,9 +459,8 @@ async fn exec_test_cmd<T: AsRef<OsStr>>(config: &Config<'_>, args: &[T]) -> Comm
         &multisig_member_help,
     )
     .get_matches_from(args);
-    let (sub_command, sub_matches) = app_matches.subcommand();
+    let (sub_command, matches) = app_matches.subcommand().unwrap();
     let sub_command = CommandName::from_str(sub_command).unwrap();
-    let matches = sub_matches.unwrap();
 
     let mut wallet_manager = None;
     let mut bulk_signers: Vec<Arc<dyn Signer>> = Vec::new();
@@ -520,9 +518,10 @@ async fn create_token_2022(test_validator: &TestValidator, payer: &Keypair) {
         &multisig_member_help,
     )
     .get_matches_from(args);
+    let (_, matches) = app_matches.subcommand().unwrap();
 
     let config = Config::new_with_clients_and_ws_url(
-        &app_matches,
+        matches,
         &mut wallet_manager,
         &mut bulk_signers,
         &mut multisigner_ids,
