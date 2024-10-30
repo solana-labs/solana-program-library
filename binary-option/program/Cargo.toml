@@ -9,7 +9,7 @@ no-entrypoint = []
 test-sbf = []
 
 [dependencies]
-solana-program = "2.0.3"
+solana-program = "2.1.0"
 thiserror = "1.0"
 spl-token = { version = "6.0", path = "../../token/program", features = [
   "no-entrypoint",
