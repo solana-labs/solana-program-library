@@ -25,11 +25,11 @@ Please see [upgrading from 0.1.x](#upgrading-from-01x).
 ## Install
 
 ```shell
-npm install --save @solana/spl-token @solana/web3.js
+npm install --save @solana/spl-token @solana/web3.js@1
 ```
 _OR_
 ```shell
-yarn add @solana/spl-token @solana/web3.js
+yarn add @solana/spl-token @solana/web3.js@1
 ```
 
 ## Build from Source
