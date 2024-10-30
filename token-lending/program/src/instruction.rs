@@ -158,8 +158,10 @@ pub enum LendingInstruction {
     ///
     ///   0. `[writable]` Obligation account.
     ///   1. `[]` Clock sysvar.
-    ///   2. .. `[]` Collateral deposit reserve accounts - refreshed, all, in order.
-    ///   3. .. `[]` Liquidity borrow reserve accounts - refreshed, all, in order.
+    ///   2. .. `[]` Collateral deposit reserve accounts - refreshed, all, in
+    ///      order.
+    ///   3. .. `[]` Liquidity borrow reserve accounts - refreshed, all, in
+    ///      order.
     RefreshObligation,
 
     // 8
@@ -319,10 +321,8 @@ pub enum LendingInstruction {
     ///      above).
     ///   2. `[]` Token program id
     ///   3. .. `[any]` Additional accounts provided to the lending program's
-    ///      `FlashLoan` instruction above.   ReceiveFlashLoan {
-    ///          // Amount that must be repaid by the receiver program
-    ///          amount: u64
-    ///      }
+    ///      `FlashLoan` instruction above.   ReceiveFlashLoan { // Amount that
+    ///      must be repaid by the receiver program amount: u64 }
     FlashLoan {
         /// The amount that is to be borrowed - u64::MAX for up to 100% of
         /// available liquidity

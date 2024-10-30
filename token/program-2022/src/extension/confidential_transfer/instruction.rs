@@ -473,7 +473,8 @@ pub enum ConfidentialTransferInstruction {
     ///   9. `[]` (Optional) Range proof record account or context state
     ///      account.
     ///   10. `[]` The multisig  source account owner.
-    ///   11. .. `[signer]` Required M signer accounts for the SPL Token Multisig
+    ///   11. .. `[signer]` Required M signer accounts for the SPL Token
+    ///       Multisig
     ///
     /// Data expected by this instruction:
     ///   `TransferWithFeeInstructionData`
