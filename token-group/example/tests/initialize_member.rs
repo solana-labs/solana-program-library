@@ -64,7 +64,7 @@ async fn test_initialize_group_member() {
     )
     .await;
 
-    let mut context = context.lock().await;
+    let context = context.lock().await;
 
     let rent = context.banks_client.get_rent().await.unwrap();
     let space = TlvStateBorrowed::get_base_len() + std::mem::size_of::<TokenGroup>();

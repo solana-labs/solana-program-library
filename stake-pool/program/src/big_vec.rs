@@ -83,8 +83,8 @@ impl<'data> BigVec<'data> {
             }
         }
 
-        let mut vec_len_ref = &mut self.data[0..VEC_SIZE_BYTES];
-        borsh::to_writer(&mut vec_len_ref, &vec_len)?;
+        let vec_len_ref = &mut self.data[0..VEC_SIZE_BYTES];
+        borsh::to_writer(vec_len_ref, &vec_len)?;
 
         Ok(())
     }
@@ -127,14 +127,14 @@ impl<'data> BigVec<'data> {
 
     /// Add new element to the end
     pub fn push<T: Pod>(&mut self, element: T) -> Result<(), ProgramError> {
-        let mut vec_len_ref = &mut self.data[0..VEC_SIZE_BYTES];
+        let vec_len_ref = &mut self.data[0..VEC_SIZE_BYTES];
         let mut vec_len = u32::try_from_slice(vec_len_ref)?;
 
         let start_index = VEC_SIZE_BYTES + vec_len as usize * mem::size_of::<T>();
         let end_index = start_index + mem::size_of::<T>();
 
         vec_len += 1;
-        borsh::to_writer(&mut vec_len_ref, &vec_len)?;
+        borsh::to_writer(vec_len_ref, &vec_len)?;
 
         if self.data.len() < end_index {
             return Err(ProgramError::AccountDataTooSmall);

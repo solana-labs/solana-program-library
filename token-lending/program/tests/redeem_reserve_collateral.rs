@@ -52,7 +52,7 @@ async fn test_success() {
         },
     );
 
-    let (mut banks_client, payer, recent_blockhash) = test.start().await;
+    let (banks_client, payer, recent_blockhash) = test.start().await;
 
     let user_transfer_authority = Keypair::new();
     let mut transaction = Transaction::new_with_payer(

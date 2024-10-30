@@ -78,7 +78,7 @@ async fn initialize_success() {
 
 #[tokio::test]
 async fn initialize_with_seed_success() {
-    let mut context = program_test().start_with_context().await;
+    let context = program_test().start_with_context().await;
 
     let authority = Keypair::new();
     let seed = "storage";

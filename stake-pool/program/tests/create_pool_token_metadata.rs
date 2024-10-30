@@ -83,7 +83,7 @@ async fn success(token_program_id: Pubkey) {
 
 #[tokio::test]
 async fn fail_manager_did_not_sign() {
-    let (mut context, stake_pool_accounts) = setup(spl_token::id()).await;
+    let (context, stake_pool_accounts) = setup(spl_token::id()).await;
 
     let name = "test_name";
     let symbol = "SYM";
@@ -127,7 +127,7 @@ async fn fail_manager_did_not_sign() {
 
 #[tokio::test]
 async fn fail_wrong_manager_signed() {
-    let (mut context, stake_pool_accounts) = setup(spl_token::id()).await;
+    let (context, stake_pool_accounts) = setup(spl_token::id()).await;
 
     let name = "test_name";
     let symbol = "SYM";
@@ -171,7 +171,7 @@ async fn fail_wrong_manager_signed() {
 
 #[tokio::test]
 async fn fail_wrong_mpl_metadata_program() {
-    let (mut context, stake_pool_accounts) = setup(spl_token::id()).await;
+    let (context, stake_pool_accounts) = setup(spl_token::id()).await;
 
     let name = "test_name";
     let symbol = "SYM";
@@ -217,7 +217,7 @@ async fn fail_wrong_mpl_metadata_program() {
 
 #[tokio::test]
 async fn fail_create_metadata_twice() {
-    let (mut context, stake_pool_accounts) = setup(spl_token::id()).await;
+    let (context, stake_pool_accounts) = setup(spl_token::id()).await;
 
     let name = "test_name";
     let symbol = "SYM";

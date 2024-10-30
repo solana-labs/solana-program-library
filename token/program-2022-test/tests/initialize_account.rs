@@ -27,7 +27,7 @@ use {
 #[tokio::test]
 async fn no_extensions() {
     let context = TestContext::new().await;
-    let mut ctx = context.context.lock().await;
+    let ctx = context.context.lock().await;
     let rent = ctx.banks_client.get_rent().await.unwrap();
     let mint_account = Keypair::new();
     let mint_authority_pubkey = Pubkey::new_unique();
@@ -98,7 +98,7 @@ async fn no_extensions() {
 #[tokio::test]
 async fn fail_on_invalid_mint() {
     let context = TestContext::new().await;
-    let mut ctx = context.context.lock().await;
+    let ctx = context.context.lock().await;
     let rent = ctx.banks_client.get_rent().await.unwrap();
     let mint_account = Keypair::new();
 
@@ -161,7 +161,7 @@ async fn fail_on_invalid_mint() {
 #[tokio::test]
 async fn single_extension() {
     let context = TestContext::new().await;
-    let mut ctx = context.context.lock().await;
+    let ctx = context.context.lock().await;
     let rent = ctx.banks_client.get_rent().await.unwrap();
     let mint_account = Keypair::new();
     let mint_authority_pubkey = Pubkey::new_unique();

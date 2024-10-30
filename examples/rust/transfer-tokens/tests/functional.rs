@@ -33,7 +33,7 @@ async fn success() {
     let rent = Rent::default();
 
     // Start the program test
-    let (mut banks_client, payer, recent_blockhash) = program_test.start().await;
+    let (banks_client, payer, recent_blockhash) = program_test.start().await;
 
     // Setup the mint, used in `spl_token::instruction::transfer_checked`
     let transaction = Transaction::new_signed_with_payer(
