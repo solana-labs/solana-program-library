@@ -2,7 +2,7 @@
 use {
     crate::{clap_app::Error, command::CommandResult, config::Config},
     clap::{value_t_or_exit, ArgMatches},
-    solana_clap_utils::input_parsers::pubkey_of_signer,
+    solana_clap_v3_utils::input_parsers::pubkey_of_signer,
     solana_client::{
         nonblocking::rpc_client::RpcClient, rpc_client::RpcClient as BlockingRpcClient,
         tpu_client::TpuClient, tpu_client::TpuClientConfig,
@@ -22,7 +22,7 @@ use {
 };
 
 pub(crate) async fn bench_process_command(
-    matches: &ArgMatches<'_>,
+    matches: &ArgMatches,
     config: &Config<'_>,
     mut signers: Vec<Arc<dyn Signer>>,
     wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
@@ -30,7 +30,7 @@ pub(crate) async fn bench_process_command(
     assert!(!config.sign_only);
 
     match matches.subcommand() {
-        ("create-accounts", Some(arg_matches)) => {
+        Some(("create-accounts", arg_matches)) => {
             let token = pubkey_of_signer(arg_matches, "token", wallet_manager)
                 .unwrap()
                 .unwrap();
@@ -42,7 +42,7 @@ pub(crate) async fn bench_process_command(
 
             command_create_accounts(config, signers, &token, n, &owner).await?;
         }
-        ("close-accounts", Some(arg_matches)) => {
+        Some(("close-accounts", arg_matches)) => {
             let token = pubkey_of_signer(arg_matches, "token", wallet_manager)
                 .unwrap()
                 .unwrap();
@@ -53,7 +53,7 @@ pub(crate) async fn bench_process_command(
 
             command_close_accounts(config, signers, &token, n, &owner).await?;
         }
-        ("deposit-into", Some(arg_matches)) => {
+        Some(("deposit-into", arg_matches)) => {
             let token = pubkey_of_signer(arg_matches, "token", wallet_manager)
                 .unwrap()
                 .unwrap();
@@ -68,7 +68,7 @@ pub(crate) async fn bench_process_command(
             )
             .await?;
         }
-        ("withdraw-from", Some(arg_matches)) => {
+        Some(("withdraw-from", arg_matches)) => {
             let token = pubkey_of_signer(arg_matches, "token", wallet_manager)
                 .unwrap()
                 .unwrap();
