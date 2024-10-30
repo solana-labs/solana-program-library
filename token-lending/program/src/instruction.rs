@@ -158,8 +158,8 @@ pub enum LendingInstruction {
     ///
     ///   0. `[writable]` Obligation account.
     ///   1. `[]` Clock sysvar.
-    /// .. `[]` Collateral deposit reserve accounts - refreshed, all, in order.
-    /// .. `[]` Liquidity borrow reserve accounts - refreshed, all, in order.
+    ///   2. .. `[]` Collateral deposit reserve accounts - refreshed, all, in order.
+    ///   3. .. `[]` Liquidity borrow reserve accounts - refreshed, all, in order.
     RefreshObligation,
 
     // 8
@@ -302,8 +302,8 @@ pub enum LendingInstruction {
     ///   8. `[]` Flash loan receiver program id. Must implement an instruction
     ///      that has tag of 0 and a signature of `(amount: u64)` This
     ///      instruction must return the amount to the source liquidity account.
-    /// .. `[any]` Additional accounts expected by the receiving program's
-    /// `ReceiveFlashLoan` instruction.
+    ///   9. .. `[any]` Additional accounts expected by the receiving program's
+    ///      `ReceiveFlashLoan` instruction.
     ///
     ///   The flash loan receiver program that is to be invoked should contain
     /// an instruction with   tag `0` and accept the total amount (including
@@ -318,11 +318,11 @@ pub enum LendingInstruction {
     ///   1. `[writable]` Destination liquidity (matching the source from
     ///      above).
     ///   2. `[]` Token program id
-    ///   .. `[any]` Additional accounts provided to the lending program's
-    /// `FlashLoan` instruction above.   ReceiveFlashLoan {
-    ///       // Amount that must be repaid by the receiver program
-    ///       amount: u64
-    ///  }
+    ///   3. .. `[any]` Additional accounts provided to the lending program's
+    ///      `FlashLoan` instruction above.   ReceiveFlashLoan {
+    ///          // Amount that must be repaid by the receiver program
+    ///          amount: u64
+    ///      }
     FlashLoan {
         /// The amount that is to be borrowed - u64::MAX for up to 100% of
         /// available liquidity

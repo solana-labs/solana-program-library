@@ -104,10 +104,9 @@ pub enum TokenMetadataInstruction {
     /// By the end of the instruction, the metadata account must be properly
     /// resized based on the new size of the TLV entry.
     ///   * If the new size is larger, the program must first reallocate to
-    ///     avoid
-    ///   overwriting other TLV entries.
+    ///     avoid overwriting other TLV entries.
     ///   * If the new size is smaller, the program must reallocate at the end
-    ///   so that it's possible to iterate over TLV entries
+    ///     so that it's possible to iterate over TLV entries
     ///
     /// Accounts expected by this instruction:
     ///

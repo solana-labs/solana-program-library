@@ -91,7 +91,7 @@ pub enum ConfidentialTransferFeeInstruction {
     ///   3. `[]` (Optional) Record account if the accompanying proof is to be
     ///      read from a record account.
     ///   4. `[]` The mint's multisig `withdraw_withheld_authority`.
-    ///   5. ..3+M `[signer]` M signer accounts.
+    ///   5. ..5+M `[signer]` M signer accounts.
     ///
     /// Data expected by this instruction:
     ///   WithdrawWithheldTokensFromMintData
@@ -158,7 +158,7 @@ pub enum ConfidentialTransferFeeInstruction {
     ///      read from a record account.
     ///   4. `[]` The mint's multisig `withdraw_withheld_authority`.
     ///   5. ..5+M `[signer]` M signer accounts.
-    ///   5+M+1. ..5+M+N `[writable]` The source accounts to withdraw from.
+    ///   6. 5+M+1..5+M+N `[writable]` The source accounts to withdraw from.
     ///
     /// Data expected by this instruction:
     ///   WithdrawWithheldTokensFromAccountsData

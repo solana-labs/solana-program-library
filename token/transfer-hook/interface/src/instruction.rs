@@ -26,8 +26,8 @@ pub enum TransferHookInstruction {
     ///   2. `[]` Destination account
     ///   3. `[]` Source account's owner/delegate
     ///   4. `[]` (Optional) Validation account
-    ///   5..5+M `[]` `M` optional additional accounts, written in validation
-    /// account     data
+    ///   5. ..5+M `[]` `M` optional additional accounts, written in validation
+    ///      account data
     Execute {
         /// Amount of tokens to transfer
         amount: u64,

@@ -108,9 +108,9 @@ pub enum SwapInstruction {
     ///   4. `[writable]` Pool Token Mint. Must be empty, owned by swap
     ///      authority.
     ///   5. `[]` Pool Token Account to deposit trading and withdraw fees.
-    ///   Must be empty, not owned by swap authority
+    ///      Must be empty, not owned by swap authority
     ///   6. `[writable]` Pool Token Account to deposit the initial pool token
-    ///   supply.  Must be empty, not owned by swap authority.
+    ///      supply. Must be empty, not owned by swap authority.
     ///   7. `[]` Pool Token program id
     Initialize(Initialize),
 
