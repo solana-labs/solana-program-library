@@ -20,3 +20,6 @@ uint = "0.10"
 
 [lib]
 crate-type = ["cdylib", "lib"]
+
+[lints]
+workspace = true

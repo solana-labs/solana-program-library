@@ -39,3 +39,6 @@ approx = "0.5.1"
 
 [lib]
 crate-type = ["cdylib", "lib"]
+
+[lints]
+workspace = true

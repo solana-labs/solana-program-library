@@ -16,3 +16,6 @@ thiserror = "1.0.65"
 
 [lib]
 crate-type = ["cdylib", "lib"]
+
+[lints]
+workspace = true

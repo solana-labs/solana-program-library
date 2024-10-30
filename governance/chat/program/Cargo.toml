@@ -42,3 +42,6 @@ spl-governance-addin-mock = { version = "0.1.4", path = "../../addin-mock/progra
 
 [lib]
 crate-type = ["cdylib", "lib"]
+
+[lints]
+workspace = true

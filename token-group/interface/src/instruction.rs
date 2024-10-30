@@ -245,11 +245,6 @@ pub fn initialize_member(
 mod test {
     use {super::*, crate::NAMESPACE, solana_program::hash};
 
-    #[repr(C)]
-    #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable, SplDiscriminate)]
-    #[discriminator_hash_input("mock_group")]
-    struct MockGroup;
-
     fn instruction_pack_unpack<I>(instruction: TokenGroupInstruction, discriminator: &[u8], data: I)
     where
         I: core::fmt::Debug + PartialEq + Pod + Zeroable + SplDiscriminate,

@@ -38,3 +38,6 @@ spl-governance-test-sdk = { version = "0.1.4", path = "../../test-sdk" }
 
 [lib]
 crate-type = ["cdylib", "lib"]
+
+[lints]
+workspace = true
