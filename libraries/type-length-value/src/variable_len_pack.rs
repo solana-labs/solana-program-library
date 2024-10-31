@@ -1,6 +1,6 @@
 //! The [`VariableLenPack`] serialization trait.
 
-use solana_program::program_error::ProgramError;
+use solana_program_error::ProgramError;
 
 /// Trait that mimics a lot of the functionality of
 /// `solana_program::program_pack::Pack` but specifically works for

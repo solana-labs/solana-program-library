@@ -8965,11 +8965,16 @@ name = "spl-type-length-value"
 version = "0.6.0"
 dependencies = [
  "bytemuck",
- "solana-program",
+ "num-derive",
+ "num-traits",
+ "solana-account-info",
+ "solana-decode-error",
+ "solana-msg",
+ "solana-program-error",
  "spl-discriminator 0.3.0",
  "spl-pod 0.4.0",
- "spl-program-error 0.5.0",
  "spl-type-length-value-derive",
+ "thiserror",
 ]
 
 [[package]]
