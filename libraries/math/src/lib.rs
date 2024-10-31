@@ -3,13 +3,11 @@
 #![deny(missing_docs)]
 #![forbid(unsafe_code)]
 
-pub mod approximations;
-pub mod checked_ceil_div;
 mod entrypoint;
 pub mod error;
 pub mod instruction;
-pub mod precise_number;
 pub mod processor;
-pub mod uint;
+
+pub use spl_math_utils::{approximations, checked_ceil_div, precise_number, uint};
 
 solana_program::declare_id!("Math111111111111111111111111111111111111111");

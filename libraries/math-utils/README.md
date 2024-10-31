@@ -1,6 +1,6 @@
 # Math
 
-Program wrapper around the spl-math-utils crate. The program exists for testing purposes.
+Library with utilities for on-chain math.
 
 ## Audit
 

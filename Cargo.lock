@@ -8135,7 +8135,18 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
+ "spl-math-utils",
  "thiserror",
+ "uint",
+]
+
+[[package]]
+name = "spl-math-utils"
+version = "0.1.0"
+dependencies = [
+ "libm",
+ "num-traits",
+ "proptest",
  "uint",
 ]
 
