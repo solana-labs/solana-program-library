@@ -8364,7 +8364,6 @@ dependencies = [
  "solana-sdk",
  "solana-security-txt",
  "solana-vote-program",
- "spl-math",
  "spl-pod 0.4.0",
  "spl-token 6.0.0",
  "spl-token-2022 5.0.2",
