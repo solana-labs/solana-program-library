@@ -36,11 +36,8 @@ pub fn process_instruction(
 #[cfg(test)]
 mod tests {
     use {
-        super::*,
-        solana_account_info::IntoAccountInfo,
-        solana_program_error::ProgramError,
-        solana_pubkey::Pubkey,
-        solana_sdk::account::Account,
+        super::*, solana_account_info::IntoAccountInfo, solana_program_error::ProgramError,
+        solana_pubkey::Pubkey, solana_sdk::account::Account,
     };
 
     #[test]
