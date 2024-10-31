@@ -37,9 +37,9 @@ pub fn process_instruction(
 mod tests {
     use {
         super::*,
-        solana_program::{
-            account_info::IntoAccountInfo, program_error::ProgramError, pubkey::Pubkey,
-        },
+        solana_account_info::IntoAccountInfo,
+        solana_program_error::ProgramError,
+        solana_pubkey::Pubkey,
         solana_sdk::account::Account,
     };
 
