@@ -18,13 +18,10 @@ num-traits = "0.2"
 solana-program = "2.1.0"
 spl-math-utils = { path = "../math-utils", version = "0.1.0" }
 thiserror = "1.0"
-uint = "0.10"
 
 [dev-dependencies]
-proptest = "1.5.0"
 solana-program-test = "2.1.0"
 solana-sdk = "2.1.0"
-libm = "0.2.11"
 
 [lib]
 crate-type = ["cdylib", "lib"]

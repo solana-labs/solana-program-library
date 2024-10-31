@@ -8128,16 +8128,13 @@ name = "spl-math"
 version = "0.3.0"
 dependencies = [
  "borsh 1.5.1",
- "libm",
  "num-derive",
  "num-traits",
- "proptest",
  "solana-program",
  "solana-program-test",
  "solana-sdk",
  "spl-math-utils",
  "thiserror",
- "uint",
 ]
 
 [[package]]
