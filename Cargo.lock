@@ -8816,7 +8816,7 @@ dependencies = [
  "roots",
  "solana-program",
  "solana-sdk",
- "spl-math",
+ "spl-math-utils",
  "spl-token 6.0.0",
  "spl-token-2022 5.0.2",
  "test-case",

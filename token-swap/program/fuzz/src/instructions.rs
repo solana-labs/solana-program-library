@@ -2,7 +2,7 @@
 use {
     arbitrary::Arbitrary,
     honggfuzz::fuzz,
-    spl_math::precise_number::PreciseNumber,
+    spl_math_utils::precise_number::PreciseNumber,
     spl_token::error::TokenError,
     spl_token_swap::{
         curve::{

@@ -12,7 +12,7 @@ use {
         program_error::ProgramError,
         program_pack::{IsInitialized, Pack, Sealed},
     },
-    spl_math::{checked_ceil_div::CheckedCeilDiv, precise_number::PreciseNumber, uint::U256},
+    spl_math_utils::{checked_ceil_div::CheckedCeilDiv, precise_number::PreciseNumber, uint::U256},
 };
 
 /// Get the amount of pool tokens for the given amount of token A or B.
