@@ -98,7 +98,7 @@ mod tests {
     }
 
     fn build_discriminator(hash_input: &str) -> ArrayDiscriminator {
-        let preimage = solana_program::hash::hashv(&[hash_input.as_bytes()]);
+        let preimage = solana_sha256_hasher::hashv(&[hash_input.as_bytes()]);
         let mut bytes = [0u8; 8];
         bytes.copy_from_slice(&preimage.to_bytes()[..8]);
         ArrayDiscriminator::new(bytes)

@@ -2,7 +2,8 @@
 
 use {
     bytemuck::{Pod, Zeroable},
-    solana_program::{hash, program_error::ProgramError},
+    solana_program_error::ProgramError,
+    solana_sha256_hasher::hashv,
 };
 
 /// A trait for managing 8-byte discriminators in a slab of bytes
@@ -36,7 +37,7 @@ impl ArrayDiscriminator {
     }
     /// Creates a new `ArrayDiscriminator` from some hash input string literal
     pub fn new_with_hash_input(hash_input: &str) -> Self {
-        let hash_bytes = hash::hashv(&[hash_input.as_bytes()]).to_bytes();
+        let hash_bytes = hashv(&[hash_input.as_bytes()]).to_bytes();
         let mut discriminator_bytes = [0u8; 8];
         discriminator_bytes.copy_from_slice(&hash_bytes[..8]);
         Self(discriminator_bytes)
