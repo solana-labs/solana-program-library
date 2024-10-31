@@ -8720,7 +8720,6 @@ dependencies = [
  "solana-sha256-hasher",
  "spl-discriminator 0.3.0",
  "spl-pod 0.4.0",
- "spl-program-error 0.5.0",
  "spl-type-length-value 0.6.0",
  "thiserror",
 ]
