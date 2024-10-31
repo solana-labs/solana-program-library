@@ -8144,8 +8144,13 @@ dependencies = [
 name = "spl-memo"
 version = "5.0.0"
 dependencies = [
- "solana-program",
+ "solana-account-info",
+ "solana-instruction",
+ "solana-msg",
+ "solana-program-entrypoint",
+ "solana-program-error",
  "solana-program-test",
+ "solana-pubkey",
  "solana-sdk",
 ]
 
