@@ -1,7 +1,7 @@
 [package]
-name = "spl-math-utils"
-version = "0.1.0"
-description = "Solana Program Library Math Utils"
+name = "spl-math"
+version = "0.3.0"
+description = "Solana Program Library Math"
 authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
 repository = "https://github.com/solana-labs/solana-program-library"
 license = "Apache-2.0"

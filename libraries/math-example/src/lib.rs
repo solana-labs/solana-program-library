@@ -8,6 +8,6 @@ pub mod error;
 pub mod instruction;
 pub mod processor;
 
-pub use spl_math_utils::{approximations, checked_ceil_div, precise_number, uint};
+pub use spl_math::{approximations, checked_ceil_div, precise_number, uint};
 
 solana_program::declare_id!("Math111111111111111111111111111111111111111");
