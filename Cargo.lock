@@ -8714,7 +8714,6 @@ dependencies = [
  "solana-decode-error",
  "solana-instruction",
  "solana-msg",
- "solana-program",
  "solana-program-error",
  "solana-pubkey",
  "solana-sha256-hasher",

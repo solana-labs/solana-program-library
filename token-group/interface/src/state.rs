@@ -3,7 +3,8 @@
 use {
     crate::error::TokenGroupError,
     bytemuck::{Pod, Zeroable},
-    solana_program::{program_error::ProgramError, pubkey::Pubkey},
+    solana_program_error::ProgramError,
+    solana_pubkey::Pubkey,
     spl_discriminator::SplDiscriminate,
     spl_pod::{error::PodSliceError, optional_keys::OptionalNonZeroPubkey, primitives::PodU64},
 };
