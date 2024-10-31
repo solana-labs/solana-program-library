@@ -102,8 +102,8 @@ pub enum ConfidentialTransferInstruction {
     ///   3. `[]` (Optional) Record account if the accompanying proof is to be
     ///      read from a record account.
     ///   4. `[]` The multisig source account owner.
-    ///   5.. `[signer]` Required M signer accounts for the SPL Token Multisig
-    /// account.
+    ///   5. .. `[signer]` Required M signer accounts for the SPL Token Multisig
+    ///      account.
     ///
     /// Data expected by this instruction:
     ///   `ConfigureAccountInstructionData`
@@ -166,8 +166,8 @@ pub enum ConfidentialTransferInstruction {
     ///   2. `[]` (Optional) Record account if the accompanying proof is to be
     ///      read from a record account.
     ///   3. `[]` The multisig account owner.
-    ///   4.. `[signer]` Required M signer accounts for the SPL Token Multisig
-    /// account.
+    ///   4. .. `[signer]` Required M signer accounts for the SPL Token Multisig
+    ///      account.
     ///
     /// Data expected by this instruction:
     ///   `EmptyAccountInstructionData`
@@ -195,8 +195,8 @@ pub enum ConfidentialTransferInstruction {
     ///   0. `[writable]` The SPL Token account.
     ///   1. `[]` The token mint.
     ///   2. `[]` The multisig account owner or delegate.
-    ///   3.. `[signer]` Required M signer accounts for the SPL Token Multisig
-    /// account.
+    ///   3. .. `[signer]` Required M signer accounts for the SPL Token Multisig
+    ///      account.
     ///
     /// Data expected by this instruction:
     ///   `DepositInstructionData`
@@ -208,8 +208,10 @@ pub enum ConfidentialTransferInstruction {
     /// In order for this instruction to be successfully processed, it must be
     /// accompanied by the following list of `zk_elgamal_proof` program
     /// instructions:
+    ///
     /// - `VerifyCiphertextCommitmentEquality`
     /// - `VerifyBatchedRangeProofU64`
+    ///
     /// These instructions can be accompanied in the same transaction or can be
     /// pre-verified into a context state account, in which case, only their
     /// context state account address need to be provided.
@@ -243,8 +245,8 @@ pub enum ConfidentialTransferInstruction {
     ///   4. `[]` (Optional) Range proof record account or context state
     ///      account.
     ///   5. `[]` The multisig  source account owner.
-    ///   6.. `[signer]` Required M signer accounts for the SPL Token Multisig
-    /// account.
+    ///   6. .. `[signer]` Required M signer accounts for the SPL Token Multisig
+    ///      account.
     ///
     /// Data expected by this instruction:
     ///   `WithdrawInstructionData`
@@ -255,9 +257,11 @@ pub enum ConfidentialTransferInstruction {
     /// In order for this instruction to be successfully processed, it must be
     /// accompanied by the following list of `zk_elgamal_proof` program
     /// instructions:
+    ///
     /// - `VerifyCiphertextCommitmentEquality`
     /// - `VerifyBatchedGroupedCiphertext3HandlesValidity`
     /// - `VerifyBatchedRangeProofU128`
+    ///
     /// These instructions can be accompanied in the same transaction or can be
     /// pre-verified into a context state account, in which case, only their
     /// context state account addresses need to be provided.
@@ -293,8 +297,8 @@ pub enum ConfidentialTransferInstruction {
     ///   7. `[]` (Optional) Range proof record account or context state
     ///      account.
     ///   8. `[]` The multisig  source account owner.
-    ///   9.. `[signer]` Required M signer accounts for the SPL Token Multisig
-    /// account.
+    ///   9. .. `[signer]` Required M signer accounts for the SPL Token Multisig
+    ///      account.
     ///
     /// Data expected by this instruction:
     ///   `TransferInstructionData`
@@ -321,8 +325,8 @@ pub enum ConfidentialTransferInstruction {
     ///   * Multisignature owner/delegate
     ///   0. `[writable]` The SPL Token account.
     ///   1. `[]` The multisig account owner.
-    ///   2.. `[signer]` Required M signer accounts for the SPL Token Multisig
-    /// account.
+    ///   2. .. `[signer]` Required M signer accounts for the SPL Token Multisig
+    ///      account.
     ///
     /// Data expected by this instruction:
     ///   `ApplyPendingBalanceData`
@@ -340,8 +344,8 @@ pub enum ConfidentialTransferInstruction {
     ///   * Multisignature owner/delegate
     ///   0. `[writable]` The SPL Token account.
     ///   1. `[]` Multisig authority.
-    ///   2.. `[signer]` Required M signer accounts for the SPL Token Multisig
-    /// account.
+    ///   2. .. `[signer]` Required M signer accounts for the SPL Token Multisig
+    ///      account.
     ///
     /// Data expected by this instruction:
     ///   None
@@ -365,8 +369,8 @@ pub enum ConfidentialTransferInstruction {
     ///   * Multisignature owner/delegate
     ///   0. `[writable]` The SPL Token account.
     ///   1. `[]` The multisig account owner.
-    ///   2.. `[signer]` Required M signer accounts for the SPL Token Multisig
-    /// account.
+    ///   2. .. `[signer]` Required M signer accounts for the SPL Token Multisig
+    ///      account.
     ///
     /// Data expected by this instruction:
     ///   None
@@ -384,8 +388,8 @@ pub enum ConfidentialTransferInstruction {
     ///   * Multisignature owner/delegate
     ///   0. `[writable]` The SPL Token account.
     ///   1. `[]` The multisig account owner.
-    ///   2.. `[signer]` Required M signer accounts for the SPL Token Multisig
-    /// account.
+    ///   2. .. `[signer]` Required M signer accounts for the SPL Token Multisig
+    ///      account.
     ///
     /// Data expected by this instruction:
     ///   None
@@ -406,8 +410,8 @@ pub enum ConfidentialTransferInstruction {
     ///   * Multisignature owner/delegate
     ///   0. `[writable]` The SPL Token account.
     ///   1. `[]` The multisig account owner.
-    ///   2.. `[signer]` Required M signer accounts for the SPL Token Multisig
-    /// account.
+    ///   2. .. `[signer]` Required M signer accounts for the SPL Token Multisig
+    ///      account.
     ///
     /// Data expected by this instruction:
     ///   None
@@ -418,12 +422,14 @@ pub enum ConfidentialTransferInstruction {
     /// In order for this instruction to be successfully processed, it must be
     /// accompanied by the following list of `zk_elgamal_proof` program
     /// instructions:
+    ///
     /// - `VerifyCiphertextCommitmentEquality`
     /// - `VerifyBatchedGroupedCiphertext3HandlesValidity` (transfer amount
     ///   ciphertext)
     /// - `VerifyPercentageWithFee`
     /// - `VerifyBatchedGroupedCiphertext2HandlesValidity` (fee ciphertext)
     /// - `VerifyBatchedRangeProofU256`
+    ///
     /// These instructions can be accompanied in the same transaction or can be
     /// pre-verified into a context state account, in which case, only their
     /// context state account addresses need to be provided.
@@ -469,7 +475,8 @@ pub enum ConfidentialTransferInstruction {
     ///   9. `[]` (Optional) Range proof record account or context state
     ///      account.
     ///   10. `[]` The multisig  source account owner.
-    ///   11.. `[signer]` Required M signer accounts for the SPL Token Multisig
+    ///   11. .. `[signer]` Required M signer accounts for the SPL Token
+    ///       Multisig
     ///
     /// Data expected by this instruction:
     ///   `TransferWithFeeInstructionData`

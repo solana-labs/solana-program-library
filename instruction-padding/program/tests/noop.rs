@@ -13,7 +13,7 @@ async fn success_with_noop() {
     let program_id = Pubkey::new_unique();
     let program_test = ProgramTest::new("spl_instruction_padding", program_id, processor!(process));
 
-    let mut context = program_test.start_with_context().await;
+    let context = program_test.start_with_context().await;
 
     let padding_accounts = vec![
         AccountMeta::new_readonly(Pubkey::new_unique(), false),

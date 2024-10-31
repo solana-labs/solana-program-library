@@ -164,7 +164,7 @@ async fn success(original_program_id: Pubkey, new_program_id: Pubkey) {
         .unwrap();
 
     {
-        let mut context = context.lock().await;
+        let context = context.lock().await;
         let transaction = Transaction::new_signed_with_payer(
             &[exchange(
                 &spl_token_upgrade::id(),
@@ -285,7 +285,7 @@ async fn fail_incorrect_escrow_derivation(original_program_id: Pubkey, new_progr
         &[],
     );
     instruction.accounts[5] = AccountMeta::new_readonly(program_escrow, false);
-    let mut context = context.lock().await;
+    let context = context.lock().await;
     let transaction = Transaction::new_signed_with_payer(
         &[instruction],
         Some(&context.payer.pubkey()),
@@ -379,7 +379,7 @@ async fn fail_decimals_mismatch(original_program_id: Pubkey, new_program_id: Pub
         .await
         .unwrap();
 
-    let mut context = context.lock().await;
+    let context = context.lock().await;
     let transaction = Transaction::new_signed_with_payer(
         &[exchange(
             &spl_token_upgrade::id(),

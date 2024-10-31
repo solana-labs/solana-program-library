@@ -2847,7 +2847,7 @@ async fn confidential_transfer_configure_token_account_with_registry() {
     let elgamal_keypair = ElGamalKeypair::new_rand();
 
     // create ElGamal registry
-    let mut ctx = context.context.lock().await;
+    let ctx = context.context.lock().await;
     let proof_data =
         confidential_transfer::instruction::PubkeyValidityProofData::new(&elgamal_keypair).unwrap();
     let proof_location = ProofLocation::InstructionOffset(

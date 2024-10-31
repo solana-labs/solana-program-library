@@ -765,10 +765,9 @@ impl Sealed for ValidatorStakeInfo {}
 impl Pack for ValidatorStakeInfo {
     const LEN: usize = 73;
     fn pack_into_slice(&self, data: &mut [u8]) {
-        let mut data = data;
         // Removing this unwrap would require changing from `Pack` to some other
         // trait or `bytemuck`, so it stays in for now
-        borsh::to_writer(&mut data, self).unwrap();
+        borsh::to_writer(data, self).unwrap();
     }
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
         let unpacked = Self::try_from_slice(src)?;

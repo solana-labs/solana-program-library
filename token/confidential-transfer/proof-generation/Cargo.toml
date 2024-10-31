@@ -8,11 +8,14 @@ license = "Apache-2.0"
 edition = "2021"
 
 [dependencies]
-curve25519-dalek = "3.2.1"
-solana-zk-sdk = "2.0.3"
+curve25519-dalek = "4.1.3"
+solana-zk-sdk = "2.1.0"
 thiserror = "1.0.65"
 
 [dev-dependencies]
 
 [lib]
 crate-type = ["cdylib", "lib"]
+
+[lints]
+workspace = true

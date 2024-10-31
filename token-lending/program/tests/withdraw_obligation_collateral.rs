@@ -319,7 +319,7 @@ async fn test_withdraw_too_large() {
         },
     );
 
-    let (mut banks_client, payer, recent_blockhash) = test.start().await;
+    let (banks_client, payer, recent_blockhash) = test.start().await;
 
     let mut transaction = Transaction::new_with_payer(
         &[

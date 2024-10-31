@@ -23,7 +23,7 @@ async fn success_create() {
     let associated_token_address =
         get_associated_token_address(&wallet_address, &token_mint_address);
 
-    let (mut banks_client, payer, recent_blockhash) =
+    let (banks_client, payer, recent_blockhash) =
         program_test(token_mint_address, true).start().await;
     let rent = banks_client.get_rent().await.unwrap();
     let expected_token_account_len = Account::LEN;
@@ -69,7 +69,7 @@ async fn success_using_deprecated_instruction_creator() {
     let associated_token_address =
         get_associated_token_address(&wallet_address, &token_mint_address);
 
-    let (mut banks_client, payer, recent_blockhash) =
+    let (banks_client, payer, recent_blockhash) =
         program_test(token_mint_address, true).start().await;
     let rent = banks_client.get_rent().await.unwrap();
     let expected_token_account_len = Account::LEN;

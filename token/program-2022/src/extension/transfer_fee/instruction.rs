@@ -117,7 +117,7 @@ pub enum TransferFeeInstruction {
     ///   1. `[writable]` The destination account.
     ///   2. `[]` The mint's multisig `withdraw_withheld_authority`.
     ///   3. ..3+M `[signer]` M signer accounts.
-    ///   3+M+1. ..3+M+N `[writable]` The source accounts to withdraw from.
+    ///   4. 3+M+1..3+M+N `[writable]` The source accounts to withdraw from.
     WithdrawWithheldTokensFromAccounts {
         /// Number of token accounts harvested
         num_token_accounts: u8,

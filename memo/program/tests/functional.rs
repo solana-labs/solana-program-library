@@ -20,7 +20,7 @@ fn program_test() -> ProgramTest {
 #[tokio::test]
 async fn test_memo_signing() {
     let memo = "🐆".as_bytes();
-    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
+    let (banks_client, payer, recent_blockhash) = program_test().start().await;
 
     let keypairs = vec![Keypair::new(), Keypair::new(), Keypair::new()];
     let pubkeys: Vec<Pubkey> = keypairs.iter().map(|keypair| keypair.pubkey()).collect();
@@ -122,7 +122,7 @@ async fn test_memo_signing() {
 #[tokio::test]
 #[ignore]
 async fn test_memo_compute_limits() {
-    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
+    let (banks_client, payer, recent_blockhash) = program_test().start().await;
 
     // Test memo length
     let mut memo = vec![];

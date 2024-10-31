@@ -8,7 +8,7 @@ license = "Apache-2.0"
 edition = "2021"
 
 [dependencies]
-solana-program = "2.0.3"
+solana-program = "2.1.0"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]

@@ -158,7 +158,7 @@ async fn success_unset() {
 
 #[tokio::test]
 async fn fail_wrong_staker() {
-    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, _) = setup().await;
+    let (banks_client, payer, recent_blockhash, stake_pool_accounts, _) = setup().await;
 
     let wrong_staker = Keypair::new();
     let transaction = Transaction::new_signed_with_payer(

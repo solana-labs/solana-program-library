@@ -205,7 +205,6 @@ jobs:
 
       - name: Set env vars
         run: |
-          echo "RUST_STABLE_VERSION=1.78.0" >> $GITHUB_ENV
           source ci/rust-version.sh
           echo "RUST_STABLE=$rust_stable" >> $GITHUB_ENV
           source ci/solana-version.sh
@@ -213,7 +212,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: ${{ env.RUST_STABLE_VERSION }}
+          toolchain: ${{ env.RUST_STABLE }}
 
       - uses: actions/cache@v4
         with:

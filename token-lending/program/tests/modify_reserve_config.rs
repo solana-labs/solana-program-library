@@ -137,7 +137,7 @@ async fn wrong_signer_of_lending_market_cannot_change_reserve_config() {
     let other_lending_market_owner = Keypair::new();
     other_lending_market.owner = other_lending_market_owner;
 
-    let (mut banks_client, payer, recent_blockhash) = test.start().await;
+    let (banks_client, payer, recent_blockhash) = test.start().await;
 
     const OPTIMAL_UTILIZATION_RATE_CHANGE: u8 = 10;
 

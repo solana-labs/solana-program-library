@@ -97,8 +97,7 @@ async fn success_set_stake_deposit_authority() {
 
 #[tokio::test]
 async fn fail_wrong_manager() {
-    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, new_authority) =
-        setup().await;
+    let (banks_client, payer, recent_blockhash, stake_pool_accounts, new_authority) = setup().await;
 
     let mut transaction = Transaction::new_with_payer(
         &[instruction::set_funding_authority(
@@ -132,8 +131,7 @@ async fn fail_wrong_manager() {
 
 #[tokio::test]
 async fn fail_without_signature() {
-    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, new_authority) =
-        setup().await;
+    let (banks_client, payer, recent_blockhash, stake_pool_accounts, new_authority) = setup().await;
 
     let data = borsh::to_vec(&instruction::StakePoolInstruction::SetFundingAuthority(
         FundingType::StakeDeposit,

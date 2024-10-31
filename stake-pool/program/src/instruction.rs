@@ -192,11 +192,14 @@ pub enum StakePoolInstruction {
     /// 11. `[]` Stake Config sysvar
     /// 12. `[]` System program
     /// 13. `[]` Stake program
-    ///  userdata: amount of lamports to increase on the given validator.
-    ///  The actual amount split into the transient stake account is:
-    ///  `lamports + stake_rent_exemption`
-    ///  The rent-exemption of the stake account is withdrawn back to the
-    /// reserve  after it is merged.
+    ///
+    /// userdata: amount of lamports to increase on the given validator.
+    ///
+    /// The actual amount split into the transient stake account is:
+    /// `lamports + stake_rent_exemption`.
+    ///
+    /// The rent-exemption of the stake account is withdrawn back to the
+    /// reserve after it is merged.
     IncreaseValidatorStake {
         /// amount of lamports to increase on the given validator
         lamports: u64,
@@ -329,6 +332,7 @@ pub enum StakePoolInstruction {
     ///  10. `[]` Sysvar clock account (required)
     ///  11. `[]` Pool token program id
     ///  12. `[]` Stake program id,
+    ///
     ///  userdata: amount of pool tokens to withdraw
     WithdrawStake(u64),
 
@@ -463,11 +467,14 @@ pub enum StakePoolInstruction {
     /// 11. `[]` Stake Config sysvar
     /// 12. `[]` System program
     /// 13. `[]` Stake program
-    ///  userdata: amount of lamports to increase on the given validator.
-    ///  The actual amount split into the transient stake account is:
-    ///  `lamports + stake_rent_exemption`
-    ///  The rent-exemption of the stake account is withdrawn back to the
-    /// reserve  after it is merged.
+    ///
+    /// userdata: amount of lamports to increase on the given validator.
+    ///
+    /// The actual amount split into the transient stake account is:
+    /// `lamports + stake_rent_exemption`.
+    ///
+    /// The rent-exemption of the stake account is withdrawn back to the
+    /// reserve after it is merged.
     IncreaseAdditionalValidatorStake {
         /// amount of lamports to increase on the given validator
         lamports: u64,
@@ -674,6 +681,7 @@ pub enum StakePoolInstruction {
     ///  10. `[]` Sysvar clock account (required)
     ///  11. `[]` Pool token program id
     ///  12. `[]` Stake program id,
+    ///
     ///  userdata: amount of pool tokens to withdraw
     WithdrawStakeWithSlippage {
         /// Pool tokens to burn in exchange for lamports

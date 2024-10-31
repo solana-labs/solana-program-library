@@ -61,9 +61,8 @@ fn unpack_amount(input: &[u8]) -> Result<u64, ProgramError> {
         .and_then(|slice| slice.try_into().ok())
         .map(u64::from_le_bytes)
         .ok_or(ProgramError::InvalidInstructionData)
-        .map_err(|e| {
+        .inspect_err(|_| {
             msg!("Failed to unpack amount.");
-            e
         })?;
     Ok(amount)
 }

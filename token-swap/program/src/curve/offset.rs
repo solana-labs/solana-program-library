@@ -33,9 +33,11 @@ pub struct OffsetCurve {
 impl CurveCalculator for OffsetCurve {
     /// Constant product swap ensures token a * (token b + offset) = constant
     /// This is guaranteed to work for all values such that:
+    ///
     ///  - 1 <= source_amount <= u64::MAX
     ///  - 1 <= (swap_source_amount * (swap_destination_amount +
     ///    token_b_offset)) <= u128::MAX
+    ///
     /// If the offset and token B are both close to u64::MAX, there can be
     /// overflow errors with the invariant.
     fn swap_without_fees(
