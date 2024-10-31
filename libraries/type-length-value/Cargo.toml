@@ -13,11 +13,16 @@ derive = ["dep:spl-type-length-value-derive"]
 
 [dependencies]
 bytemuck = { version = "1.19.0", features = ["derive"] }
-solana-program = "2.1.0"
+num-derive = "0.4"
+num-traits = "0.2"
+solana-account-info = "2.1.0"
+solana-decode-error = "2.1.0"
+solana-msg = "2.1.0"
+solana-program-error = "2.1.0"
 spl-discriminator = { version = "0.3.0", path = "../discriminator" }
-spl-program-error = { version = "0.5.0", path = "../program-error" }
 spl-type-length-value-derive = { version = "0.1", path = "./derive", optional = true }
 spl-pod = { version = "0.4.0", path = "../pod" }
+thiserror = "1.0"
 
 [lib]
 crate-type = ["cdylib", "lib"]
