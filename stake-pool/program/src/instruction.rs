@@ -320,7 +320,7 @@ pub enum StakePoolInstruction {
     ///   1. `[w]` Validator stake list storage account
     ///   2. `[]` Stake pool withdraw authority
     ///   3. `[w]` Validator or reserve stake account to split
-    ///   4. `[w]` Unitialized stake account to receive withdrawal
+    ///   4. `[w]` Uninitialized stake account to receive withdrawal
     ///   5. `[]` User account to set as a new withdraw authority
     ///   6. `[s]` User transfer authority, for pool token account
     ///   7. `[w]` User account with pool tokens to burn from
@@ -665,7 +665,7 @@ pub enum StakePoolInstruction {
     ///   1. `[w]` Validator stake list storage account
     ///   2. `[]` Stake pool withdraw authority
     ///   3. `[w]` Validator or reserve stake account to split
-    ///   4. `[w]` Unitialized stake account to receive withdrawal
+    ///   4. `[w]` Uninitialized stake account to receive withdrawal
     ///   5. `[]` User account to set as a new withdraw authority
     ///   6. `[s]` User transfer authority, for pool token account
     ///   7. `[w]` User account with pool tokens to burn from
