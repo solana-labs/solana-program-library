@@ -77,7 +77,7 @@ pub enum ConfidentialMintBurnInstruction {
     ///      `CiphertextCiphertextEquality` is pre-verified into a context state
     ///      account.
     ///   2. `[]` The multisig authority account owner.
-    ///   3.. `[signer]` Required M signer accounts for the SPL Token Multisig
+    ///   3. ..`[signer]` Required M signer accounts for the SPL Token Multisig
     ///
     /// Data expected by this instruction:
     ///   `RotateSupplyElGamalPubkeyData`
@@ -93,7 +93,7 @@ pub enum ConfidentialMintBurnInstruction {
     ///   * Multisignature authority
     ///   0. `[writable]` The SPL Token mint.
     ///   1. `[]` The multisig authority account owner.
-    ///   2.. `[signer]` Required M signer accounts for the SPL Token Multisig
+    ///   2. ..`[signer]` Required M signer accounts for the SPL Token Multisig
     ///
     /// Data expected by this instruction:
     ///   `UpdateDecryptableSupplyData`
@@ -133,7 +133,7 @@ pub enum ConfidentialMintBurnInstruction {
     ///   5. `[]` (Optional) The context state account containing the
     ///      pre-verified `VerifyBatchedRangeProofU128`
     ///   6. `[]` The multisig account owner.
-    ///   7.. `[signer]` Required M signer accounts for the SPL Token Multisig
+    ///   7. ..`[signer]` Required M signer accounts for the SPL Token Multisig
     ///
     /// Data expected by this instruction:
     ///   `MintInstructionData`
@@ -173,7 +173,7 @@ pub enum ConfidentialMintBurnInstruction {
     ///   5. `[]` (Optional) The context state account containing the
     ///      pre-verified `VerifyBatchedRangeProofU128`
     ///   6. `[]` The multisig account owner.
-    ///   7.. `[signer]` Required M signer accounts for the SPL Token Multisig
+    ///   7. ..`[signer]` Required M signer accounts for the SPL Token Multisig
     ///
     /// Data expected by this instruction:
     ///   `BurnInstructionData`
