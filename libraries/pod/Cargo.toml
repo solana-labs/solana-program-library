@@ -28,7 +28,6 @@ thiserror = "1.0"
 
 [dev-dependencies]
 serde_json = "1.0.132"
-solana-program = "2.1.0"
 base64 = { version = "0.22.1" }
 
 [lib]

@@ -8220,7 +8220,6 @@ dependencies = [
  "serde_json",
  "solana-decode-error",
  "solana-msg",
- "solana-program",
  "solana-program-error",
  "solana-program-option",
  "solana-pubkey",
