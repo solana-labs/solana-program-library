@@ -3,7 +3,9 @@
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use {
     bytemuck_derive::{Pod, Zeroable},
-    solana_program::{program_error::ProgramError, program_option::COption, pubkey::Pubkey},
+    solana_program_error::ProgramError,
+    solana_program_option::COption,
+    solana_pubkey::Pubkey,
     solana_zk_sdk::encryption::pod::elgamal::PodElGamalPubkey,
 };
 #[cfg(feature = "serde-traits")]
@@ -220,7 +222,7 @@ mod tests {
         super::*,
         crate::bytemuck::pod_from_bytes,
         base64::{prelude::BASE64_STANDARD, Engine},
-        solana_program::pubkey::PUBKEY_BYTES,
+        solana_pubkey::PUBKEY_BYTES,
     };
 
     #[test]

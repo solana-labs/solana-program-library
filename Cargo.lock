@@ -8200,11 +8200,18 @@ dependencies = [
  "borsh 1.5.1",
  "bytemuck",
  "bytemuck_derive",
+ "num-derive",
+ "num-traits",
  "serde",
  "serde_json",
+ "solana-decode-error",
+ "solana-msg",
  "solana-program",
+ "solana-program-error",
+ "solana-program-option",
+ "solana-pubkey",
  "solana-zk-sdk",
- "spl-program-error 0.5.0",
+ "thiserror",
 ]
 
 [[package]]

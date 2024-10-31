@@ -8,11 +8,9 @@
 
 use {
     bytemuck::{Pod, Zeroable},
-    solana_program::{
-        program_error::ProgramError,
-        program_option::COption,
-        pubkey::{Pubkey, PUBKEY_BYTES},
-    },
+    solana_program_error::ProgramError,
+    solana_program_option::COption,
+    solana_pubkey::{Pubkey, PUBKEY_BYTES},
 };
 
 /// Trait for types that can be `None`.
