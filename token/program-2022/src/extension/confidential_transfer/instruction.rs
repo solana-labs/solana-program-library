@@ -182,6 +182,7 @@ pub enum ConfidentialTransferInstruction {
     ///
     /// Fails if the source or destination accounts are frozen.
     /// Fails if the associated mint is extended as `NonTransferable`.
+    /// Fails if the associated mint is extended as `ConfidentialMintBurn`.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -215,6 +216,7 @@ pub enum ConfidentialTransferInstruction {
     ///
     /// Fails if the source or destination accounts are frozen.
     /// Fails if the associated mint is extended as `NonTransferable`.
+    /// Fails if the associated mint is extended as `ConfidentialMintBurn`.
     ///
     /// Accounts expected by this instruction:
     ///

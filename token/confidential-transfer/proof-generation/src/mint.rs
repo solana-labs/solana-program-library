@@ -27,12 +27,13 @@ pub struct MintProofData {
     pub equality_proof_data: CiphertextCommitmentEqualityProofData,
     pub ciphertext_validity_proof_data: BatchedGroupedCiphertext3HandlesValidityProofData,
     pub range_proof_data: BatchedRangeProofU128Data,
+    pub new_decryptable_supply: AeCiphertext,
 }
 
 pub fn mint_split_proof_data(
     current_supply_ciphertext: &ElGamalCiphertext,
-    current_decryptable_supply: &AeCiphertext,
     mint_amount: u64,
+    current_supply: u64,
     supply_elgamal_keypair: &ElGamalKeypair,
     supply_aes_key: &AeKey,
     destination_elgamal_pubkey: &ElGamalPubkey,
@@ -75,11 +76,6 @@ pub fn mint_split_proof_data(
             &mint_amount_ciphertext_supply_hi,
             MINT_AMOUNT_LO_BIT_LENGTH,
         )
-        .ok_or(TokenProofGenerationError::IllegalAmountBitLength)?;
-
-    // decrypt the current supply
-    let current_supply = current_decryptable_supply
-        .decrypt(supply_aes_key)
         .ok_or(TokenProofGenerationError::IllegalAmountBitLength)?;
 
     // compute the new supply
@@ -142,5 +138,6 @@ pub fn mint_split_proof_data(
         equality_proof_data,
         ciphertext_validity_proof_data,
         range_proof_data,
+        new_decryptable_supply: supply_aes_key.encrypt(new_supply),
     })
 }
