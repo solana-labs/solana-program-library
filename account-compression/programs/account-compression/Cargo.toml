@@ -1,6 +1,6 @@
 [package]
 name = "spl-account-compression"
-version = "0.4.1"
+version = "0.4.2"
 description = "Solana Program Library Account Compression Program"
 authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
 repository = "https://github.com/solana-labs/solana-program-library"
@@ -16,9 +16,10 @@ no-idl = []
 no-log-ix-name = []
 cpi = ["no-entrypoint"]
 default = []
+idl-build = ["anchor-lang/idl-build"]
 
 [dependencies]
-anchor-lang = { version = "0.29.0", features = ["idl-build"] }
+anchor-lang = { version = "0.29.0" }
 bytemuck = "1.13"
 solana-program = ">=1.18.11,<=2"
 spl-concurrent-merkle-tree = { version = "0.4.0", path = "../../../libraries/concurrent-merkle-tree" }

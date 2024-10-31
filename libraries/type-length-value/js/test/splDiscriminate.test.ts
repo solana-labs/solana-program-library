@@ -1,22 +1,23 @@
 import { expect } from 'chai';
 import { splDiscriminate } from '../src/splDiscriminate';
-import { createHash } from 'crypto';
+
+const testVectors = [
+    'hello',
+    'this-is-a-test',
+    'test-namespace:this-is-a-test',
+    'test-namespace:this-is-a-test:with-a-longer-name',
+];
+
+const testExpectedBytes = await Promise.all(
+    testVectors.map(x =>
+        crypto.subtle.digest('SHA-256', new TextEncoder().encode(x)).then(digest => new Uint8Array(digest)),
+    ),
+);
 
 describe('splDiscrimintor', () => {
-    const testVectors = [
-        'hello',
-        'this-is-a-test',
-        'test-namespace:this-is-a-test',
-        'test-namespace:this-is-a-test:with-a-longer-name',
-    ];
-
-    const testExpectedBytes = testVectors.map(x => {
-        return createHash('sha256').update(x).digest();
-    });
-
-    const testSplDiscriminator = (length: number) => {
+    const testSplDiscriminator = async (length: number) => {
         for (let i = 0; i < testVectors.length; i++) {
-            const discriminator = splDiscriminate(testVectors[i], length);
+            const discriminator = await splDiscriminate(testVectors[i], length);
             const expectedBytes = testExpectedBytes[i].subarray(0, length);
             expect(discriminator).to.have.length(length);
             expect(discriminator).to.deep.equal(expectedBytes);
@@ -29,9 +30,9 @@ describe('splDiscrimintor', () => {
         testSplDiscriminator(2);
     });
 
-    it('should produce the same bytes as rust library', () => {
+    it('should produce the same bytes as rust library', async () => {
         const expectedBytes = Buffer.from([105, 37, 101, 197, 75, 251, 102, 26]);
-        const discriminator = splDiscriminate('spl-transfer-hook-interface:execute');
+        const discriminator = await splDiscriminate('spl-transfer-hook-interface:execute');
         expect(discriminator).to.deep.equal(expectedBytes);
     });
 });

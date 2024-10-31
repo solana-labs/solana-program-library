@@ -30,7 +30,7 @@ describe('Token Group Instructions', () => {
     const mintAuthority = new PublicKey('66666666666666666666666666666666666666666666');
     const maxSize = BigInt(100);
 
-    it('Can create InitializeGroup Instruction', () => {
+    it('Can create InitializeGroup Instruction', async () => {
         checkPackUnpack(
             createInitializeGroupInstruction({
                 programId,
@@ -40,7 +40,7 @@ describe('Token Group Instructions', () => {
                 updateAuthority,
                 maxSize,
             }),
-            splDiscriminate('spl_token_group_interface:initialize_token_group'),
+            await splDiscriminate('spl_token_group_interface:initialize_token_group'),
             getStructDecoder([
                 ['updateAuthority', fixDecoderSize(getBytesDecoder(), 32)],
                 ['maxSize', getU64Decoder()],
@@ -49,7 +49,7 @@ describe('Token Group Instructions', () => {
         );
     });
 
-    it('Can create UpdateGroupMaxSize Instruction', () => {
+    it('Can create UpdateGroupMaxSize Instruction', async () => {
         checkPackUnpack(
             createUpdateGroupMaxSizeInstruction({
                 programId,
@@ -57,13 +57,13 @@ describe('Token Group Instructions', () => {
                 updateAuthority,
                 maxSize,
             }),
-            splDiscriminate('spl_token_group_interface:update_group_max_size'),
+            await splDiscriminate('spl_token_group_interface:update_group_max_size'),
             getStructDecoder([['maxSize', getU64Decoder()]]),
             { maxSize },
         );
     });
 
-    it('Can create UpdateGroupAuthority Instruction', () => {
+    it('Can create UpdateGroupAuthority Instruction', async () => {
         checkPackUnpack(
             createUpdateGroupAuthorityInstruction({
                 programId,
@@ -71,13 +71,13 @@ describe('Token Group Instructions', () => {
                 currentAuthority: updateAuthority,
                 newAuthority: PublicKey.default,
             }),
-            splDiscriminate('spl_token_group_interface:update_authority'),
+            await splDiscriminate('spl_token_group_interface:update_authority'),
             getStructDecoder([['newAuthority', fixDecoderSize(getBytesDecoder(), 32)]]),
             { newAuthority: Uint8Array.from(PublicKey.default.toBuffer()) },
         );
     });
 
-    it('Can create InitializeMember Instruction', () => {
+    it('Can create InitializeMember Instruction', async () => {
         const member = new PublicKey('22222222222222222222222222222222222222222222');
         const memberMint = new PublicKey('33333333333333333333333333333333333333333333');
         const memberMintAuthority = new PublicKey('44444444444444444444444444444444444444444444');
@@ -93,7 +93,7 @@ describe('Token Group Instructions', () => {
                 group,
                 groupUpdateAuthority,
             }),
-            splDiscriminate('spl_token_group_interface:initialize_member'),
+            await splDiscriminate('spl_token_group_interface:initialize_member'),
             getStructDecoder([]),
             {},
         );

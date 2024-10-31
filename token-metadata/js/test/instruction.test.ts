@@ -48,7 +48,7 @@ describe('Token Metadata Instructions', () => {
     const mint = new PublicKey('55555555555555555555555555555555555555555555');
     const mintAuthority = new PublicKey('66666666666666666666666666666666666666666666');
 
-    it('Can create Initialize Instruction', () => {
+    it('Can create Initialize Instruction', async () => {
         const name = 'My test token';
         const symbol = 'TEST';
         const uri = 'http://test.test';
@@ -63,7 +63,7 @@ describe('Token Metadata Instructions', () => {
                 symbol,
                 uri,
             }),
-            splDiscriminate('spl_token_metadata_interface:initialize_account'),
+            await splDiscriminate('spl_token_metadata_interface:initialize_account'),
             getStructDecoder([
                 ['name', getStringDecoder()],
                 ['symbol', getStringDecoder()],
@@ -73,7 +73,7 @@ describe('Token Metadata Instructions', () => {
         );
     });
 
-    it('Can create Update Field Instruction', () => {
+    it('Can create Update Field Instruction', async () => {
         const field = 'MyTestField';
         const value = 'http://test.uri';
         checkPackUnpack(
@@ -84,7 +84,7 @@ describe('Token Metadata Instructions', () => {
                 field,
                 value,
             }),
-            splDiscriminate('spl_token_metadata_interface:updating_field'),
+            await splDiscriminate('spl_token_metadata_interface:updating_field'),
             getStructDecoder([
                 ['key', getDataEnumCodec(getFieldCodec())],
                 ['value', getStringDecoder()],
@@ -93,7 +93,7 @@ describe('Token Metadata Instructions', () => {
         );
     });
 
-    it('Can create Update Field Instruction with Field Enum', () => {
+    it('Can create Update Field Instruction with Field Enum', async () => {
         const field = 'Name';
         const value = 'http://test.uri';
         checkPackUnpack(
@@ -104,7 +104,7 @@ describe('Token Metadata Instructions', () => {
                 field,
                 value,
             }),
-            splDiscriminate('spl_token_metadata_interface:updating_field'),
+            await splDiscriminate('spl_token_metadata_interface:updating_field'),
             getStructDecoder([
                 ['key', getDataEnumCodec(getFieldCodec())],
                 ['value', getStringDecoder()],
@@ -113,7 +113,7 @@ describe('Token Metadata Instructions', () => {
         );
     });
 
-    it('Can create Remove Key Instruction', () => {
+    it('Can create Remove Key Instruction', async () => {
         checkPackUnpack(
             createRemoveKeyInstruction({
                 programId,
@@ -122,7 +122,7 @@ describe('Token Metadata Instructions', () => {
                 key: 'MyTestField',
                 idempotent: true,
             }),
-            splDiscriminate('spl_token_metadata_interface:remove_key_ix'),
+            await splDiscriminate('spl_token_metadata_interface:remove_key_ix'),
             getStructDecoder([
                 ['idempotent', getBooleanDecoder()],
                 ['key', getStringDecoder()],
@@ -131,7 +131,7 @@ describe('Token Metadata Instructions', () => {
         );
     });
 
-    it('Can create Update Authority Instruction', () => {
+    it('Can create Update Authority Instruction', async () => {
         const newAuthority = PublicKey.default;
         checkPackUnpack(
             createUpdateAuthorityInstruction({
@@ -140,13 +140,13 @@ describe('Token Metadata Instructions', () => {
                 oldAuthority: updateAuthority,
                 newAuthority,
             }),
-            splDiscriminate('spl_token_metadata_interface:update_the_authority'),
+            await splDiscriminate('spl_token_metadata_interface:update_the_authority'),
             getStructDecoder([['newAuthority', fixDecoderSize(getBytesDecoder(), 32)]]),
             { newAuthority: Uint8Array.from(newAuthority.toBuffer()) },
         );
     });
 
-    it('Can create Emit Instruction', () => {
+    it('Can create Emit Instruction', async () => {
         const start: Option<bigint> = some(0n);
         const end: Option<bigint> = some(10n);
         checkPackUnpack(
@@ -156,7 +156,7 @@ describe('Token Metadata Instructions', () => {
                 start: 0n,
                 end: 10n,
             }),
-            splDiscriminate('spl_token_metadata_interface:emitter'),
+            await splDiscriminate('spl_token_metadata_interface:emitter'),
             getStructDecoder([
                 ['start', getOptionDecoder(getU64Decoder())],
                 ['end', getOptionDecoder(getU64Decoder())],

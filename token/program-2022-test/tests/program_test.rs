@@ -50,6 +50,11 @@ impl TestContext {
             spl_record::id(),
             processor!(spl_record::processor::process_instruction),
         );
+        program_test.add_program(
+            "spl_elgamal_registry",
+            spl_elgamal_registry::id(),
+            processor!(spl_elgamal_registry::processor::process_instruction),
+        );
         let context = program_test.start_with_context().await;
         let context = Arc::new(Mutex::new(context));
 

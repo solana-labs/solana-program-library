@@ -1,6 +1,8 @@
-import { createHash } from 'crypto';
+import { assertDigestCapabilityIsAvailable } from '@solana/assertions';
 
-export const splDiscriminate = (discriminator: string, length = 8): Buffer => {
-    const digest = createHash('sha256').update(discriminator).digest();
-    return digest.subarray(0, length);
-};
+export async function splDiscriminate(discriminator: string, length = 8): Promise<Uint8Array> {
+    assertDigestCapabilityIsAvailable();
+    const bytes = new TextEncoder().encode(discriminator);
+    const digest = await crypto.subtle.digest('SHA-256', bytes);
+    return new Uint8Array(digest).subarray(0, length);
+}
