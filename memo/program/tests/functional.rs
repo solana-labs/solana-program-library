@@ -1,10 +1,8 @@
 #![cfg(feature = "test-sbf")]
 
 use {
-    solana_program::{
-        instruction::{AccountMeta, Instruction, InstructionError},
-        pubkey::Pubkey,
-    },
+    solana_instruction::{AccountMeta, Instruction, error::InstructionError},
+    solana_pubkey::Pubkey,
     solana_program_test::*,
     solana_sdk::{
         signature::{Keypair, Signer},
