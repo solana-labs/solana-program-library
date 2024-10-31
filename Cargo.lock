@@ -8722,11 +8722,18 @@ name = "spl-token-group-interface"
 version = "0.4.2"
 dependencies = [
  "bytemuck",
- "solana-program",
+ "num-derive",
+ "num-traits",
+ "solana-decode-error",
+ "solana-instruction",
+ "solana-msg",
+ "solana-program-error",
+ "solana-pubkey",
+ "solana-sha256-hasher",
  "spl-discriminator 0.3.0",
  "spl-pod 0.4.0",
- "spl-program-error 0.5.0",
  "spl-type-length-value 0.6.0",
+ "thiserror",
 ]
 
 [[package]]
