@@ -1,7 +1,9 @@
 //! Error types
-use solana_decode_error::DecodeError;
-use solana_msg::msg;
-use solana_program_error::{PrintProgramError, ProgramError};
+use {
+    solana_decode_error::DecodeError,
+    solana_msg::msg,
+    solana_program_error::{PrintProgramError, ProgramError},
+};
 
 /// Errors that may be returned by the spl-pod library.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, num_derive::FromPrimitive)]
@@ -32,7 +34,8 @@ impl<T> solana_decode_error::DecodeError<T> for PodSliceError {
 impl PrintProgramError for PodSliceError {
     fn print<E>(&self)
     where
-        E: 'static + std::error::Error
+        E: 'static
+            + std::error::Error
             + DecodeError<E>
             + PrintProgramError
             + num_traits::FromPrimitive,
