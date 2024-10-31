@@ -1,11 +1,8 @@
 //! Program state processor
 
 use {
-    solana_program::{
-        account_info::AccountInfo, entrypoint::ProgramResult, msg, program_error::ProgramError,
-        pubkey::Pubkey,
-    },
-    std::str::from_utf8,
+    solana_account_info::AccountInfo, solana_msg::msg, solana_program_entrypoint::ProgramResult,
+    solana_program_error::ProgramError, solana_pubkey::Pubkey, std::str::from_utf8,
 };
 
 /// Instruction processor
