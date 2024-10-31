@@ -1,6 +1,6 @@
 //! wrappers for bytemuck functions
 
-use {bytemuck::Pod, solana_program::program_error::ProgramError};
+use {bytemuck::Pod, solana_program_error::ProgramError};
 
 /// On-chain size of a `Pod` type
 pub const fn pod_get_packed_len<T: Pod>() -> usize {

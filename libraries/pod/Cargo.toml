@@ -15,13 +15,20 @@ borsh = ["dep:borsh"]
 borsh = { version = "1.5.1", optional = true }
 bytemuck = { version = "1.19.0" }
 bytemuck_derive = { version = "1.8.0" }
+num-derive = "0.4"
+num-traits = "0.2"
 serde = { version = "1.0.214", optional = true }
-solana-program = "2.1.0"
+solana-decode-error = "2.1.0"
+solana-msg = "2.1.0"
+solana-program-error = "2.1.0"
+solana-program-option = "2.1.0"
+solana-pubkey = "2.1.0"
 solana-zk-sdk = "2.1.0"
-spl-program-error = { version = "0.5.0", path = "../program-error" }
+thiserror = "1.0"
 
 [dev-dependencies]
 serde_json = "1.0.132"
+solana-program = "2.1.0"
 base64 = { version = "0.22.1" }
 
 [lib]

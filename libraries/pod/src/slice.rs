@@ -9,7 +9,7 @@ use {
         primitives::PodU32,
     },
     bytemuck::Pod,
-    solana_program::program_error::ProgramError,
+    solana_program_error::ProgramError,
 };
 
 const LENGTH_SIZE: usize = std::mem::size_of::<PodU32>();
