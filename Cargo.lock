@@ -8826,7 +8826,7 @@ dependencies = [
  "arbitrary",
  "honggfuzz",
  "solana-program",
- "spl-math",
+ "spl-math-utils",
  "spl-token 6.0.0",
  "spl-token-swap",
 ]
