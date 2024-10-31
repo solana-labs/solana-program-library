@@ -6,7 +6,7 @@ use {
 };
 
 /// Errors that may be returned by the spl-pod library.
-#[repr(32)]
+#[repr(u32)]
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, num_derive::FromPrimitive)]
 pub enum PodSliceError {
     /// Error in checked math operation
