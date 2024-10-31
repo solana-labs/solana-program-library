@@ -8796,13 +8796,22 @@ name = "spl-token-metadata-interface"
 version = "0.5.1"
 dependencies = [
  "borsh 1.5.1",
+ "num-derive",
+ "num-traits",
  "serde",
  "serde_json",
+ "solana-borsh",
+ "solana-decode-error",
+ "solana-instruction",
+ "solana-msg",
  "solana-program",
+ "solana-program-error",
+ "solana-pubkey",
+ "solana-sha256-hasher",
  "spl-discriminator 0.3.0",
  "spl-pod 0.4.0",
- "spl-program-error 0.5.0",
  "spl-type-length-value 0.6.0",
+ "thiserror",
 ]
 
 [[package]]
