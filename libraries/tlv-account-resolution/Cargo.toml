@@ -13,12 +13,20 @@ test-sbf = []
 
 [dependencies]
 bytemuck = { version = "1.19.0", features = ["derive"] }
+num-derive = "0.4"
+num-traits = "0.2"
 serde = { version = "1.0.214", optional = true }
-solana-program = "2.1.0"
+solana-account-info = "2.1.0"
+solana-decode-error = "2.1.0"
+solana-instruction = { version = "2.1.0", features = ["std"] }
+solana-program-error = "2.1.0"
+solana-msg = "2.1.0"
+solana-pubkey = "2.1.0"
 spl-discriminator = { version = "0.3.0", path = "../discriminator" }
 spl-program-error = { version = "0.5.0", path = "../program-error" }
 spl-pod = { version = "0.4.0", path = "../pod" }
 spl-type-length-value = { version = "0.6.0", path = "../type-length-value" }
+thiserror = "1.0"
 
 [dev-dependencies]
 futures = "0.3.31"

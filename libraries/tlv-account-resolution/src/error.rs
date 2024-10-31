@@ -1,13 +1,18 @@
 //! Error types
 
-use spl_program_error::*;
+use {
+    solana_decode_error::DecodeError,
+    solana_msg::msg,
+    solana_program_error::{PrintProgramError, ProgramError},
+};
 
 /// Errors that may be returned by the Account Resolution library.
-#[spl_program_error(hash_error_code_start = 2_724_315_840)]
+#[repr(u32)]
+#[derive(Clone, Debug, Eq, thiserror::Error, num_derive::FromPrimitive, PartialEq)]
 pub enum AccountResolutionError {
     /// Incorrect account provided
     #[error("Incorrect account provided")]
-    IncorrectAccount,
+    IncorrectAccount = 2_724_315_840,
     /// Not enough accounts provided
     #[error("Not enough accounts provided")]
     NotEnoughAccounts,
@@ -69,4 +74,92 @@ pub enum AccountResolutionError {
     /// Tried to pack an invalid pubkey data configuration
     #[error("Tried to pack an invalid pubkey data configuration")]
     InvalidPubkeyDataConfig,
+}
+
+impl From<AccountResolutionError> for ProgramError {
+    fn from(e: AccountResolutionError) -> Self {
+        ProgramError::Custom(e as u32)
+    }
+}
+
+impl<T> DecodeError<T> for AccountResolutionError {
+    fn type_of() -> &'static str {
+        "AccountResolutionError"
+    }
+}
+
+impl PrintProgramError for AccountResolutionError {
+    fn print<E>(&self)
+    where
+        E: 'static
+            + std::error::Error
+            + DecodeError<E>
+            + PrintProgramError
+            + num_traits::FromPrimitive,
+    {
+        match self {
+            AccountResolutionError::IncorrectAccount => {
+                msg!("Incorrect account provided")
+            }
+            AccountResolutionError::NotEnoughAccounts => {
+                msg!("Not enough accounts provided")
+            }
+            AccountResolutionError::TlvUninitialized => {
+                msg!("No value initialized in TLV data")
+            }
+            AccountResolutionError::TlvInitialized => {
+                msg!("Some value initialized in TLV data")
+            }
+            AccountResolutionError::TooManyPubkeys => {
+                msg!("Too many pubkeys provided")
+            }
+            AccountResolutionError::InvalidPubkey => {
+                msg!("Failed to parse `Pubkey` from bytes")
+            }
+            AccountResolutionError::AccountTypeNotAccountMeta => {
+                msg!(
+                    "Attempted to deserialize an `AccountMeta` but the underlying type has PDA configs rather than a fixed address",
+                )
+            }
+            AccountResolutionError::SeedConfigsTooLarge => {
+                msg!("Provided list of seed configurations too large for a validation account",)
+            }
+            AccountResolutionError::NotEnoughBytesForSeed => {
+                msg!("Not enough bytes available to pack seed configuration",)
+            }
+            AccountResolutionError::InvalidBytesForSeed => {
+                msg!("The provided bytes are not valid for a seed configuration",)
+            }
+            AccountResolutionError::InvalidSeedConfig => {
+                msg!("Tried to pack an invalid seed configuration",)
+            }
+            AccountResolutionError::InstructionDataTooSmall => {
+                msg!("Instruction data too small for seed configuration",)
+            }
+            AccountResolutionError::AccountNotFound => {
+                msg!("Could not find account at specified index",)
+            }
+            AccountResolutionError::CalculationFailure => {
+                msg!("Error in checked math operation")
+            }
+            AccountResolutionError::AccountDataNotFound => {
+                msg!("Could not find account data at specified index",)
+            }
+            AccountResolutionError::AccountDataTooSmall => {
+                msg!("Account data too small for requested seed configuration",)
+            }
+            AccountResolutionError::AccountFetchFailed => {
+                msg!("Failed to fetch account")
+            }
+            AccountResolutionError::NotEnoughBytesForPubkeyData => {
+                msg!("Not enough bytes available to pack pubkey data configuration",)
+            }
+            AccountResolutionError::InvalidBytesForPubkeyData => {
+                msg!("The provided bytes are not valid for a pubkey data configuration",)
+            }
+            AccountResolutionError::InvalidPubkeyDataConfig => {
+                msg!("Tried to pack an invalid pubkey data configuration",)
+            }
+        }
+    }
 }
