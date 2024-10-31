@@ -36,7 +36,7 @@ members = [
   "libraries/discriminator",
   "libraries/concurrent-merkle-tree",
   "libraries/math",
-  "libraries/math-utils",
+  "libraries/math-example",
   "libraries/merkle-tree-reference",
   "libraries/pod",
   "libraries/program-error",
