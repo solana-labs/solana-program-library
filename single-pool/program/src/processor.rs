@@ -1167,6 +1167,23 @@ impl Processor {
             return Err(SinglePoolError::SignatureMissing.into());
         }
 
+        // let update_metadata_accounts_instruction = update(
+        //     *mpl_token_metadata_program_info.key,
+        //     *metadata_info.key,
+        //     *pool_mpl_authority_info.key,
+        //     None,
+        //     Some(DataV2 {
+        //         name,
+        //         symbol,
+        //         uri,
+        //         seller_fee_basis_points: 0,
+        //         creators: None,
+        //         collection: None,
+        //         uses: None,
+        //     }),
+        //     None,
+        //     Some(true),
+        // );
         let update_metadata_accounts_instruction = update(
             *mpl_token_metadata_program_info.key,
             *metadata_info.key,
