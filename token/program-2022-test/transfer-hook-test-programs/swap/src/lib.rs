@@ -1,6 +1,6 @@
 //! Program implementation
 
-use ::{
+use {
     solana_account_info::{next_account_info, AccountInfo},
     solana_program_error::ProgramResult,
     solana_pubkey::Pubkey,
