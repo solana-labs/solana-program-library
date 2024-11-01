@@ -2,11 +2,9 @@
 
 use {
     crate::id,
-    solana_program::{
-        instruction::{AccountMeta, Instruction},
-        program_error::ProgramError,
-        pubkey::Pubkey,
-    },
+    solana_instruction::{AccountMeta, Instruction},
+    solana_program_error::ProgramError,
+    solana_pubkey::Pubkey,
     std::mem::size_of,
 };
 
@@ -203,7 +201,7 @@ pub fn reallocate(record_account: &Pubkey, signer: &Pubkey, data_length: u64) ->
 
 #[cfg(test)]
 mod tests {
-    use {super::*, crate::state::tests::TEST_BYTES, solana_program::program_error::ProgramError};
+    use {super::*, crate::state::tests::TEST_BYTES, solana_program_error::ProgramError};
 
     #[test]
     fn serialize_initialize() {
