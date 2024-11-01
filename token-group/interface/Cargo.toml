@@ -22,7 +22,7 @@ thiserror = "1.0"
 
 [dev-dependencies]
 solana-sha256-hasher = "2.1.0"
-spl-type-length-value = { version = "0.6.0", path = "../../libraries/type-length-value", features = ["derive"] }
+spl-type-length-value = { version = "0.7.0", path = "../../libraries/type-length-value", features = ["derive"] }
 
 [lib]
 crate-type = ["cdylib", "lib"]

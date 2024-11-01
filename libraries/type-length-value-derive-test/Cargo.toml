@@ -11,6 +11,6 @@ edition = "2021"
 borsh = "1.5.1"
 solana-borsh = "2.1.0"
 spl-discriminator = { version = "0.4.0", path = "../discriminator" }
-spl-type-length-value = { version = "0.6.0", path = "../type-length-value", features = [
+spl-type-length-value = { version = "0.7.0", path = "../type-length-value", features = [
   "derive",
 ] }

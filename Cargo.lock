@@ -8452,7 +8452,7 @@ dependencies = [
  "spl-discriminator 0.4.0",
  "spl-pod 0.5.0",
  "spl-program-error 0.6.0",
- "spl-type-length-value 0.6.0",
+ "spl-type-length-value 0.7.0",
  "thiserror",
 ]
 
@@ -8545,7 +8545,7 @@ dependencies = [
  "spl-token-group-interface 0.4.2",
  "spl-token-metadata-interface 0.5.1",
  "spl-transfer-hook-interface 0.8.2",
- "spl-type-length-value 0.6.0",
+ "spl-type-length-value 0.7.0",
  "thiserror",
 ]
 
@@ -8662,7 +8662,7 @@ dependencies = [
  "spl-token-group-example",
  "spl-token-group-interface 0.4.2",
  "spl-token-metadata-interface 0.5.1",
- "spl-type-length-value 0.6.0",
+ "spl-type-length-value 0.7.0",
 ]
 
 [[package]]
@@ -8722,7 +8722,7 @@ dependencies = [
  "spl-token-client",
  "spl-token-group-interface 0.4.2",
  "spl-token-metadata-interface 0.5.1",
- "spl-type-length-value 0.6.0",
+ "spl-type-length-value 0.7.0",
 ]
 
 [[package]]
@@ -8753,7 +8753,7 @@ dependencies = [
  "solana-sha256-hasher",
  "spl-discriminator 0.4.0",
  "spl-pod 0.5.0",
- "spl-type-length-value 0.6.0",
+ "spl-type-length-value 0.7.0",
  "thiserror",
 ]
 
@@ -8801,7 +8801,7 @@ dependencies = [
  "spl-token-2022 5.0.2",
  "spl-token-client",
  "spl-token-metadata-interface 0.5.1",
- "spl-type-length-value 0.6.0",
+ "spl-type-length-value 0.7.0",
  "test-case",
 ]
 
@@ -8837,7 +8837,7 @@ dependencies = [
  "solana-sha256-hasher",
  "spl-discriminator 0.4.0",
  "spl-pod 0.5.0",
- "spl-type-length-value 0.6.0",
+ "spl-type-length-value 0.7.0",
  "thiserror",
 ]
 
@@ -8962,7 +8962,7 @@ dependencies = [
  "spl-tlv-account-resolution 0.8.1",
  "spl-token-2022 5.0.2",
  "spl-transfer-hook-interface 0.8.2",
- "spl-type-length-value 0.6.0",
+ "spl-type-length-value 0.7.0",
 ]
 
 [[package]]
@@ -8992,7 +8992,7 @@ dependencies = [
  "spl-pod 0.5.0",
  "spl-program-error 0.6.0",
  "spl-tlv-account-resolution 0.8.1",
- "spl-type-length-value 0.6.0",
+ "spl-type-length-value 0.7.0",
  "tokio",
 ]
 
@@ -9011,7 +9011,7 @@ dependencies = [
 
 [[package]]
 name = "spl-type-length-value"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "bytemuck",
  "num-derive",
@@ -9042,7 +9042,7 @@ dependencies = [
  "borsh 1.5.1",
  "solana-borsh",
  "spl-discriminator 0.4.0",
- "spl-type-length-value 0.6.0",
+ "spl-type-length-value 0.7.0",
 ]
 
 [[package]]
