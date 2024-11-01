@@ -8104,9 +8104,16 @@ name = "spl-instruction-padding"
 version = "0.2.0"
 dependencies = [
  "num_enum",
+ "solana-account-info",
+ "solana-cpi",
+ "solana-instruction",
  "solana-program",
+ "solana-program-entrypoint",
+ "solana-program-error",
  "solana-program-test",
+ "solana-pubkey",
  "solana-sdk",
+ "static_assertions",
 ]
 
 [[package]]
