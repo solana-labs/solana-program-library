@@ -36,7 +36,7 @@ spl-token-2022 = { version = "5.0.2", path = "../program-2022", features = [
   "no-entrypoint",
 ] }
 spl-token-confidential-transfer-proof-extraction = { version = "0.2.0", path = "../confidential-transfer/proof-extraction" }
-spl-token-confidential-transfer-proof-generation = { version = "0.1.0", path = "../confidential-transfer/proof-generation" }
+spl-token-confidential-transfer-proof-generation = { version = "0.2.0", path = "../confidential-transfer/proof-generation" }
 spl-instruction-padding = { version = "0.3.0", path = "../../instruction-padding/program", features = [
   "no-entrypoint",
 ] }

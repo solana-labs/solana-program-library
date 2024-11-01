@@ -8693,7 +8693,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token-confidential-transfer-proof-generation"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "curve25519-dalek 4.1.3",
  "solana-zk-sdk",
