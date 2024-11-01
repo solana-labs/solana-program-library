@@ -8968,6 +8968,58 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-transfer-hook-example-downgrade"
+version = "1.0.0"
+dependencies = [
+ "solana-account-info",
+ "solana-program-entrypoint",
+ "solana-program-error",
+ "solana-pubkey",
+]
+
+[[package]]
+name = "spl-transfer-hook-example-fail"
+version = "1.0.0"
+dependencies = [
+ "solana-account-info",
+ "solana-program-entrypoint",
+ "solana-program-error",
+ "solana-pubkey",
+]
+
+[[package]]
+name = "spl-transfer-hook-example-success"
+version = "1.0.0"
+dependencies = [
+ "solana-account-info",
+ "solana-program-entrypoint",
+ "solana-program-error",
+ "solana-pubkey",
+]
+
+[[package]]
+name = "spl-transfer-hook-example-swap"
+version = "1.0.0"
+dependencies = [
+ "solana-account-info",
+ "solana-program-entrypoint",
+ "solana-program-error",
+ "solana-pubkey",
+ "spl-token-2022 5.0.2",
+]
+
+[[package]]
+name = "spl-transfer-hook-example-swap-with-fee"
+version = "1.0.0"
+dependencies = [
+ "solana-account-info",
+ "solana-program-entrypoint",
+ "solana-program-error",
+ "solana-pubkey",
+ "spl-token-2022 5.0.2",
+]
+
+[[package]]
 name = "spl-transfer-hook-interface"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
