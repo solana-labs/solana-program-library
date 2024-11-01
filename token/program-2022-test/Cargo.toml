@@ -28,7 +28,7 @@ spl-elgamal-registry = { version = "0.1.0", path = "../confidential-transfer/elg
 spl-memo = { version = "5.0.0", path = "../../memo/program", features = [
   "no-entrypoint",
 ] }
-spl-pod = { version = "0.4.0", path = "../../libraries/pod" }
+spl-pod = { version = "0.5.0", path = "../../libraries/pod" }
 spl-record = { version = "0.2.1", path = "../../record/program", features = [
     "no-entrypoint",
 ]}

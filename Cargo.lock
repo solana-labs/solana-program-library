@@ -7898,7 +7898,7 @@ dependencies = [
  "bytemuck",
  "solana-program",
  "solana-zk-sdk",
- "spl-pod 0.4.0",
+ "spl-pod 0.5.0",
  "spl-token-confidential-transfer-proof-extraction",
 ]
 
@@ -8208,7 +8208,7 @@ dependencies = [
 
 [[package]]
 name = "spl-pod"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "base64 0.22.1",
  "borsh 1.5.1",
@@ -8286,7 +8286,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-pod 0.4.0",
+ "spl-pod 0.5.0",
  "thiserror",
 ]
 
@@ -8376,7 +8376,7 @@ dependencies = [
  "solana-sdk",
  "solana-security-txt",
  "solana-vote-program",
- "spl-pod 0.4.0",
+ "spl-pod 0.5.0",
  "spl-token 6.0.0",
  "spl-token-2022 5.0.2",
  "test-case",
@@ -8443,7 +8443,7 @@ dependencies = [
  "solana-pubkey",
  "solana-sdk",
  "spl-discriminator 0.3.0",
- "spl-pod 0.4.0",
+ "spl-pod 0.5.0",
  "spl-program-error 0.5.0",
  "spl-type-length-value 0.6.0",
  "thiserror",
@@ -8529,7 +8529,7 @@ dependencies = [
  "solana-zk-sdk",
  "spl-elgamal-registry",
  "spl-memo 5.0.0",
- "spl-pod 0.4.0",
+ "spl-pod 0.5.0",
  "spl-tlv-account-resolution 0.8.1",
  "spl-token 6.0.0",
  "spl-token-confidential-transfer-ciphertext-arithmetic",
@@ -8557,7 +8557,7 @@ dependencies = [
  "spl-elgamal-registry",
  "spl-instruction-padding",
  "spl-memo 5.0.0",
- "spl-pod 0.4.0",
+ "spl-pod 0.5.0",
  "spl-record",
  "spl-tlv-account-resolution 0.8.1",
  "spl-token-2022 5.0.2",
@@ -8648,7 +8648,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-discriminator 0.3.0",
- "spl-pod 0.4.0",
+ "spl-pod 0.5.0",
  "spl-program-error 0.5.0",
  "spl-token-2022 5.0.2",
  "spl-token-client",
@@ -8678,7 +8678,7 @@ dependencies = [
  "solana-curve25519",
  "solana-program",
  "solana-zk-sdk",
- "spl-pod 0.4.0",
+ "spl-pod 0.5.0",
  "thiserror",
 ]
 
@@ -8710,7 +8710,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-discriminator 0.3.0",
- "spl-pod 0.4.0",
+ "spl-pod 0.5.0",
  "spl-token-2022 5.0.2",
  "spl-token-client",
  "spl-token-group-interface 0.4.2",
@@ -8745,7 +8745,7 @@ dependencies = [
  "solana-pubkey",
  "solana-sha256-hasher",
  "spl-discriminator 0.3.0",
- "spl-pod 0.4.0",
+ "spl-pod 0.5.0",
  "spl-type-length-value 0.6.0",
  "thiserror",
 ]
@@ -8790,7 +8790,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-pod 0.4.0",
+ "spl-pod 0.5.0",
  "spl-token-2022 5.0.2",
  "spl-token-client",
  "spl-token-metadata-interface 0.5.1",
@@ -8829,7 +8829,7 @@ dependencies = [
  "solana-pubkey",
  "solana-sha256-hasher",
  "spl-discriminator 0.3.0",
- "spl-pod 0.4.0",
+ "spl-pod 0.5.0",
  "spl-type-length-value 0.6.0",
  "thiserror",
 ]
@@ -8982,7 +8982,7 @@ dependencies = [
  "bytemuck",
  "solana-program",
  "spl-discriminator 0.3.0",
- "spl-pod 0.4.0",
+ "spl-pod 0.5.0",
  "spl-program-error 0.5.0",
  "spl-tlv-account-resolution 0.8.1",
  "spl-type-length-value 0.6.0",
@@ -9014,7 +9014,7 @@ dependencies = [
  "solana-msg",
  "solana-program-error",
  "spl-discriminator 0.3.0",
- "spl-pod 0.4.0",
+ "spl-pod 0.5.0",
  "spl-type-length-value-derive",
  "thiserror",
 ]
