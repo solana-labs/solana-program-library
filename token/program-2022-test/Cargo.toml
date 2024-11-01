@@ -40,7 +40,7 @@ spl-token-confidential-transfer-proof-generation = { version = "0.1.0", path = "
 spl-instruction-padding = { version = "0.3.0", path = "../../instruction-padding/program", features = [
   "no-entrypoint",
 ] }
-spl-tlv-account-resolution = { version = "0.8.1", path = "../../libraries/tlv-account-resolution" }
+spl-tlv-account-resolution = { version = "0.9.0", path = "../../libraries/tlv-account-resolution" }
 spl-token-client = { version = "0.12.1", path = "../client" }
 spl-token-group-interface = { version = "0.4.2", path = "../../token-group/interface" }
 spl-token-metadata-interface = { version = "0.5.1", path = "../../token-metadata/interface" }

@@ -8432,7 +8432,7 @@ dependencies = [
 
 [[package]]
 name = "spl-tlv-account-resolution"
-version = "0.8.1"
+version = "0.9.0"
 dependencies = [
  "bytemuck",
  "futures 0.3.31",
@@ -8537,7 +8537,7 @@ dependencies = [
  "spl-elgamal-registry",
  "spl-memo 6.0.0",
  "spl-pod 0.5.0",
- "spl-tlv-account-resolution 0.8.1",
+ "spl-tlv-account-resolution 0.9.0",
  "spl-token 6.0.0",
  "spl-token-confidential-transfer-ciphertext-arithmetic",
  "spl-token-confidential-transfer-proof-extraction",
@@ -8566,7 +8566,7 @@ dependencies = [
  "spl-memo 6.0.0",
  "spl-pod 0.5.0",
  "spl-record",
- "spl-tlv-account-resolution 0.8.1",
+ "spl-tlv-account-resolution 0.9.0",
  "spl-token-2022 5.0.2",
  "spl-token-client",
  "spl-token-confidential-transfer-proof-extraction",
@@ -8941,7 +8941,7 @@ dependencies = [
  "solana-remote-wallet",
  "solana-sdk",
  "solana-test-validator",
- "spl-tlv-account-resolution 0.8.1",
+ "spl-tlv-account-resolution 0.9.0",
  "spl-token-2022 5.0.2",
  "spl-token-client",
  "spl-transfer-hook-example",
@@ -8959,7 +8959,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-tlv-account-resolution 0.8.1",
+ "spl-tlv-account-resolution 0.9.0",
  "spl-token-2022 5.0.2",
  "spl-transfer-hook-interface 0.8.2",
  "spl-type-length-value 0.7.0",
@@ -8991,7 +8991,7 @@ dependencies = [
  "spl-discriminator 0.4.0",
  "spl-pod 0.5.0",
  "spl-program-error 0.6.0",
- "spl-tlv-account-resolution 0.8.1",
+ "spl-tlv-account-resolution 0.9.0",
  "spl-type-length-value 0.7.0",
  "tokio",
 ]
