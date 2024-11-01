@@ -7399,7 +7399,6 @@ dependencies = [
  "spl-associated-token-account 5.0.1",
  "spl-associated-token-account-client",
  "spl-token 6.0.0",
- "spl-token-2022 5.0.2",
  "test-case",
  "thiserror",
 ]

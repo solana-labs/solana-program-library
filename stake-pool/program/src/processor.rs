@@ -3203,7 +3203,6 @@ impl Processor {
         check_account_owner(stake_pool_info, program_id)?;
         check_mpl_metadata_program(mpl_token_metadata_program_info.key)?;
         check_sysvar_instructions(sysvar_instructions_info.key)?;
-        spl_token_2022::check_spl_token_program_account(token_program_info.key)?;
 
         let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_valid() {
@@ -3281,11 +3280,6 @@ impl Processor {
         let sysvar_instructions_info = next_account_info(account_info_iter)?;
         let system_program_info = next_account_info(account_info_iter)?;
 
-        if !payer_info.is_signer {
-            msg!("Payer did not sign metadata updates");
-            return Err(StakePoolError::SignatureMissing.into());
-        }
-
         check_account_owner(stake_pool_info, program_id)?;
 
         check_mpl_metadata_program(mpl_token_metadata_program_info.key)?;
@@ -3301,8 +3295,6 @@ impl Processor {
             program_id,
             stake_pool_info.key,
         )?;
-        stake_pool.check_mint(mint_info)?;
-        check_account_owner(payer_info, &system_program::id())?;
         check_mpl_metadata_account_address(metadata_info.key, &stake_pool.pool_mint)?;
         check_sysvar_instructions(sysvar_instructions_info.key)?;
         check_system_program(system_program_info.key)?;
