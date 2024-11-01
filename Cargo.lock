@@ -5605,7 +5605,7 @@ dependencies = [
  "solana-sdk",
  "solana-transaction-status",
  "solana-vote-program",
- "spl-memo 5.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-memo 5.0.0",
 ]
 
 [[package]]
@@ -5917,7 +5917,7 @@ dependencies = [
  "solana-metrics",
  "solana-sdk",
  "solana-version",
- "spl-memo 5.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-memo 5.0.0",
  "thiserror",
  "tokio",
 ]
@@ -7418,7 +7418,7 @@ dependencies = [
  "solana-sdk",
  "solana-transaction-status-client-types",
  "spl-associated-token-account 4.0.0",
- "spl-memo 5.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-memo 5.0.0",
  "spl-token 6.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "spl-token-2022 4.0.0",
  "spl-token-group-interface 0.3.0",
@@ -8158,6 +8158,15 @@ dependencies = [
 [[package]]
 name = "spl-memo"
 version = "5.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a0dba2f2bb6419523405d21c301a32c9f9568354d4742552e7972af801f4bdb3"
+dependencies = [
+ "solana-program",
+]
+
+[[package]]
+name = "spl-memo"
+version = "6.0.0"
 dependencies = [
  "solana-account-info",
  "solana-instruction",
@@ -8167,15 +8176,6 @@ dependencies = [
  "solana-program-test",
  "solana-pubkey",
  "solana-sdk",
-]
-
-[[package]]
-name = "spl-memo"
-version = "5.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0dba2f2bb6419523405d21c301a32c9f9568354d4742552e7972af801f4bdb3"
-dependencies = [
- "solana-program",
 ]
 
 [[package]]
@@ -8503,7 +8503,7 @@ dependencies = [
  "solana-program",
  "solana-security-txt",
  "solana-zk-token-sdk",
- "spl-memo 5.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-memo 5.0.0",
  "spl-pod 0.3.0",
  "spl-token 6.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "spl-token-group-interface 0.3.0",
@@ -8535,7 +8535,7 @@ dependencies = [
  "solana-security-txt",
  "solana-zk-sdk",
  "spl-elgamal-registry",
- "spl-memo 5.0.0",
+ "spl-memo 6.0.0",
  "spl-pod 0.5.0",
  "spl-tlv-account-resolution 0.8.1",
  "spl-token 6.0.0",
@@ -8563,7 +8563,7 @@ dependencies = [
  "spl-associated-token-account 5.0.1",
  "spl-elgamal-registry",
  "spl-instruction-padding",
- "spl-memo 5.0.0",
+ "spl-memo 6.0.0",
  "spl-pod 0.5.0",
  "spl-record",
  "spl-tlv-account-resolution 0.8.1",
@@ -8604,7 +8604,7 @@ dependencies = [
  "solana-test-validator",
  "solana-transaction-status",
  "spl-associated-token-account-client",
- "spl-memo 5.0.0",
+ "spl-memo 6.0.0",
  "spl-token 6.0.0",
  "spl-token-2022 5.0.2",
  "spl-token-client",
@@ -8635,7 +8635,7 @@ dependencies = [
  "solana-sdk",
  "spl-associated-token-account-client",
  "spl-elgamal-registry",
- "spl-memo 5.0.0",
+ "spl-memo 6.0.0",
  "spl-record",
  "spl-token 6.0.0",
  "spl-token-2022 5.0.2",
@@ -9359,7 +9359,7 @@ name = "test-client"
 version = "0.1.0"
 dependencies = [
  "solana-sdk",
- "spl-memo 5.0.0",
+ "spl-memo 6.0.0",
  "spl-token 6.0.0",
  "spl-token-swap",
 ]
