@@ -8681,7 +8681,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token-confidential-transfer-proof-extraction"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "bytemuck",
  "solana-curve25519",
