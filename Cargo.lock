@@ -7781,7 +7781,9 @@ dependencies = [
 name = "spl-associated-token-account-client"
 version = "1.0.0"
 dependencies = [
+ "solana-instruction",
  "solana-program",
+ "solana-pubkey",
 ]
 
 [[package]]
