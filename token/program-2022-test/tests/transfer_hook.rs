@@ -72,16 +72,8 @@ async fn setup_accounts(
 
 fn setup_program_test(program_id: &Pubkey) -> ProgramTest {
     let mut program_test = ProgramTest::default();
-    program_test.add_program(
-        "spl_token_2022",
-        spl_token_2022::id(),
-        None,
-    );
-    program_test.add_program(
-        "spl_transfer_hook_example",
-        *program_id,
-        None,
-    );
+    program_test.add_program("spl_token_2022", spl_token_2022::id(), None);
+    program_test.add_program("spl_transfer_hook_example", *program_id, None);
     program_test
 }
 
@@ -253,11 +245,7 @@ async fn success_init() {
 #[tokio::test]
 async fn fail_init_all_none() {
     let mut program_test = ProgramTest::default();
-    program_test.add_program(
-        "spl_token_2022",
-        spl_token_2022::id(),
-        None,
-    );
+    program_test.add_program("spl_token_2022", spl_token_2022::id(), None);
     let context = program_test.start_with_context().await;
     let context = Arc::new(tokio::sync::Mutex::new(context));
     let mut context = TestContext {
@@ -582,16 +570,8 @@ async fn fail_transfer_hook_program() {
     let program_id = Pubkey::new_unique();
     let mint = Keypair::new();
     let mut program_test = ProgramTest::default();
-    program_test.add_program(
-        "spl_token_2022",
-        spl_token_2022::id(),
-        None,
-    );
-    program_test.add_program(
-        "spl_transfer_hook_example_fail",
-        program_id,
-        None,
-    );
+    program_test.add_program("spl_token_2022", spl_token_2022::id(), None);
+    program_test.add_program("spl_transfer_hook_example_fail", program_id, None);
     let validation_address = get_extra_account_metas_address(&mint.pubkey(), &program_id);
     program_test.add_account(
         validation_address,
@@ -650,16 +630,8 @@ async fn success_downgrade_writable_and_signer_accounts() {
     let program_id = Pubkey::new_unique();
     let mint = Keypair::new();
     let mut program_test = ProgramTest::default();
-    program_test.add_program(
-        "spl_token_2022",
-        spl_token_2022::id(),
-        None,
-    );
-    program_test.add_program(
-        "spl_transfer_hook_example_downgrade",
-        program_id,
-        None,
-    );
+    program_test.add_program("spl_token_2022", spl_token_2022::id(), None);
+    program_test.add_program("spl_transfer_hook_example_downgrade", program_id, None);
     let alice = Keypair::new();
     let alice_account = Keypair::new();
     let validation_address = get_extra_account_metas_address(&mint.pubkey(), &program_id);
@@ -735,11 +707,7 @@ async fn success_transfers_using_onchain_helper() {
 
     let swap_program_id = Pubkey::new_unique();
     let mut program_test = setup_program_test(&program_id);
-    program_test.add_program(
-        "spl_transfer_hook_example_swap",
-        swap_program_id,
-        None,
-    );
+    program_test.add_program("spl_transfer_hook_example_swap", swap_program_id, None);
     add_validation_account(&mut program_test, &mint_a, &program_id);
     add_validation_account(&mut program_test, &mint_b, &program_id);
 
@@ -1100,16 +1068,8 @@ async fn success_without_validation_account() {
     let program_id = Pubkey::new_unique();
     let mint = Keypair::new();
     let mut program_test = ProgramTest::default();
-    program_test.add_program(
-        "spl_token_2022",
-        spl_token_2022::id(),
-        None,
-    );
-    program_test.add_program(
-        "spl_transfer_hook_example_success",
-        program_id,
-        None,
-    );
+    program_test.add_program("spl_token_2022", spl_token_2022::id(), None);
+    program_test.add_program("spl_transfer_hook_example_success", program_id, None);
     let context = program_test.start_with_context().await;
     let context = Arc::new(tokio::sync::Mutex::new(context));
     let mut context = TestContext {
