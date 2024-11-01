@@ -3,13 +3,11 @@
 
 use {
     crate::{error::TransferHookError, get_extra_account_metas_address, instruction},
-    solana_program::{
-        account_info::AccountInfo,
-        entrypoint::ProgramResult,
-        instruction::{AccountMeta, Instruction},
-        program::invoke,
-        pubkey::Pubkey,
-    },
+    solana_account_info::AccountInfo,
+    solana_cpi::invoke,
+    solana_instruction::{AccountMeta, Instruction},
+    solana_program_error::ProgramResult,
+    solana_pubkey::Pubkey,
     spl_tlv_account_resolution::state::ExtraAccountMetaList,
 };
 /// Helper to CPI into a transfer-hook program on-chain, looking through the

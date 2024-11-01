@@ -6,13 +6,10 @@ use {
     program_test::{
         ConfidentialTokenAccountBalances, ConfidentialTokenAccountMeta, TestContext, TokenContext,
     },
-    solana_program_test::{processor, tokio, ProgramTest},
+    solana_program_test::{tokio, ProgramTest},
     solana_sdk::{
         account::Account,
-        account_info::{next_account_info, AccountInfo},
-        entrypoint::ProgramResult,
         instruction::{AccountMeta, Instruction, InstructionError},
-        program_error::ProgramError,
         program_option::COption,
         pubkey::Pubkey,
         signature::Signer,
@@ -28,8 +25,7 @@ use {
             transfer_hook::{TransferHook, TransferHookAccount},
             BaseStateWithExtensions,
         },
-        instruction, offchain, onchain,
-        processor::Processor,
+        instruction, offchain,
     },
     spl_token_client::token::{ExtensionInitializationParams, TokenError as TokenClientError},
     spl_transfer_hook_interface::{
@@ -40,161 +36,6 @@ use {
 
 const TEST_MAXIMUM_FEE: u64 = 10_000_000;
 const TEST_FEE_BASIS_POINTS: u16 = 100;
-
-/// Test program to fail transfer hook, conforms to transfer-hook-interface
-pub fn process_instruction_fail(
-    _program_id: &Pubkey,
-    _accounts: &[AccountInfo],
-    _input: &[u8],
-) -> ProgramResult {
-    Err(ProgramError::InvalidInstructionData)
-}
-
-/// Test program to succeed transfer hook, conforms to transfer-hook-interface
-pub fn process_instruction_success(
-    _program_id: &Pubkey,
-    _accounts: &[AccountInfo],
-    _input: &[u8],
-) -> ProgramResult {
-    Ok(())
-}
-
-/// Test program to check signer / write downgrade for repeated accounts,
-/// conforms to transfer-hook-interface
-pub fn process_instruction_downgrade(
-    _program_id: &Pubkey,
-    accounts: &[AccountInfo],
-    _input: &[u8],
-) -> ProgramResult {
-    let account_info_iter = &mut accounts.iter();
-
-    let source_account_info = next_account_info(account_info_iter)?;
-    let _mint_info = next_account_info(account_info_iter)?;
-    let _destination_account_info = next_account_info(account_info_iter)?;
-    let authority_info = next_account_info(account_info_iter)?;
-    let _extra_account_metas_info = next_account_info(account_info_iter)?;
-
-    let source_account_info_again = next_account_info(account_info_iter)?;
-    let authority_info_again = next_account_info(account_info_iter)?;
-
-    if source_account_info.key != source_account_info_again.key {
-        return Err(ProgramError::InvalidAccountData);
-    }
-
-    if source_account_info_again.is_writable {
-        return Err(ProgramError::InvalidAccountData);
-    }
-
-    if authority_info.key != authority_info_again.key {
-        return Err(ProgramError::InvalidAccountData);
-    }
-
-    if authority_info.is_signer {
-        return Err(ProgramError::InvalidAccountData);
-    }
-    Ok(())
-}
-
-/// Test program to transfer two types of tokens with transfer hooks at once
-pub fn process_instruction_swap(
-    _program_id: &Pubkey,
-    accounts: &[AccountInfo],
-    _input: &[u8],
-) -> ProgramResult {
-    let account_info_iter = &mut accounts.iter();
-
-    let source_a_account_info = next_account_info(account_info_iter)?;
-    let mint_a_info = next_account_info(account_info_iter)?;
-    let destination_a_account_info = next_account_info(account_info_iter)?;
-    let authority_a_info = next_account_info(account_info_iter)?;
-    let token_program_a_info = next_account_info(account_info_iter)?;
-
-    let source_b_account_info = next_account_info(account_info_iter)?;
-    let mint_b_info = next_account_info(account_info_iter)?;
-    let destination_b_account_info = next_account_info(account_info_iter)?;
-    let authority_b_info = next_account_info(account_info_iter)?;
-    let token_program_b_info = next_account_info(account_info_iter)?;
-
-    let remaining_accounts = account_info_iter.as_slice();
-
-    onchain::invoke_transfer_checked(
-        token_program_a_info.key,
-        source_a_account_info.clone(),
-        mint_a_info.clone(),
-        destination_a_account_info.clone(),
-        authority_a_info.clone(),
-        remaining_accounts,
-        1,
-        9,
-        &[],
-    )?;
-
-    onchain::invoke_transfer_checked(
-        token_program_b_info.key,
-        source_b_account_info.clone(),
-        mint_b_info.clone(),
-        destination_b_account_info.clone(),
-        authority_b_info.clone(),
-        remaining_accounts,
-        1,
-        9,
-        &[],
-    )?;
-
-    Ok(())
-}
-
-// Test program to transfer two types of tokens with transfer hooks at once with
-// fees
-pub fn process_instruction_swap_with_fee(
-    _program_id: &Pubkey,
-    accounts: &[AccountInfo],
-    _input: &[u8],
-) -> ProgramResult {
-    let account_info_iter = &mut accounts.iter();
-
-    let source_a_account_info = next_account_info(account_info_iter)?;
-    let mint_a_info = next_account_info(account_info_iter)?;
-    let destination_a_account_info = next_account_info(account_info_iter)?;
-    let authority_a_info = next_account_info(account_info_iter)?;
-    let token_program_a_info = next_account_info(account_info_iter)?;
-
-    let source_b_account_info = next_account_info(account_info_iter)?;
-    let mint_b_info = next_account_info(account_info_iter)?;
-    let destination_b_account_info = next_account_info(account_info_iter)?;
-    let authority_b_info = next_account_info(account_info_iter)?;
-    let token_program_b_info = next_account_info(account_info_iter)?;
-
-    let remaining_accounts = account_info_iter.as_slice();
-
-    onchain::invoke_transfer_checked_with_fee(
-        token_program_a_info.key,
-        source_a_account_info.clone(),
-        mint_a_info.clone(),
-        destination_a_account_info.clone(),
-        authority_a_info.clone(),
-        remaining_accounts,
-        1_000_000_000,
-        9,
-        10_000_000,
-        &[],
-    )?;
-
-    onchain::invoke_transfer_checked_with_fee(
-        token_program_b_info.key,
-        source_b_account_info.clone(),
-        mint_b_info.clone(),
-        destination_b_account_info.clone(),
-        authority_b_info.clone(),
-        remaining_accounts,
-        1_000_000_000,
-        9,
-        10_000_000,
-        &[],
-    )?;
-
-    Ok(())
-}
 
 async fn setup_accounts(
     token_context: &TokenContext,
@@ -231,17 +72,8 @@ async fn setup_accounts(
 
 fn setup_program_test(program_id: &Pubkey) -> ProgramTest {
     let mut program_test = ProgramTest::default();
-    program_test.prefer_bpf(false);
-    program_test.add_program(
-        "spl_token_2022",
-        spl_token_2022::id(),
-        processor!(Processor::process),
-    );
-    program_test.add_program(
-        "my_transfer_hook",
-        *program_id,
-        processor!(spl_transfer_hook_example::processor::process),
-    );
+    program_test.add_program("spl_token_2022", spl_token_2022::id(), None);
+    program_test.add_program("spl_transfer_hook_example", *program_id, None);
     program_test
 }
 
@@ -413,12 +245,7 @@ async fn success_init() {
 #[tokio::test]
 async fn fail_init_all_none() {
     let mut program_test = ProgramTest::default();
-    program_test.prefer_bpf(false);
-    program_test.add_program(
-        "spl_token_2022",
-        spl_token_2022::id(),
-        processor!(Processor::process),
-    );
+    program_test.add_program("spl_token_2022", spl_token_2022::id(), None);
     let context = program_test.start_with_context().await;
     let context = Arc::new(tokio::sync::Mutex::new(context));
     let mut context = TestContext {
@@ -743,17 +570,8 @@ async fn fail_transfer_hook_program() {
     let program_id = Pubkey::new_unique();
     let mint = Keypair::new();
     let mut program_test = ProgramTest::default();
-    program_test.prefer_bpf(false);
-    program_test.add_program(
-        "spl_token_2022",
-        spl_token_2022::id(),
-        processor!(Processor::process),
-    );
-    program_test.add_program(
-        "my_transfer_hook",
-        program_id,
-        processor!(process_instruction_fail),
-    );
+    program_test.add_program("spl_token_2022", spl_token_2022::id(), None);
+    program_test.add_program("spl_transfer_hook_example_fail", program_id, None);
     let validation_address = get_extra_account_metas_address(&mint.pubkey(), &program_id);
     program_test.add_account(
         validation_address,
@@ -812,17 +630,8 @@ async fn success_downgrade_writable_and_signer_accounts() {
     let program_id = Pubkey::new_unique();
     let mint = Keypair::new();
     let mut program_test = ProgramTest::default();
-    program_test.prefer_bpf(false);
-    program_test.add_program(
-        "spl_token_2022",
-        spl_token_2022::id(),
-        processor!(Processor::process),
-    );
-    program_test.add_program(
-        "my_transfer_hook",
-        program_id,
-        processor!(process_instruction_downgrade),
-    );
+    program_test.add_program("spl_token_2022", spl_token_2022::id(), None);
+    program_test.add_program("spl_transfer_hook_example_downgrade", program_id, None);
     let alice = Keypair::new();
     let alice_account = Keypair::new();
     let validation_address = get_extra_account_metas_address(&mint.pubkey(), &program_id);
@@ -898,11 +707,7 @@ async fn success_transfers_using_onchain_helper() {
 
     let swap_program_id = Pubkey::new_unique();
     let mut program_test = setup_program_test(&program_id);
-    program_test.add_program(
-        "my_swap",
-        swap_program_id,
-        processor!(process_instruction_swap),
-    );
+    program_test.add_program("spl_transfer_hook_example_swap", swap_program_id, None);
     add_validation_account(&mut program_test, &mint_a, &program_id);
     add_validation_account(&mut program_test, &mint_b, &program_id);
 
@@ -1027,9 +832,9 @@ async fn success_transfers_with_fee_using_onchain_helper() {
     let swap_program_id = Pubkey::new_unique();
     let mut program_test = setup_program_test(&program_id);
     program_test.add_program(
-        "my_swap",
+        "spl_transfer_hook_example_swap_with_fee",
         swap_program_id,
-        processor!(process_instruction_swap_with_fee),
+        None,
     );
     add_validation_account(&mut program_test, &mint_a, &program_id);
     add_validation_account(&mut program_test, &mint_b, &program_id);
@@ -1263,17 +1068,8 @@ async fn success_without_validation_account() {
     let program_id = Pubkey::new_unique();
     let mint = Keypair::new();
     let mut program_test = ProgramTest::default();
-    program_test.prefer_bpf(false);
-    program_test.add_program(
-        "spl_token_2022",
-        spl_token_2022::id(),
-        processor!(Processor::process),
-    );
-    program_test.add_program(
-        "my_transfer_hook",
-        program_id,
-        processor!(process_instruction_success),
-    );
+    program_test.add_program("spl_token_2022", spl_token_2022::id(), None);
+    program_test.add_program("spl_transfer_hook_example_success", program_id, None);
     let context = program_test.start_with_context().await;
     let context = Arc::new(tokio::sync::Mutex::new(context));
     let mut context = TestContext {
