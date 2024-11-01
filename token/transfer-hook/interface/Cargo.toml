@@ -18,7 +18,7 @@ solana-decode-error = "2.1.0"
 solana-instruction = { version = "2.1.0", features = ["std"] }
 solana-msg = "2.1.0"
 solana-program-error = "2.1.0"
-solana-pubkey = "2.1.0"
+solana-pubkey = { version = "2.1.0", features = ["curve25519"] }
 spl-discriminator = { version = "0.4.0" , path = "../../../libraries/discriminator" }
 spl-program-error = { version = "0.6.0", path = "../../../libraries/program-error" }
 spl-tlv-account-resolution = { version = "0.9.0", path = "../../../libraries/tlv-account-resolution" }
