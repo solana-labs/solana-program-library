@@ -14,8 +14,11 @@ pub mod onchain;
 
 // Export current sdk types for downstream users building with a different sdk
 // version
-pub use solana_program;
-use solana_program::pubkey::Pubkey;
+use solana_pubkey::Pubkey;
+pub use {
+    solana_account_info, solana_cpi, solana_decode_error, solana_instruction, solana_msg,
+    solana_program_error, solana_pubkey,
+};
 
 /// Namespace for all programs implementing transfer-hook
 pub const NAMESPACE: &str = "spl-transfer-hook-interface";

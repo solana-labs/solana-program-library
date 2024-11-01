@@ -7,11 +7,9 @@ use {
         get_extra_account_metas_address,
         instruction::{execute, ExecuteInstruction},
     },
-    solana_program::{
-        instruction::{AccountMeta, Instruction},
-        program_error::ProgramError,
-        pubkey::Pubkey,
-    },
+    solana_instruction::{AccountMeta, Instruction},
+    solana_program_error::ProgramError,
+    solana_pubkey::Pubkey,
     spl_tlv_account_resolution::state::ExtraAccountMetaList,
     std::future::Future,
 };
