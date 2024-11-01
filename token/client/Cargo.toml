@@ -25,7 +25,7 @@ spl-memo = { version = "6.0", path = "../../memo/program", features = [
   "no-entrypoint",
 ] }
 spl-record = { version = "0.2.1", path = "../../record/program", features = ["no-entrypoint"] }
-spl-token = { version = "6.0", path = "../program", features = [
+spl-token = { version = "7.0", path = "../program", features = [
   "no-entrypoint",
 ] }
 spl-token-confidential-transfer-proof-extraction = { version = "0.2.0", path = "../confidential-transfer/proof-extraction" }

@@ -30,7 +30,7 @@ spl-associated-token-account-client = { version = "=2.0.0", path = "../../associ
 spl-stake-pool = { version = "=2.0.0", path = "../program", features = [
   "no-entrypoint",
 ] }
-spl-token = { version = "=6.0", path = "../../token/program", features = [
+spl-token = { version = "=7.0", path = "../../token/program", features = [
   "no-entrypoint",
 ] }
 bs58 = "0.5.1"

@@ -29,7 +29,7 @@ spl-associated-token-account = { version = "5.0.1", path = "../../associated-tok
   "no-entrypoint",
 ] }
 spl-associated-token-account-client = { version = "2.0.0", path = "../../associated-token-account/client" }
-spl-token = { version = "6.0", path = "../../token/program", features = [
+spl-token = { version = "7.0", path = "../../token/program", features = [
   "no-entrypoint",
 ] }
 thiserror = "^1.0.66"
