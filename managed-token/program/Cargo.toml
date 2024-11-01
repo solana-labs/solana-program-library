@@ -28,7 +28,7 @@ solana-program = "2.1.0"
 spl-associated-token-account = { version = "5.0.1", path = "../../associated-token-account/program", features = [
   "no-entrypoint",
 ] }
-spl-associated-token-account-client = { version = "1.0.0", path = "../../associated-token-account/client" }
+spl-associated-token-account-client = { version = "2.0.0", path = "../../associated-token-account/client" }
 spl-token = { version = "6.0", path = "../../token/program", features = [
   "no-entrypoint",
 ] }
