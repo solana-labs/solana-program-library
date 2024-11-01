@@ -6,7 +6,7 @@ solana_program::declare_id!("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
 
 pub(crate) mod instruction {
     use {
-        super::state::Data,
+        super::state::DataV2,
         borsh::{BorshDeserialize, BorshSerialize},
         solana_program::{
             instruction::{AccountMeta, Instruction},
@@ -14,131 +14,90 @@ pub(crate) mod instruction {
         },
     };
 
-    #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
-    pub enum CreateArgs {
-        V1 {
-            name: String,
-            symbol: String,
-            uri: String,
-            seller_fee_basis_points: u16,
-            creators: Option<Vec<u8>>,
-            primary_sale_happened: bool,
-            is_mutable: bool,
-            token_standard: u8,
-            collection: Option<u8>,
-            uses: Option<u8>,
-            collection_details: Option<u8>,
-            rule_set: Option<u8>,
-            decimals: Option<u8>,
-            print_supply: Option<u8>,
-        },
+    #[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Debug, Clone)]
+    struct CreateMetadataAccountArgsV3 {
+        /// Note that unique metadatas are disabled for now.
+        pub data: DataV2,
+        /// Whether you want your metadata to be updateable in the future.
+        pub is_mutable: bool,
+        /// UNUSED If this is a collection parent NFT.
+        pub collection_details: Option<u8>,
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn create(
+    pub(crate) fn create_metadata_accounts_v3(
         program_id: Pubkey,
         metadata_account: Pubkey,
         mint: Pubkey,
         mint_authority: Pubkey,
         payer: Pubkey,
         update_authority: Pubkey,
-        token_program_id: Pubkey,
         name: String,
         symbol: String,
         uri: String,
     ) -> Instruction {
-        let mut data = vec![42]; // create
+        let mut data = vec![33]; // CreateMetadataAccountV3
         data.append(
-            &mut borsh::to_vec(&CreateArgs::V1 {
-                name,
-                symbol,
-                uri,
-                seller_fee_basis_points: 0,
-                creators: None,
-                primary_sale_happened: false,
+            &mut borsh::to_vec(&CreateMetadataAccountArgsV3 {
+                data: DataV2 {
+                    name,
+                    symbol,
+                    uri,
+                    seller_fee_basis_points: 0,
+                    creators: None,
+                    collection: None,
+                    uses: None,
+                },
                 is_mutable: true,
-                token_standard: 2,
-                collection: None,
-                uses: None,
                 collection_details: None,
-                rule_set: None,
-                decimals: None,
-                print_supply: None,
             })
             .unwrap(),
         );
         Instruction {
             program_id,
             accounts: vec![
-                AccountMeta::new(metadata_account, false),
                 AccountMeta::new(metadata_account, false),
                 AccountMeta::new_readonly(mint, false),
                 AccountMeta::new_readonly(mint_authority, true),
                 AccountMeta::new(payer, true),
                 AccountMeta::new_readonly(update_authority, true),
                 AccountMeta::new_readonly(solana_program::system_program::ID, false),
-                AccountMeta::new_readonly(solana_program::sysvar::instructions::ID, false),
-                AccountMeta::new_readonly(token_program_id, false),
             ],
             data,
         }
     }
 
-    #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
-    pub enum UpdateArgs {
-        V1 {
-            new_update_authority: Option<Pubkey>,
-            data: Option<Data>,
-            primary_sale_happened: Option<bool>,
-            is_mutable: Option<bool>,
-            collection: u8,
-            collection_details: u8,
-            uses: u8,
-            rule_set: u8,
-            authorization_data: Option<u8>,
-        },
+    #[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Debug, Clone)]
+    struct UpdateMetadataAccountArgsV2 {
+        pub data: Option<DataV2>,
+        pub update_authority: Option<Pubkey>,
+        pub primary_sale_happened: Option<bool>,
+        pub is_mutable: Option<bool>,
     }
-
-    #[allow(clippy::too_many_arguments)]
-    pub(crate) fn update(
+    pub(crate) fn update_metadata_accounts_v2(
         program_id: Pubkey,
         metadata_account: Pubkey,
         update_authority: Pubkey,
-        mint: Pubkey,
-        payer: Pubkey,
-        metadata_data: Option<Data>,
+        new_update_authority: Option<Pubkey>,
+        metadata: Option<DataV2>,
         primary_sale_happened: Option<bool>,
         is_mutable: Option<bool>,
     ) -> Instruction {
-        let mut data = vec![50]; // update
+        let mut data = vec![15]; // UpdateMetadataAccountV2
         data.append(
-            &mut borsh::to_vec(&UpdateArgs::V1 {
-                new_update_authority: Some(update_authority),
-                data: metadata_data,
+            &mut borsh::to_vec(&UpdateMetadataAccountArgsV2 {
+                data: metadata,
+                update_authority: new_update_authority,
                 primary_sale_happened,
                 is_mutable,
-                collection: 0,
-                collection_details: 0,
-                uses: 0,
-                rule_set: 0,
-                authorization_data: None,
             })
             .unwrap(),
         );
         Instruction {
             program_id,
             accounts: vec![
-                AccountMeta::new_readonly(update_authority, true), // authority
-                AccountMeta::new_readonly(super::ID, false),       // delegate_record
-                AccountMeta::new_readonly(super::ID, false),       // token
-                AccountMeta::new_readonly(mint, false),            // mint
-                AccountMeta::new(metadata_account, false),         // metadata
-                AccountMeta::new_readonly(super::ID, false),       // edition
-                AccountMeta::new(payer, true),                     // payer
-                AccountMeta::new_readonly(solana_program::system_program::ID, false), // system_program
-                AccountMeta::new_readonly(solana_program::sysvar::instructions::ID, false), // sysvar_instructions
-                AccountMeta::new_readonly(super::ID, false), // authorization_rules_program
-                AccountMeta::new_readonly(super::ID, false), // authorization_rules
+                AccountMeta::new(metadata_account, false),
+                AccountMeta::new_readonly(update_authority, true),
             ],
             data,
         }
@@ -157,12 +116,23 @@ pub mod pda {
 
 pub(crate) mod state {
     use borsh::{BorshDeserialize, BorshSerialize};
-    #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
-    pub struct Data {
+    #[repr(C)]
+    #[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Debug, Clone)]
+    pub(crate) struct DataV2 {
+        /// The name of the asset
         pub name: String,
+        /// The symbol for the asset
         pub symbol: String,
+        /// URI pointing to JSON representing the asset
         pub uri: String,
+        /// Royalty basis points that goes to creators in secondary sales
+        /// (0-10000)
         pub seller_fee_basis_points: u16,
-        pub creators: Option<Vec<u8>>,
+        /// UNUSED Array of creators, optional
+        pub creators: Option<u8>,
+        /// UNUSED Collection
+        pub collection: Option<u8>,
+        /// UNUSED Uses
+        pub uses: Option<u8>,
     }
 }

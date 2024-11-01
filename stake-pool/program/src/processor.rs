@@ -4,7 +4,12 @@ use {
     crate::{
         error::StakePoolError,
         find_deposit_authority_program_address,
-        inline_mpl_token_metadata::{self, pda::find_metadata_account, state::Data},
+        inline_mpl_token_metadata::{
+            self,
+            instruction::{create_metadata_accounts_v3, update_metadata_accounts_v2},
+            pda::find_metadata_account,
+            state::DataV2,
+        },
         instruction::{FundingType, PreferredValidatorType, StakePoolInstruction},
         minimum_delegation, minimum_reserve_lamports, minimum_stake_lamports,
         state::{
@@ -123,20 +128,6 @@ fn check_mpl_metadata_account_address(
     let (metadata_account_pubkey, _) = find_metadata_account(pool_mint);
     if metadata_account_pubkey != *metadata_address {
         Err(StakePoolError::InvalidMetadataAccount.into())
-    } else {
-        Ok(())
-    }
-}
-
-/// Check sysvar instructions address
-fn check_sysvar_instructions(sysvar_instructions_id: &Pubkey) -> Result<(), ProgramError> {
-    if *sysvar_instructions_id != solana_program::sysvar::instructions::id() {
-        msg!(
-            "Expected sysvar instructions {}, received {}",
-            solana_program::sysvar::instructions::id(),
-            sysvar_instructions_id,
-        );
-        Err(ProgramError::IncorrectProgramId)
     } else {
         Ok(())
     }
@@ -3190,8 +3181,6 @@ impl Processor {
         let metadata_info = next_account_info(account_info_iter)?;
         let mpl_token_metadata_program_info = next_account_info(account_info_iter)?;
         let system_program_info = next_account_info(account_info_iter)?;
-        let sysvar_instructions_info = next_account_info(account_info_iter)?;
-        let token_program_info = next_account_info(account_info_iter)?;
 
         if !payer_info.is_signer {
             msg!("Payer did not sign metadata creation");
@@ -3202,7 +3191,6 @@ impl Processor {
         check_account_owner(payer_info, &system_program::id())?;
         check_account_owner(stake_pool_info, program_id)?;
         check_mpl_metadata_program(mpl_token_metadata_program_info.key)?;
-        check_sysvar_instructions(sysvar_instructions_info.key)?;
 
         let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_valid() {
@@ -3221,14 +3209,13 @@ impl Processor {
         // Token mint authority for stake-pool token is stake-pool withdraw authority
         let token_mint_authority = withdraw_authority_info;
 
-        let new_metadata_instruction = inline_mpl_token_metadata::instruction::create(
+        let new_metadata_instruction = create_metadata_accounts_v3(
             *mpl_token_metadata_program_info.key,
             *metadata_info.key,
             *pool_mint_info.key,
             *token_mint_authority.key,
             *payer_info.key,
             *token_mint_authority.key,
-            *token_program_info.key,
             name,
             symbol,
             uri,
@@ -3252,7 +3239,6 @@ impl Processor {
                 payer_info.clone(),
                 withdraw_authority_info.clone(),
                 system_program_info.clone(),
-                sysvar_instructions_info.clone(),
             ],
             &[token_mint_authority_signer_seeds],
         )?;
@@ -3274,11 +3260,7 @@ impl Processor {
         let manager_info = next_account_info(account_info_iter)?;
         let withdraw_authority_info = next_account_info(account_info_iter)?;
         let metadata_info = next_account_info(account_info_iter)?;
-        let mint_info = next_account_info(account_info_iter)?;
-        let payer_info = next_account_info(account_info_iter)?;
         let mpl_token_metadata_program_info = next_account_info(account_info_iter)?;
-        let sysvar_instructions_info = next_account_info(account_info_iter)?;
-        let system_program_info = next_account_info(account_info_iter)?;
 
         check_account_owner(stake_pool_info, program_id)?;
 
@@ -3296,26 +3278,23 @@ impl Processor {
             stake_pool_info.key,
         )?;
         check_mpl_metadata_account_address(metadata_info.key, &stake_pool.pool_mint)?;
-        check_sysvar_instructions(sysvar_instructions_info.key)?;
-        check_system_program(system_program_info.key)?;
 
         // Token mint authority for stake-pool token is withdraw authority only
         let token_mint_authority = withdraw_authority_info;
 
-        msg!("Call update token metadata program");
-
-        let update_metadata_accounts_instruction = inline_mpl_token_metadata::instruction::update(
+        let update_metadata_accounts_instruction = update_metadata_accounts_v2(
             *mpl_token_metadata_program_info.key,
             *metadata_info.key,
             *token_mint_authority.key,
-            *mint_info.key,
-            *payer_info.key,
-            Some(Data {
+            None,
+            Some(DataV2 {
                 name,
                 symbol,
                 uri,
                 seller_fee_basis_points: 0,
                 creators: None,
+                collection: None,
+                uses: None,
             }),
             None,
             Some(true),
@@ -3332,13 +3311,7 @@ impl Processor {
 
         invoke_signed(
             &update_metadata_accounts_instruction,
-            &[
-                withdraw_authority_info.clone(),
-                mint_info.clone(),
-                metadata_info.clone(),
-                payer_info.clone(),
-                sysvar_instructions_info.clone(),
-            ],
+            &[metadata_info.clone(), withdraw_authority_info.clone()],
             &[token_mint_authority_signer_seeds],
         )?;
 

@@ -7,7 +7,8 @@ use {
     helpers::*,
     solana_program_test::*,
     solana_sdk::{
-        instruction::InstructionError, pubkey::Pubkey, signature::Signer, transaction::Transaction,
+        instruction::InstructionError, pubkey::Pubkey, signature::Signer,
+        system_instruction::SystemError, transaction::Transaction,
     },
     spl_single_pool::{id, instruction},
 };
@@ -38,12 +39,8 @@ async fn fail_double_init() {
     accounts.initialize(&mut context).await;
     refresh_blockhash(&mut context).await;
 
-    let instruction = instruction::create_token_metadata(
-        &id(),
-        &accounts.pool,
-        &context.payer.pubkey(),
-        &spl_token::id(),
-    );
+    let instruction =
+        instruction::create_token_metadata(&id(), &accounts.pool, &context.payer.pubkey());
     let transaction = Transaction::new_signed_with_payer(
         &[instruction],
         Some(&context.payer.pubkey()),
@@ -56,7 +53,5 @@ async fn fail_double_init() {
         .process_transaction(transaction)
         .await
         .unwrap_err();
-
-    // MetadataError::ExpectedUninitializedAccount
-    check_error::<InstructionError>(e, solana_sdk::instruction::InstructionError::Custom(199));
+    check_error::<InstructionError>(e, SystemError::AccountAlreadyInUse.into());
 }

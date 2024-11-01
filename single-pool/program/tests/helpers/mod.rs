@@ -38,12 +38,7 @@ pub const USER_STARTING_LAMPORTS: u64 = 10_000_000_000_000; // 10k sol
 pub fn program_test(enable_minimum_delegation: bool) -> ProgramTest {
     let mut program_test = ProgramTest::default();
 
-    // program_test.add_program("mpl_token_metadata", inline_mpl_token_metadata::id(), None);
-    program_test.add_program(
-        "mpl_token_2022_metadata",
-        inline_mpl_token_metadata::id(),
-        None,
-    );
+    program_test.add_program("mpl_token_metadata", inline_mpl_token_metadata::id(), None);
     program_test.add_program("spl_single_pool", id(), processor!(Processor::process));
     program_test.prefer_bpf(false);
 
@@ -248,7 +243,6 @@ impl SinglePoolAccounts {
             &id(),
             &self.vote_account.pubkey(),
             &context.payer.pubkey(),
-            &spl_token::id(),
             &rent,
             minimum_delegation,
         );

@@ -5,9 +5,9 @@ use {
         error::SinglePoolError,
         inline_mpl_token_metadata::{
             self,
-            instruction::{create, update},
+            instruction::{create_metadata_accounts_v3, update_metadata_accounts_v2},
             pda::find_metadata_account,
-            state::Data,
+            state::DataV2,
         },
         instruction::SinglePoolInstruction,
         state::{SinglePool, SinglePoolAccountType},
@@ -240,20 +240,6 @@ fn check_mpl_metadata_account_address(
     let (metadata_account_pubkey, _) = find_metadata_account(pool_mint);
     if metadata_account_pubkey != *metadata_address {
         Err(SinglePoolError::InvalidMetadataAccount.into())
-    } else {
-        Ok(())
-    }
-}
-
-/// Check sysvar instructions address
-fn check_sysvar_instructions(sysvar_instructions_id: &Pubkey) -> Result<(), ProgramError> {
-    if *sysvar_instructions_id != solana_program::sysvar::instructions::id() {
-        msg!(
-            "Expected sysvar instructions {}, received {}",
-            solana_program::sysvar::instructions::id(),
-            sysvar_instructions_id,
-        );
-        Err(ProgramError::IncorrectProgramId)
     } else {
         Ok(())
     }
@@ -1035,9 +1021,7 @@ impl Processor {
         let payer_info = next_account_info(account_info_iter)?;
         let metadata_info = next_account_info(account_info_iter)?;
         let mpl_token_metadata_program_info = next_account_info(account_info_iter)?;
-        let sysvar_instructions_info = next_account_info(account_info_iter)?;
         let system_program_info = next_account_info(account_info_iter)?;
-        let token_program_info = next_account_info(account_info_iter)?;
 
         let pool = SinglePool::from_account_info(pool_info, program_id)?;
 
@@ -1056,7 +1040,6 @@ impl Processor {
         check_account_owner(payer_info, &system_program::id())?;
         check_mpl_metadata_program(mpl_token_metadata_program_info.key)?;
         check_mpl_metadata_account_address(metadata_info.key, pool_mint_info.key)?;
-        check_sysvar_instructions(sysvar_instructions_info.key)?;
 
         if !payer_info.is_signer {
             msg!("Payer did not sign metadata creation");
@@ -1067,14 +1050,13 @@ impl Processor {
         let token_name = format!("SPL Single Pool {}", &vote_address_str[0..15]);
         let token_symbol = format!("st{}", &vote_address_str[0..7]);
 
-        let new_metadata_instruction = create(
+        let new_metadata_instruction = create_metadata_accounts_v3(
             *mpl_token_metadata_program_info.key,
             *metadata_info.key,
             *pool_mint_info.key,
             *pool_mint_authority_info.key,
             *payer_info.key,
             *pool_mpl_authority_info.key,
-            *token_program_info.key,
             token_name,
             token_symbol,
             "".to_string(),
@@ -1100,7 +1082,6 @@ impl Processor {
                 pool_mint_authority_info.clone(),
                 payer_info.clone(),
                 pool_mpl_authority_info.clone(),
-                sysvar_instructions_info.clone(),
                 system_program_info.clone(),
             ],
             signers,
@@ -1119,14 +1100,10 @@ impl Processor {
         let account_info_iter = &mut accounts.iter();
         let vote_account_info = next_account_info(account_info_iter)?;
         let pool_info = next_account_info(account_info_iter)?;
-        let mint_info = next_account_info(account_info_iter)?;
         let pool_mpl_authority_info = next_account_info(account_info_iter)?;
         let authorized_withdrawer_info = next_account_info(account_info_iter)?;
-        let payer_info = next_account_info(account_info_iter)?;
         let metadata_info = next_account_info(account_info_iter)?;
         let mpl_token_metadata_program_info = next_account_info(account_info_iter)?;
-        let sysvar_instructions_info = next_account_info(account_info_iter)?;
-        let system_program_info = next_account_info(account_info_iter)?;
 
         check_vote_account(vote_account_info)?;
         check_pool_address(program_id, vote_account_info.key, pool_info.key)?;
@@ -1144,8 +1121,6 @@ impl Processor {
         let pool_mint_address = crate::find_pool_mint_address(program_id, pool_info.key);
         check_mpl_metadata_program(mpl_token_metadata_program_info.key)?;
         check_mpl_metadata_account_address(metadata_info.key, &pool_mint_address)?;
-        check_sysvar_instructions(sysvar_instructions_info.key)?;
-        check_system_program(system_program_info.key)?;
 
         // we use authorized_withdrawer to authenticate the caller controls the vote
         // account this is safer than using an authorized_voter since those keys
@@ -1167,35 +1142,19 @@ impl Processor {
             return Err(SinglePoolError::SignatureMissing.into());
         }
 
-        // let update_metadata_accounts_instruction = update(
-        //     *mpl_token_metadata_program_info.key,
-        //     *metadata_info.key,
-        //     *pool_mpl_authority_info.key,
-        //     None,
-        //     Some(DataV2 {
-        //         name,
-        //         symbol,
-        //         uri,
-        //         seller_fee_basis_points: 0,
-        //         creators: None,
-        //         collection: None,
-        //         uses: None,
-        //     }),
-        //     None,
-        //     Some(true),
-        // );
-        let update_metadata_accounts_instruction = update(
+        let update_metadata_accounts_instruction = update_metadata_accounts_v2(
             *mpl_token_metadata_program_info.key,
             *metadata_info.key,
             *pool_mpl_authority_info.key,
-            *mint_info.key,
-            *payer_info.key,
-            Some(Data {
+            None,
+            Some(DataV2 {
                 name,
                 symbol,
                 uri,
                 seller_fee_basis_points: 0,
                 creators: None,
+                collection: None,
+                uses: None,
             }),
             None,
             Some(true),
@@ -1210,13 +1169,7 @@ impl Processor {
 
         invoke_signed(
             &update_metadata_accounts_instruction,
-            &[
-                pool_mpl_authority_info.clone(),
-                mint_info.clone(),
-                metadata_info.clone(),
-                payer_info.clone(),
-                sysvar_instructions_info.clone(),
-            ],
+            &[metadata_info.clone(), pool_mpl_authority_info.clone()],
             signers,
         )?;
 

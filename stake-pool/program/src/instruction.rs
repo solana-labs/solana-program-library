@@ -9,8 +9,8 @@ use {
     crate::{
         find_deposit_authority_program_address, find_ephemeral_stake_program_address,
         find_stake_program_address, find_transient_stake_program_address,
-        find_withdraw_authority_program_address, inline_mpl_token_metadata,
-        inline_mpl_token_metadata::pda::find_metadata_account,
+        find_withdraw_authority_program_address,
+        inline_mpl_token_metadata::{self, pda::find_metadata_account},
         state::{Fee, FeeType, StakePool, ValidatorList, ValidatorStakeInfo},
         MAX_VALIDATORS_TO_UPDATE,
     },
@@ -2580,7 +2580,6 @@ pub fn update_token_metadata(
     stake_pool: &Pubkey,
     manager: &Pubkey,
     pool_mint: &Pubkey,
-    payer: &Pubkey,
     name: String,
     symbol: String,
     uri: String,
@@ -2594,11 +2593,7 @@ pub fn update_token_metadata(
         AccountMeta::new_readonly(*manager, true),
         AccountMeta::new_readonly(stake_pool_withdraw_authority, false),
         AccountMeta::new(token_metadata, false),
-        AccountMeta::new_readonly(*pool_mint, false),
-        AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(inline_mpl_token_metadata::id(), false),
-        AccountMeta::new_readonly(solana_program::sysvar::instructions::id(), false),
-        AccountMeta::new_readonly(solana_program::system_program::id(), false),
     ];
 
     Instruction {
@@ -2617,7 +2612,6 @@ pub fn create_token_metadata(
     manager: &Pubkey,
     pool_mint: &Pubkey,
     payer: &Pubkey,
-    token_program_id: &Pubkey,
     name: String,
     symbol: String,
     uri: String,
@@ -2635,8 +2629,6 @@ pub fn create_token_metadata(
         AccountMeta::new(token_metadata, false),
         AccountMeta::new_readonly(inline_mpl_token_metadata::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
-        AccountMeta::new_readonly(solana_program::sysvar::instructions::id(), false),
-        AccountMeta::new_readonly(*token_program_id, false),
     ];
 
     Instruction {
