@@ -60,6 +60,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Remove unneeded packages for more space
+        run: bash ./ci/warning/purge-ubuntu-runner.sh
+
       - name: Set env vars
         run: |
           source ci/rust-version.sh
