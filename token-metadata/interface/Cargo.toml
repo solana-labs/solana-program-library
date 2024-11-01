@@ -20,7 +20,7 @@ solana-decode-error = "2.1.0"
 solana-instruction = "2.1.0"
 solana-msg = "2.1.0"
 solana-program-error = "2.1.0"
-spl-discriminator = { version = "0.3.0", path = "../../libraries/discriminator" }
+spl-discriminator = { version = "0.4.0", path = "../../libraries/discriminator" }
 solana-pubkey = "2.1.0"
 spl-type-length-value = { version = "0.6.0", path = "../../libraries/type-length-value" }
 spl-pod = { version = "0.5.0", path = "../../libraries/pod", features = [

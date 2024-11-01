@@ -7828,23 +7828,23 @@ dependencies = [
 [[package]]
 name = "spl-discriminator"
 version = "0.3.0"
-dependencies = [
- "borsh 1.5.1",
- "bytemuck",
- "solana-program-error",
- "solana-sha256-hasher",
- "spl-discriminator-derive 0.2.0",
-]
-
-[[package]]
-name = "spl-discriminator"
-version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a38ea8b6dedb7065887f12d62ed62c1743aa70749e8558f963609793f6fb12bc"
 dependencies = [
  "bytemuck",
  "solana-program",
  "spl-discriminator-derive 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "spl-discriminator"
+version = "0.4.0"
+dependencies = [
+ "borsh 1.5.1",
+ "bytemuck",
+ "solana-program-error",
+ "solana-sha256-hasher",
+ "spl-discriminator-derive 0.2.0",
 ]
 
 [[package]]
@@ -8424,7 +8424,7 @@ checksum = "37a75a5f0fcc58126693ed78a17042e9dc53f07e357d6be91789f7d62aff61a4"
 dependencies = [
  "bytemuck",
  "solana-program",
- "spl-discriminator 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-discriminator 0.3.0",
  "spl-pod 0.3.0",
  "spl-program-error 0.5.0",
  "spl-type-length-value 0.5.0",
@@ -8449,7 +8449,7 @@ dependencies = [
  "solana-program-test",
  "solana-pubkey",
  "solana-sdk",
- "spl-discriminator 0.3.0",
+ "spl-discriminator 0.4.0",
  "spl-pod 0.5.0",
  "spl-program-error 0.6.0",
  "spl-type-length-value 0.6.0",
@@ -8654,7 +8654,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-discriminator 0.3.0",
+ "spl-discriminator 0.4.0",
  "spl-pod 0.5.0",
  "spl-program-error 0.6.0",
  "spl-token-2022 5.0.2",
@@ -8716,7 +8716,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-discriminator 0.3.0",
+ "spl-discriminator 0.4.0",
  "spl-pod 0.5.0",
  "spl-token-2022 5.0.2",
  "spl-token-client",
@@ -8733,7 +8733,7 @@ checksum = "df8752b85a5ecc1d9f3a43bce3dd9a6a053673aacf5deb513d1cbb88d3534ffd"
 dependencies = [
  "bytemuck",
  "solana-program",
- "spl-discriminator 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-discriminator 0.3.0",
  "spl-pod 0.3.0",
  "spl-program-error 0.5.0",
 ]
@@ -8751,7 +8751,7 @@ dependencies = [
  "solana-program-error",
  "solana-pubkey",
  "solana-sha256-hasher",
- "spl-discriminator 0.3.0",
+ "spl-discriminator 0.4.0",
  "spl-pod 0.5.0",
  "spl-type-length-value 0.6.0",
  "thiserror",
@@ -8813,7 +8813,7 @@ checksum = "c6c2318ddff97e006ed9b1291ebec0750a78547f870f62a69c56fe3b46a5d8fc"
 dependencies = [
  "borsh 1.5.1",
  "solana-program",
- "spl-discriminator 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-discriminator 0.3.0",
  "spl-pod 0.3.0",
  "spl-program-error 0.5.0",
  "spl-type-length-value 0.5.0",
@@ -8835,7 +8835,7 @@ dependencies = [
  "solana-program-error",
  "solana-pubkey",
  "solana-sha256-hasher",
- "spl-discriminator 0.3.0",
+ "spl-discriminator 0.4.0",
  "spl-pod 0.5.0",
  "spl-type-length-value 0.6.0",
  "thiserror",
@@ -8974,7 +8974,7 @@ dependencies = [
  "arrayref",
  "bytemuck",
  "solana-program",
- "spl-discriminator 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-discriminator 0.3.0",
  "spl-pod 0.3.0",
  "spl-program-error 0.5.0",
  "spl-tlv-account-resolution 0.7.0",
@@ -8988,7 +8988,7 @@ dependencies = [
  "arrayref",
  "bytemuck",
  "solana-program",
- "spl-discriminator 0.3.0",
+ "spl-discriminator 0.4.0",
  "spl-pod 0.5.0",
  "spl-program-error 0.6.0",
  "spl-tlv-account-resolution 0.8.1",
@@ -9004,7 +9004,7 @@ checksum = "bdcd73ec187bc409464c60759232e309f83b52a18a9c5610bf281c9c6432918c"
 dependencies = [
  "bytemuck",
  "solana-program",
- "spl-discriminator 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-discriminator 0.3.0",
  "spl-pod 0.3.0",
  "spl-program-error 0.5.0",
 ]
@@ -9020,7 +9020,7 @@ dependencies = [
  "solana-decode-error",
  "solana-msg",
  "solana-program-error",
- "spl-discriminator 0.3.0",
+ "spl-discriminator 0.4.0",
  "spl-pod 0.5.0",
  "spl-type-length-value-derive",
  "thiserror",
@@ -9041,7 +9041,7 @@ version = "0.1.0"
 dependencies = [
  "borsh 1.5.1",
  "solana-borsh",
- "spl-discriminator 0.3.0",
+ "spl-discriminator 0.4.0",
  "spl-type-length-value 0.6.0",
 ]
 
