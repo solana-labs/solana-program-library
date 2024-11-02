@@ -3510,7 +3510,7 @@ pub async fn process_command<'a>(
             .await
         }
         (CommandName::CreateToken, arg_matches) => {
-            let decimals = value_t_or_exit!(arg_matches, "decimals", u8);
+            let decimals = *arg_matches.get_one::<u8>("decimals").unwrap();
             let mint_authority =
                 config.pubkey_or_default(arg_matches, "mint_authority", &mut wallet_manager)?;
             let memo = value_t!(arg_matches, "memo", String).ok();
@@ -3859,9 +3859,7 @@ pub async fn process_command<'a>(
                 push_signer_with_dedup(owner_signer, &mut bulk_signers);
             }
 
-            let mint_decimals = arg_matches
-                .get_one(MINT_DECIMALS_ARG.name)
-                .map(|v: &String| v.parse::<u8>().unwrap());
+            let mint_decimals = arg_matches.get_one::<u8>(MINT_DECIMALS_ARG.name).copied();
             let fund_recipient = arg_matches.is_present("fund_recipient");
             let allow_unfunded_recipient = arg_matches.is_present("allow_empty_recipient")
                 || arg_matches.is_present("allow_unfunded_recipient");
@@ -3948,9 +3946,7 @@ pub async fn process_command<'a>(
                 .unwrap()
                 .unwrap();
             let amount = value_t_or_exit!(arg_matches, "amount", f64);
-            let mint_decimals = arg_matches
-                .get_one(MINT_DECIMALS_ARG.name)
-                .map(|v: &String| v.parse::<u8>().unwrap());
+            let mint_decimals = arg_matches.get_one::<u8>(MINT_DECIMALS_ARG.name).copied();
             let mint_info = config.get_mint_info(&token, mint_decimals).await?;
             let recipient = if let Some(address) =
                 pubkey_of_signer(arg_matches, "recipient", &mut wallet_manager).unwrap()
@@ -4414,9 +4410,7 @@ pub async fn process_command<'a>(
             let maximum_fee = value_t_or_exit!(arg_matches, "maximum_fee", f64);
             let (transfer_fee_authority_signer, transfer_fee_authority_pubkey) = config
                 .signer_or_default(arg_matches, "transfer_fee_authority", &mut wallet_manager);
-            let mint_decimals = arg_matches
-                .get_one(MINT_DECIMALS_ARG.name)
-                .map(|v: &String| v.parse::<u8>().unwrap());
+            let mint_decimals = arg_matches.get_one::<u8>(MINT_DECIMALS_ARG.name).copied();
             let bulk_signers = vec![transfer_fee_authority_signer];
 
             command_set_transfer_fee(
@@ -4561,10 +4555,7 @@ pub async fn process_command<'a>(
 
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
-
-            let mint_decimals = arg_matches
-                .get_one(MINT_DECIMALS_ARG.name)
-                .map(|v: &String| v.parse::<u8>().unwrap());
+            let mint_decimals = arg_matches.get_one::<u8>(MINT_DECIMALS_ARG.name).copied();
 
             let (instruction_type, elgamal_keypair, aes_key) = match c {
                 CommandName::DepositConfidentialTokens => {

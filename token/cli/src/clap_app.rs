@@ -306,16 +306,12 @@ pub fn mint_address_arg<'a>() -> Arg<'a> {
         .help(MINT_ADDRESS_ARG.help)
 }
 
-fn is_mint_decimals(string: &str) -> Result<(), String> {
-    is_parsable::<u8>(string)
-}
-
 pub fn mint_decimals_arg<'a>() -> Arg<'a> {
     Arg::with_name(MINT_DECIMALS_ARG.name)
         .long(MINT_DECIMALS_ARG.long)
         .takes_value(true)
         .value_name("MINT_DECIMALS")
-        .validator(is_mint_decimals)
+        .value_parser(clap::value_parser!(u8))
         .help(MINT_DECIMALS_ARG.help)
 }
 
@@ -717,7 +713,7 @@ pub fn app<'a>(
                 .arg(
                     Arg::with_name("decimals")
                         .long("decimals")
-                        .validator(is_mint_decimals)
+                        .value_parser(clap::value_parser!(u8))
                         .value_name("DECIMALS")
                         .takes_value(true)
                         .default_value(default_decimals)
