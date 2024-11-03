@@ -6,9 +6,9 @@ use {
     },
     solana_clap_v3_utils::{
         fee_payer::fee_payer_arg,
+        input_parsers::Amount,
         input_validators::{
-            is_amount, is_amount_or_all, is_parsable, is_pubkey, is_url_or_moniker,
-            is_valid_pubkey, is_valid_signer,
+            is_amount, is_parsable, is_pubkey, is_url_or_moniker, is_valid_pubkey, is_valid_signer,
         },
         memo::memo_arg,
         nonce::*,
@@ -1346,7 +1346,7 @@ pub fn app<'a>(
                 )
                 .arg(
                     Arg::with_name("amount")
-                        .validator(|s| is_amount_or_all(s))
+                        .value_parser(Amount::parse)
                         .value_name("TOKEN_AMOUNT")
                         .takes_value(true)
                         .index(2)
@@ -1476,7 +1476,7 @@ pub fn app<'a>(
                 )
                 .arg(
                     Arg::with_name("amount")
-                        .validator(|s| is_amount_or_all(s))
+                        .value_parser(Amount::parse)
                         .value_name("TOKEN_AMOUNT")
                         .takes_value(true)
                         .index(2)
@@ -2602,7 +2602,7 @@ pub fn app<'a>(
                 )
                 .arg(
                     Arg::with_name("amount")
-                        .validator(|s| is_amount_or_all(s))
+                        .value_parser(Amount::parse)
                         .value_name("TOKEN_AMOUNT")
                         .takes_value(true)
                         .index(2)
@@ -2639,7 +2639,7 @@ pub fn app<'a>(
                 )
                 .arg(
                     Arg::with_name("amount")
-                        .validator(|s| is_amount_or_all(s))
+                        .value_parser(Amount::parse)
                         .value_name("TOKEN_AMOUNT")
                         .takes_value(true)
                         .index(2)
