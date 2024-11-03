@@ -327,16 +327,10 @@ impl<'a> Config<'a> {
             .flatten()
             .copied();
 
-        let compute_unit_price = matches
-            .try_get_one::<u64>(COMPUTE_UNIT_PRICE_ARG.name)
-            .ok()
-            .flatten()
-            .copied();
+        let compute_unit_price = matches.get_one::<u64>(COMPUTE_UNIT_PRICE_ARG.name).copied();
 
         let compute_unit_limit = matches
-            .try_get_one::<u32>(COMPUTE_UNIT_LIMIT_ARG.name)
-            .ok()
-            .flatten()
+            .get_one::<u32>(COMPUTE_UNIT_LIMIT_ARG.name)
             .copied()
             .map(ComputeUnitLimit::Static)
             .unwrap_or_else(|| {

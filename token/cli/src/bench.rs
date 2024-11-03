@@ -34,7 +34,7 @@ pub(crate) async fn bench_process_command(
             let token = pubkey_of_signer(arg_matches, "token", wallet_manager)
                 .unwrap()
                 .unwrap();
-            let n = value_t_or_exit!(arg_matches, "n", usize);
+            let n = *arg_matches.get_one::<usize>("n").unwrap();
 
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", wallet_manager);
@@ -46,7 +46,7 @@ pub(crate) async fn bench_process_command(
             let token = pubkey_of_signer(arg_matches, "token", wallet_manager)
                 .unwrap()
                 .unwrap();
-            let n = value_t_or_exit!(arg_matches, "n", usize);
+            let n = *arg_matches.get_one::<usize>("n").unwrap();
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", wallet_manager);
             signers.push(owner_signer);
@@ -57,7 +57,7 @@ pub(crate) async fn bench_process_command(
             let token = pubkey_of_signer(arg_matches, "token", wallet_manager)
                 .unwrap()
                 .unwrap();
-            let n = value_t_or_exit!(arg_matches, "n", usize);
+            let n = *arg_matches.get_one::<usize>("n").unwrap();
             let ui_amount = *arg_matches.get_one::<Amount>("amount").unwrap();
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", wallet_manager);
@@ -72,7 +72,7 @@ pub(crate) async fn bench_process_command(
             let token = pubkey_of_signer(arg_matches, "token", wallet_manager)
                 .unwrap()
                 .unwrap();
-            let n = value_t_or_exit!(arg_matches, "n", usize);
+            let n = *arg_matches.get_one::<usize>("n").unwrap();
             let ui_amount = *arg_matches.get_one::<Amount>("amount").unwrap();
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", wallet_manager);

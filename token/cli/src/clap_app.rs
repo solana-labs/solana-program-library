@@ -7,9 +7,7 @@ use {
     solana_clap_v3_utils::{
         fee_payer::fee_payer_arg,
         input_parsers::Amount,
-        input_validators::{
-            is_parsable, is_pubkey, is_url_or_moniker, is_valid_pubkey, is_valid_signer,
-        },
+        input_validators::{is_pubkey, is_url_or_moniker, is_valid_pubkey, is_valid_signer},
         memo::memo_arg,
         nonce::*,
         offline::{self, *},
@@ -473,7 +471,7 @@ impl BenchSubCommand for App<'_> {
                         )
                         .arg(
                             Arg::with_name("n")
-                                .validator(is_parsable::<usize>)
+                                .value_parser(clap::value_parser!(usize))
                                 .value_name("N")
                                 .takes_value(true)
                                 .index(2)
@@ -496,7 +494,7 @@ impl BenchSubCommand for App<'_> {
                         )
                         .arg(
                             Arg::with_name("n")
-                                .validator(is_parsable::<usize>)
+                                .value_parser(clap::value_parser!(usize))
                                 .value_name("N")
                                 .takes_value(true)
                                 .index(2)
@@ -519,7 +517,7 @@ impl BenchSubCommand for App<'_> {
                         )
                         .arg(
                             Arg::with_name("n")
-                                .validator(is_parsable::<usize>)
+                                .value_parser(clap::value_parser!(usize))
                                 .value_name("N")
                                 .takes_value(true)
                                 .index(2)
@@ -559,7 +557,7 @@ impl BenchSubCommand for App<'_> {
                         )
                         .arg(
                             Arg::with_name("n")
-                                .validator(is_parsable::<usize>)
+                                .value_parser(clap::value_parser!(usize))
                                 .value_name("N")
                                 .takes_value(true)
                                 .index(2)
@@ -672,7 +670,7 @@ pub fn app<'a>(
                 .takes_value(true)
                 .global(true)
                 .value_name("COMPUTE-UNIT-LIMIT")
-                .validator(is_parsable::<u32>)
+                .value_parser(clap::value_parser!(u32))
                 .help(COMPUTE_UNIT_LIMIT_ARG.help)
         )
         .arg(
@@ -681,7 +679,7 @@ pub fn app<'a>(
                 .takes_value(true)
                 .global(true)
                 .value_name("COMPUTE-UNIT-PRICE")
-                .validator(is_parsable::<u64>)
+                .value_parser(clap::value_parser!(u64))
                 .help(COMPUTE_UNIT_PRICE_ARG.help)
         )
         .bench_subcommand()
