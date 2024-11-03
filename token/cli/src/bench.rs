@@ -1,7 +1,7 @@
 /// The `bench` subcommand
 use {
     crate::{clap_app::Error, command::CommandResult, config::Config},
-    clap::{value_t_or_exit, ArgMatches},
+    clap::ArgMatches,
     solana_clap_v3_utils::input_parsers::{pubkey_of_signer, Amount},
     solana_client::{
         nonblocking::rpc_client::RpcClient, rpc_client::RpcClient as BlockingRpcClient,
