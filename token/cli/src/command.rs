@@ -81,6 +81,21 @@ fn print_error_and_exit<T, E: Display>(e: E) -> T {
     exit(1)
 }
 
+fn amount_to_raw_amount(amount: Amount, decimals: u8, all_amount: Option<u64>, name: &str) -> u64 {
+    match amount {
+        Amount::Raw(ui_amount) => ui_amount,
+        Amount::Decimal(ui_amount) => spl_token::ui_amount_to_amount(ui_amount, decimals),
+        Amount::All => {
+            if let Some(raw_amount) = all_amount {
+                raw_amount
+            } else {
+                eprintln!("ALL keyword is not allowed for {}", name);
+                exit(1)
+            }
+        }
+    }
+}
+
 type BulkSigners = Vec<Arc<dyn Signer>>;
 pub type CommandResult = Result<String, Error>;
 
@@ -728,7 +743,7 @@ async fn command_set_transfer_fee(
     token_pubkey: Pubkey,
     transfer_fee_authority: Pubkey,
     transfer_fee_basis_points: u16,
-    maximum_fee: f64,
+    maximum_fee: Amount,
     mint_decimals: Option<u8>,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
@@ -770,16 +785,19 @@ async fn command_set_transfer_fee(
         mint_decimals.unwrap()
     };
 
+    let token = token_client_from_config(config, &token_pubkey, Some(decimals))?;
+    let maximum_fee = amount_to_raw_amount(maximum_fee, decimals, None, "MAXIMUM_FEE");
+
     println_display(
         config,
         format!(
             "Setting transfer fee for {} to {} bps, {} maximum",
-            token_pubkey, transfer_fee_basis_points, maximum_fee
+            token_pubkey,
+            transfer_fee_basis_points,
+            spl_token::amount_to_ui_amount(maximum_fee, decimals)
         ),
     );
 
-    let token = token_client_from_config(config, &token_pubkey, Some(decimals))?;
-    let maximum_fee = spl_token::ui_amount_to_amount(maximum_fee, decimals);
     let res = token
         .set_transfer_fee(
             &transfer_fee_authority,
@@ -1202,7 +1220,7 @@ async fn command_transfer(
     mint_decimals: Option<u8>,
     no_recipient_is_ata_owner: bool,
     use_unchecked_instruction: bool,
-    ui_fee: Option<f64>,
+    ui_fee: Option<Amount>,
     memo: Option<String>,
     bulk_signers: BulkSigners,
     no_wait: bool,
@@ -1306,7 +1324,7 @@ async fn command_transfer(
     }
 
     let maybe_fee =
-        ui_fee.map(|ui_amount| spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals));
+        ui_fee.map(|v| amount_to_raw_amount(v, mint_info.decimals, None, "EXPECTED_FEE"));
 
     // determine whether recipient is a token account or an expected owner of one
     let recipient_is_token_account = if !config.sign_only {
@@ -1778,7 +1796,7 @@ async fn command_burn(
 async fn command_mint(
     config: &Config<'_>,
     token: Pubkey,
-    ui_amount: f64,
+    ui_amount: Amount,
     recipient: Pubkey,
     mint_info: MintInfo,
     mint_authority: Pubkey,
@@ -1786,15 +1804,18 @@ async fn command_mint(
     memo: Option<String>,
     bulk_signers: BulkSigners,
 ) -> CommandResult {
+    let amount = amount_to_raw_amount(ui_amount, mint_info.decimals, None, "TOKEN_AMOUNT");
+
     println_display(
         config,
         format!(
             "Minting {} tokens\n  Token: {}\n  Recipient: {}",
-            ui_amount, token, recipient
+            spl_token::amount_to_ui_amount(amount, mint_info.decimals),
+            token,
+            recipient
         ),
     );
 
-    let amount = spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals);
     let decimals = if use_unchecked_instruction {
         None
     } else {
@@ -1895,19 +1916,32 @@ async fn command_thaw(
 
 async fn command_wrap(
     config: &Config<'_>,
-    sol: f64,
+    amount: Amount,
     wallet_address: Pubkey,
     wrapped_sol_account: Option<Pubkey>,
     immutable_owner: bool,
     bulk_signers: BulkSigners,
 ) -> CommandResult {
-    let lamports = sol_to_lamports(sol);
+    let lamports = match amount {
+        Amount::Raw(amount) => amount,
+        Amount::Decimal(amount) => sol_to_lamports(amount),
+        Amount::All => {
+            return Err("ALL keyword not supported for SOL amount".into());
+        }
+    };
     let token = native_token_client_from_config(config)?;
 
     let account =
         wrapped_sol_account.unwrap_or_else(|| token.get_associated_token_address(&wallet_address));
 
-    println_display(config, format!("Wrapping {} SOL into {}", sol, account));
+    println_display(
+        config,
+        format!(
+            "Wrapping {} SOL into {}",
+            lamports_to_sol(lamports),
+            account
+        ),
+    );
 
     if !config.sign_only {
         if let Some(account_data) = config.program_client.get_account(account).await? {
@@ -2011,29 +2045,31 @@ async fn command_approve(
     config: &Config<'_>,
     account: Pubkey,
     owner: Pubkey,
-    ui_amount: f64,
+    ui_amount: Amount,
     delegate: Pubkey,
     mint_address: Option<Pubkey>,
     mint_decimals: Option<u8>,
     use_unchecked_instruction: bool,
     bulk_signers: BulkSigners,
 ) -> CommandResult {
-    println_display(
-        config,
-        format!(
-            "Approve {} tokens\n  Account: {}\n  Delegate: {}",
-            ui_amount, account, delegate
-        ),
-    );
-
     let mint_address = config.check_account(&account, mint_address).await?;
     let mint_info = config.get_mint_info(&mint_address, mint_decimals).await?;
-    let amount = spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals);
+    let amount = amount_to_raw_amount(ui_amount, mint_info.decimals, None, "TOKEN_AMOUNT");
     let decimals = if use_unchecked_instruction {
         None
     } else {
         Some(mint_info.decimals)
     };
+
+    println_display(
+        config,
+        format!(
+            "Approve {} tokens\n  Account: {}\n  Delegate: {}",
+            spl_token::amount_to_ui_amount(amount, mint_info.decimals),
+            account,
+            delegate
+        ),
+    );
 
     let token = token_client_from_config(config, &mint_info.address, decimals)?;
     let res = token
@@ -3536,11 +3572,8 @@ pub async fn process_command<'a>(
 
             let transfer_fee_basis_point = arg_matches.get_one::<u16>("transfer_fee_basis_points");
             let transfer_fee_maximum_fee = arg_matches
-                .get_one::<String>("transfer_fee_maximum_fee")
-                .map(|str| {
-                    let v = str.parse::<f64>().unwrap(); // inputs are validated so this is safe
-                    spl_token::ui_amount_to_amount(v, decimals)
-                });
+                .get_one::<Amount>("transfer_fee_maximum_fee")
+                .map(|v| amount_to_raw_amount(*v, decimals, None, "MAXIMUM_FEE"));
             let transfer_fee = transfer_fee_basis_point
                 .map(|v| (*v, transfer_fee_maximum_fee.unwrap()))
                 .or(transfer_fee);
@@ -3666,8 +3699,8 @@ pub async fn process_command<'a>(
             };
             let value = arg_matches.value_of("value").map(|v| v.to_string());
             let transfer_lamports = arg_matches
-                .get_one(TRANSFER_LAMPORTS_ARG.name)
-                .map(|v: &String| v.parse::<u64>().unwrap());
+                .get_one::<u64>(TRANSFER_LAMPORTS_ARG.name)
+                .copied();
             let bulk_signers = vec![authority_signer];
 
             command_update_metadata(
@@ -3685,7 +3718,7 @@ pub async fn process_command<'a>(
             let token_pubkey = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
-            let max_size = value_t_or_exit!(arg_matches, "max_size", u64);
+            let max_size = *arg_matches.get_one::<u64>("max_size").unwrap();
             let (mint_authority_signer, mint_authority) =
                 config.signer_or_default(arg_matches, "mint_authority", &mut wallet_manager);
             let update_authority =
@@ -3706,7 +3739,7 @@ pub async fn process_command<'a>(
             let token_pubkey = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
-            let new_max_size = value_t_or_exit!(arg_matches, "new_max_size", u64);
+            let new_max_size = *arg_matches.get_one::<u64>("new_max_size").unwrap();
             let (update_authority_signer, update_authority) =
                 config.signer_or_default(arg_matches, "update_authority", &mut wallet_manager);
             let bulk_signers = vec![update_authority_signer];
@@ -3872,9 +3905,7 @@ pub async fn process_command<'a>(
                 println_display(config, "recipient-is-ata-owner is now the default behavior. The option has been deprecated and will be removed in a future release.".to_string());
             }
             let use_unchecked_instruction = arg_matches.is_present("use_unchecked_instruction");
-            let expected_fee = arg_matches
-                .get_one::<String>("expected_fee")
-                .map(|str| str.parse::<f64>().unwrap()); // unwrap safe since inputs are validated
+            let expected_fee = arg_matches.get_one::<Amount>("expected_fee").copied();
             let memo = value_t!(arg_matches, "memo", String).ok();
             let transfer_hook_accounts = arg_matches.values_of("transfer_hook_account").map(|v| {
                 v.into_iter()
@@ -3946,7 +3977,7 @@ pub async fn process_command<'a>(
             let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
-            let amount = value_t_or_exit!(arg_matches, "amount", f64);
+            let amount = *arg_matches.get_one::<Amount>("amount").unwrap();
             let mint_decimals = arg_matches.get_one::<u8>(MINT_DECIMALS_ARG.name).copied();
             let mint_info = config.get_mint_info(&token, mint_decimals).await?;
             let recipient = if let Some(address) =
@@ -4024,7 +4055,7 @@ pub async fn process_command<'a>(
             .await
         }
         (CommandName::Wrap, arg_matches) => {
-            let amount = value_t_or_exit!(arg_matches, "amount", f64);
+            let amount = *arg_matches.get_one::<Amount>("amount").unwrap();
             let account = if arg_matches.is_present("create_aux_account") {
                 let (signer, account) = new_throwaway_signer();
                 bulk_signers.push(signer);
@@ -4066,7 +4097,7 @@ pub async fn process_command<'a>(
             let account = pubkey_of_signer(arg_matches, "account", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
-            let amount = value_t_or_exit!(arg_matches, "amount", f64);
+            let amount = *arg_matches.get_one::<Amount>("amount").unwrap();
             let delegate = pubkey_of_signer(arg_matches, "delegate", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
@@ -4408,7 +4439,7 @@ pub async fn process_command<'a>(
                 .unwrap();
             let transfer_fee_basis_points =
                 value_t_or_exit!(arg_matches, "transfer_fee_basis_points", u16);
-            let maximum_fee = value_t_or_exit!(arg_matches, "maximum_fee", f64);
+            let maximum_fee = *arg_matches.get_one::<Amount>("maximum_fee").unwrap();
             let (transfer_fee_authority_signer, transfer_fee_authority_pubkey) = config
                 .signer_or_default(arg_matches, "transfer_fee_authority", &mut wallet_manager);
             let mint_decimals = arg_matches.get_one::<u8>(MINT_DECIMALS_ARG.name).copied();

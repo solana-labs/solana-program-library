@@ -8,7 +8,7 @@ use {
         fee_payer::fee_payer_arg,
         input_parsers::Amount,
         input_validators::{
-            is_amount, is_parsable, is_pubkey, is_url_or_moniker, is_valid_pubkey, is_valid_signer,
+            is_parsable, is_pubkey, is_url_or_moniker, is_valid_pubkey, is_valid_signer,
         },
         memo::memo_arg,
         nonce::*,
@@ -340,7 +340,7 @@ pub fn transfer_lamports_arg<'a>() -> Arg<'a> {
         .long(TRANSFER_LAMPORTS_ARG.long)
         .takes_value(true)
         .value_name("LAMPORTS")
-        .validator(|s| is_amount(s))
+        .value_parser(clap::value_parser!(u64))
         .help(TRANSFER_LAMPORTS_ARG.help)
 }
 
@@ -528,7 +528,7 @@ impl BenchSubCommand for App<'_> {
                         )
                         .arg(
                             Arg::with_name("amount")
-                                .validator(|s| is_amount(s))
+                                .value_parser(Amount::parse)
                                 .value_name("TOKEN_AMOUNT")
                                 .takes_value(true)
                                 .index(3)
@@ -568,7 +568,7 @@ impl BenchSubCommand for App<'_> {
                         )
                         .arg(
                             Arg::with_name("amount")
-                                .validator(|s| is_amount(s))
+                                .value_parser(Amount::parse)
                                 .value_name("TOKEN_AMOUNT")
                                 .takes_value(true)
                                 .index(3)
@@ -835,7 +835,7 @@ pub fn app<'a>(
                         .number_of_values(1)
                         .conflicts_with("transfer_fee")
                         .requires("transfer_fee_basis_points")
-                        .validator(|s| is_amount(s))
+                        .value_parser(Amount::parse)
                         .help(
                             "Add a UI amount maximum transfer fee to the mint. \
                             The mint authority can set and collect fees"
@@ -1086,7 +1086,7 @@ pub fn app<'a>(
                 )
                 .arg(
                         Arg::with_name("max_size")
-                        .validator(|s| is_amount(s))
+                        .value_parser(clap::value_parser!(u64))
                         .value_name("MAX_SIZE")
                         .takes_value(true)
                         .required(true)
@@ -1132,7 +1132,7 @@ pub fn app<'a>(
                 )
                 .arg(
                         Arg::with_name("new_max_size")
-                        .validator(|s| is_amount(s))
+                        .value_parser(clap::value_parser!(u64))
                         .value_name("NEW_MAX_SIZE")
                         .takes_value(true)
                         .required(true)
@@ -1430,8 +1430,8 @@ pub fn app<'a>(
                 .arg(
                     Arg::with_name("expected_fee")
                         .long("expected-fee")
-                        .validator(|s| is_amount(s))
-                        .value_name("TOKEN_AMOUNT")
+                        .value_parser(Amount::parse)
+                        .value_name("EXPECTED_FEE")
                         .takes_value(true)
                         .help("Expected fee amount collected during the transfer"),
                 )
@@ -1510,7 +1510,7 @@ pub fn app<'a>(
                 )
                 .arg(
                     Arg::with_name("amount")
-                        .validator(|s| is_amount(s))
+                        .value_parser(Amount::parse)
                         .value_name("TOKEN_AMOUNT")
                         .takes_value(true)
                         .index(2)
@@ -1620,7 +1620,7 @@ pub fn app<'a>(
                 .about("Wrap native SOL in a SOL token account")
                 .arg(
                     Arg::with_name("amount")
-                        .validator(|s| is_amount(s))
+                        .value_parser(Amount::parse)
                         .value_name("AMOUNT")
                         .takes_value(true)
                         .index(1)
@@ -1702,7 +1702,7 @@ pub fn app<'a>(
                 )
                 .arg(
                     Arg::with_name("amount")
-                        .validator(|s| is_amount(s))
+                        .value_parser(Amount::parse)
                         .value_name("TOKEN_AMOUNT")
                         .takes_value(true)
                         .index(2)
@@ -2333,8 +2333,8 @@ pub fn app<'a>(
                 )
                 .arg(
                     Arg::with_name("maximum_fee")
-                        .value_name("TOKEN_AMOUNT")
-                        .validator(|s| is_amount(s))
+                        .value_name("MAXIMUM_FEE")
+                        .value_parser(Amount::parse)
                         .takes_value(true)
                         .required(true)
                         .help("The new maximum transfer fee in UI amount"),
