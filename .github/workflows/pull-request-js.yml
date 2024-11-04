@@ -3,6 +3,7 @@ name: Pull Request JS
 on:
   pull_request:
     paths:
+      - 'account-compression/sdk/**'
       - 'libraries/type-length-value/js/**'
       - 'memo/js/**'
       - 'name-service/js/**'
@@ -18,6 +19,7 @@ on:
   push:
     branches: [master]
     paths:
+      - 'account-compression/sdk/**'
       - 'libraries/type-length-value/js/**'
       - 'memo/js/**'
       - 'single-pool/js/**'
@@ -41,6 +43,7 @@ jobs:
         node-version: [16.x, 18.x, 20.x]
         package:
           [
+            account-compression,
             memo,
             name-service,
             stake-pool,
