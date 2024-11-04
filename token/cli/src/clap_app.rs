@@ -1796,6 +1796,7 @@ pub fn app<'a>(
                 .arg(owner_address_arg())
                 .arg(multisig_signer_arg())
                 .nonce_args(true)
+                .offline_args(),
         )
         .subcommand(
             SubCommand::with_name(CommandName::CloseMint.into())
