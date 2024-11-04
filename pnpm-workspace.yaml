@@ -1,4 +1,5 @@
 packages:
+  - "account-compression/sdk"
   - "libraries/type-length-value/js"
   - "memo/js"
   - "name-service/js"
