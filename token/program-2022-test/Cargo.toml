@@ -29,7 +29,7 @@ spl-memo = { version = "6.0.0", path = "../../memo/program", features = [
   "no-entrypoint",
 ] }
 spl-pod = { version = "0.5.0", path = "../../libraries/pod" }
-spl-record = { version = "0.2.1", path = "../../record/program", features = [
+spl-record = { version = "0.3.0", path = "../../record/program", features = [
     "no-entrypoint",
 ]}
 spl-token-2022 = { version = "6.0.0", path = "../program-2022", features = [

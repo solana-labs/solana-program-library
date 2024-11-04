@@ -24,7 +24,7 @@ spl-elgamal-registry = { version = "0.1.0", path = "../confidential-transfer/elg
 spl-memo = { version = "6.0", path = "../../memo/program", features = [
   "no-entrypoint",
 ] }
-spl-record = { version = "0.2.1", path = "../../record/program", features = ["no-entrypoint"] }
+spl-record = { version = "0.3.0", path = "../../record/program", features = ["no-entrypoint"] }
 spl-token = { version = "7.0", path = "../program", features = [
   "no-entrypoint",
 ] }
