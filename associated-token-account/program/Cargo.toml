@@ -23,7 +23,7 @@ spl-token = { version = "7.0", path = "../../token/program", features = [
 spl-token-2022 = { version = "6.0.0", path = "../../token/program-2022", features = [
   "no-entrypoint",
 ] }
-thiserror = "1.0"
+thiserror = "2.0"
 
 [lib]
 crate-type = ["cdylib", "lib"]

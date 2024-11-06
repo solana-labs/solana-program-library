@@ -22,7 +22,7 @@ solana-security-txt = "1.1.1"
 spl-token = { version = "7.0", path = "../../token/program", features = [
   "no-entrypoint",
 ] }
-thiserror = "1.0"
+thiserror = "2.0"
 
 [dev-dependencies]
 solana-program-test = "2.1.0"

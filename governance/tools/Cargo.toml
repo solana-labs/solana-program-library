@@ -19,4 +19,4 @@ solana-program = "2.1.0"
 spl-token = { version = "7.0", path = "../../token/program", features = [
   "no-entrypoint",
 ] }
-thiserror = "1.0"
+thiserror = "2.0"

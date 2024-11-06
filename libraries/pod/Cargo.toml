@@ -24,7 +24,7 @@ solana-program-error = "2.1.0"
 solana-program-option = "2.1.0"
 solana-pubkey = "2.1.0"
 solana-zk-sdk = "2.1.0"
-thiserror = "1.0"
+thiserror = "2.0"
 
 [dev-dependencies]
 serde_json = "1.0.132"
