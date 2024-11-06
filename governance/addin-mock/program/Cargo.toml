@@ -25,7 +25,7 @@ spl-token = { version = "7.0", path = "../../../token/program", features = [
 ] }
 spl-governance-addin-api = { version = "0.1.4", path = "../../addin-api" }
 spl-governance-tools = { version = "0.1.4", path = "../../tools" }
-thiserror = "1.0"
+thiserror = "2.0"
 
 
 [dev-dependencies]

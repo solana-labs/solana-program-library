@@ -17,7 +17,7 @@ num-derive = "0.4"
 num-traits = "0.2"
 solana-program = "2.1.0"
 spl-math = { path = "../math", version = "0.3.0" }
-thiserror = "1.0"
+thiserror = "2.0"
 
 [dev-dependencies]
 solana-program-test = "2.1.0"

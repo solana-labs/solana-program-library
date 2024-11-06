@@ -24,7 +24,7 @@ solana-program-error = "2.1.0"
 solana-program-pack = "2.1.0"
 solana-pubkey = { version = "2.1.0", features = ["bytemuck"] }
 solana-rent = "2.1.0"
-thiserror = "1.0"
+thiserror = "2.0"
 
 [dev-dependencies]
 solana-program-test = "2.1.0"

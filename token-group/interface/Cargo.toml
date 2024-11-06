@@ -18,7 +18,7 @@ solana-program-error = "2.1.0"
 solana-pubkey = "2.1.0"
 spl-discriminator = { version = "0.4.0", path = "../../libraries/discriminator" }
 spl-pod = { version = "0.5.0", path = "../../libraries/pod", features = ["borsh"] }
-thiserror = "1.0"
+thiserror = "2.0"
 
 [dev-dependencies]
 solana-sha256-hasher = "2.1.0"

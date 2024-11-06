@@ -28,7 +28,7 @@ spl-governance = { version = "4.0.0", path = "../../program", features = [
 ] }
 spl-governance-tools = { version = "0.1.4", path = "../../tools" }
 spl-governance-addin-api = { version = "0.1.4", path = "../../addin-api" }
-thiserror = "1.0"
+thiserror = "2.0"
 
 
 [dev-dependencies]
