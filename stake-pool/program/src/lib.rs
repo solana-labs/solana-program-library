@@ -4,6 +4,7 @@
 
 pub mod big_vec;
 pub mod error;
+pub mod inline_mpl_token_2022_metadata;
 pub mod inline_mpl_token_metadata;
 pub mod instruction;
 pub mod processor;

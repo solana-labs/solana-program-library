@@ -362,12 +362,16 @@ fn setup_reserve_stake_account(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn setup_mint_account(
     config: &Config,
     mint_keypair: &Keypair,
     mint_account_balance: u64,
     withdraw_authority: &Pubkey,
     default_decimals: u8,
+    metadata_info: Option<Pubkey>,
+    metadata_update_authority: Option<Pubkey>,
+    allow_unspecified_metadata: bool,
 ) -> CommandResult {
     let mint_account_info = config.rpc_client.get_account(&mint_keypair.pubkey());
     if let Ok(account) = mint_account_info {
@@ -396,6 +400,14 @@ fn setup_mint_account(
                 send_transaction(config, transaction)?;
                 return Ok(());
             }
+        } else if account.owner == spl_token_2022::id()
+            && !allow_unspecified_metadata
+            && metadata_info.is_none()
+            && metadata_update_authority.is_none()
+        {
+            return Err(
+                "Please specify the metadata or specify --allow-unspecified-metadata".into(),
+            );
         }
     }
 
@@ -594,6 +606,9 @@ fn command_create_pool(
     mint_keypair: Option<Keypair>,
     reserve_keypair: Option<Keypair>,
     unsafe_fees: bool,
+    metadata_info: Option<Pubkey>,
+    metadata_update_authority: Option<Pubkey>,
+    allow_unspecified_metadata: bool,
 ) -> CommandResult {
     if !unsafe_fees {
         check_stake_pool_fees(&epoch_fee, &withdrawal_fee, &deposit_fee)?;
@@ -652,6 +667,9 @@ fn command_create_pool(
         mint_account_balance,
         &withdraw_authority,
         default_decimals,
+        metadata_info,
+        metadata_update_authority,
+        allow_unspecified_metadata,
     )?;
     setup_pool_fee_account(
         config,
@@ -2417,6 +2435,28 @@ fn main() {
                     .takes_value(false)
                     .help("Bypass fee checks, allowing pool to be created with unsafe fees"),
             )
+            .arg(
+                Arg::with_name("metadata_info")
+                    .long("metadata-info")
+                    .validator(is_pubkey)
+                    .value_name("ADDRESS")
+                    .takes_value(true)
+                    .help("Metadata info address"),
+            )
+            .arg(
+                Arg::with_name("metadata_update_authority")
+                    .long("metadata-update-authority")
+                    .validator(is_pubkey)
+                    .value_name("ADDRESS")
+                    .takes_value(true)
+                    .help("Metadata Update authority address"),
+            )
+            .arg(
+                Arg::with_name("allow_unspecified_metadata")
+                    .long("allow-unspecified-metadata")
+                    .takes_value(false)
+                    .help("Allow unspecified metadata"),
+            )
         )
         .subcommand(SubCommand::with_name("create-token-metadata")
         .about("Creates stake pool token metadata")
@@ -3191,6 +3231,10 @@ fn main() {
             let mint_keypair = keypair_of(arg_matches, "mint_keypair");
             let reserve_keypair = keypair_of(arg_matches, "reserve_keypair");
             let unsafe_fees = arg_matches.is_present("unsafe_fees");
+            let metadata_info: Option<Pubkey> = pubkey_of(arg_matches, "metadata_info");
+            let metadata_update_authority: Option<Pubkey> =
+                pubkey_of(arg_matches, "update_authority");
+            let allow_unspecified_metadata = arg_matches.is_present("allow_unspecified_metadata");
             command_create_pool(
                 &config,
                 deposit_authority,
@@ -3213,6 +3257,9 @@ fn main() {
                 mint_keypair,
                 reserve_keypair,
                 unsafe_fees,
+                metadata_info,
+                metadata_update_authority,
+                allow_unspecified_metadata,
             )
         }
         ("create-token-metadata", Some(arg_matches)) => {

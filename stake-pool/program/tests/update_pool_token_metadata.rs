@@ -7,6 +7,7 @@ use {
     solana_program::instruction::InstructionError,
     solana_program_test::*,
     solana_sdk::{
+        pubkey::Pubkey,
         signature::{Keypair, Signer},
         transaction::{Transaction, TransactionError},
     },
@@ -14,9 +15,10 @@ use {
         error::StakePoolError::{SignatureMissing, WrongManager},
         instruction, MINIMUM_RESERVE_LAMPORTS,
     },
+    test_case::test_case,
 };
 
-async fn setup() -> (ProgramTestContext, StakePoolAccounts) {
+async fn setup(token_program_id: Pubkey) -> (ProgramTestContext, StakePoolAccounts) {
     let mut context = program_test_with_metadata_program()
         .start_with_context()
         .await;
@@ -35,16 +37,30 @@ async fn setup() -> (ProgramTestContext, StakePoolAccounts) {
     let symbol = "SYM";
     let uri = "test_uri";
 
-    let ix = instruction::create_token_metadata(
-        &spl_stake_pool::id(),
-        &stake_pool_accounts.stake_pool.pubkey(),
-        &stake_pool_accounts.manager.pubkey(),
-        &stake_pool_accounts.pool_mint.pubkey(),
-        &context.payer.pubkey(),
-        name.to_string(),
-        symbol.to_string(),
-        uri.to_string(),
-    );
+    let ix = if token_program_id.eq(&spl_token::id()) {
+        instruction::create_token_metadata(
+            &spl_stake_pool::id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.manager.pubkey(),
+            &stake_pool_accounts.pool_mint.pubkey(),
+            &context.payer.pubkey(),
+            name.to_string(),
+            symbol.to_string(),
+            uri.to_string(),
+        )
+    } else {
+        instruction::create_token_2022_metadata(
+            &spl_stake_pool::id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.manager.pubkey(),
+            &stake_pool_accounts.pool_mint.pubkey(),
+            &context.payer.pubkey(),
+            &token_program_id,
+            name.to_string(),
+            symbol.to_string(),
+            uri.to_string(),
+        )
+    };
 
     let transaction = Transaction::new_signed_with_payer(
         &[ix],
@@ -62,23 +78,38 @@ async fn setup() -> (ProgramTestContext, StakePoolAccounts) {
     (context, stake_pool_accounts)
 }
 
+#[test_case(spl_token::id(); "token")]
+#[test_case(spl_token_2022::id(); "token-2022")]
 #[tokio::test]
-async fn success_update_pool_token_metadata() {
-    let (mut context, stake_pool_accounts) = setup().await;
+async fn success_update_pool_token_metadata(token_program_id: Pubkey) {
+    let (mut context, stake_pool_accounts) = setup(token_program_id).await;
 
     let updated_name = "updated_name";
     let updated_symbol = "USYM";
     let updated_uri = "updated_uri";
 
-    let ix = instruction::update_token_metadata(
-        &spl_stake_pool::id(),
-        &stake_pool_accounts.stake_pool.pubkey(),
-        &stake_pool_accounts.manager.pubkey(),
-        &stake_pool_accounts.pool_mint.pubkey(),
-        updated_name.to_string(),
-        updated_symbol.to_string(),
-        updated_uri.to_string(),
-    );
+    let ix = if token_program_id.eq(&spl_token::id()) {
+        instruction::update_token_metadata(
+            &spl_stake_pool::id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.manager.pubkey(),
+            &stake_pool_accounts.pool_mint.pubkey(),
+            updated_name.to_string(),
+            updated_symbol.to_string(),
+            updated_uri.to_string(),
+        )
+    } else {
+        instruction::update_token_2022_metadata(
+            &spl_stake_pool::id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.manager.pubkey(),
+            &stake_pool_accounts.pool_mint.pubkey(),
+            &context.payer.pubkey(),
+            updated_name.to_string(),
+            updated_symbol.to_string(),
+            updated_uri.to_string(),
+        )
+    };
 
     let transaction = Transaction::new_signed_with_payer(
         &[ix],
@@ -106,7 +137,7 @@ async fn success_update_pool_token_metadata() {
 
 #[tokio::test]
 async fn fail_manager_did_not_sign() {
-    let (mut context, stake_pool_accounts) = setup().await;
+    let (mut context, stake_pool_accounts) = setup(spl_token::id()).await;
 
     let updated_name = "updated_name";
     let updated_symbol = "USYM";
@@ -149,7 +180,7 @@ async fn fail_manager_did_not_sign() {
 
 #[tokio::test]
 async fn fail_wrong_manager_signed() {
-    let (mut context, stake_pool_accounts) = setup().await;
+    let (mut context, stake_pool_accounts) = setup(spl_token::id()).await;
 
     let updated_name = "updated_name";
     let updated_symbol = "USYM";

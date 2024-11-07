@@ -418,6 +418,26 @@ pub enum StakePoolInstruction {
         /// URI of the uploaded metadata of the spl-token
         uri: String,
     },
+    /// Create token metadata for the stake-pool token in the
+    /// metaplex-token program
+    /// 0. `[]` Stake pool
+    /// 1. `[s]` Manager
+    /// 2. `[]` Stake pool withdraw authority
+    /// 3. `[]` Pool token mint account
+    /// 4. `[s, w]` Payer for creation of token metadata account
+    /// 5. `[w]` Token metadata account
+    /// 6. `[]` Metadata program id
+    /// 7. `[]` System program id
+    /// 8. `[]` Sysvar instructions id
+    /// 9. `[]` Token program id
+    CreateToken2022Metadata {
+        /// Token name
+        name: String,
+        /// Token symbol e.g. stkSOL
+        symbol: String,
+        /// URI of the uploaded metadata of the spl-token
+        uri: String,
+    },
     /// Update token metadata for the stake-pool token in the
     /// metaplex-token program
     ///
@@ -427,6 +447,26 @@ pub enum StakePoolInstruction {
     /// 3. `[w]` Token metadata account
     /// 4. `[]` Metadata program id
     UpdateTokenMetadata {
+        /// Token name
+        name: String,
+        /// Token symbol e.g. stkSOL
+        symbol: String,
+        /// URI of the uploaded metadata of the spl-token
+        uri: String,
+    },
+    /// Update token metadata for the stake-pool token_2022 in the
+    /// metaplex-token program
+    ///
+    /// 0. `[]` Stake pool
+    /// 1. `[s]` Manager
+    /// 2. `[]` Stake pool withdraw authority
+    /// 3. `[w]` Token metadata account
+    /// 4. `[]` Pool token mint account
+    /// 5. `[]` Payer for updating
+    /// 6. `[]` Metadata program id
+    /// 7. `[]` Sysvar instructions id
+    /// 8. `[]` System program id
+    UpdateToken2022Metadata {
         /// Token name
         name: String,
         /// Token symbol e.g. stkSOL
@@ -2604,6 +2644,42 @@ pub fn update_token_metadata(
     }
 }
 
+/// Creates an instruction to update metadata in the mpl token metadata program
+/// account for the pool token
+pub fn update_token_2022_metadata(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    manager: &Pubkey,
+    pool_mint: &Pubkey,
+    payer: &Pubkey,
+    name: String,
+    symbol: String,
+    uri: String,
+) -> Instruction {
+    let (stake_pool_withdraw_authority, _) =
+        find_withdraw_authority_program_address(program_id, stake_pool);
+    let (token_metadata, _) = find_metadata_account(pool_mint);
+
+    let accounts = vec![
+        AccountMeta::new_readonly(*stake_pool, false),
+        AccountMeta::new_readonly(*manager, true),
+        AccountMeta::new_readonly(stake_pool_withdraw_authority, false),
+        AccountMeta::new(token_metadata, false),
+        AccountMeta::new_readonly(*pool_mint, false),
+        AccountMeta::new(*payer, true),
+        AccountMeta::new_readonly(inline_mpl_token_metadata::id(), false),
+        AccountMeta::new_readonly(solana_program::sysvar::instructions::id(), false),
+        AccountMeta::new_readonly(solana_program::system_program::id(), false),
+    ];
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: borsh::to_vec(&StakePoolInstruction::UpdateToken2022Metadata { name, symbol, uri })
+            .unwrap(),
+    }
+}
+
 /// Creates an instruction to create metadata using the mpl token metadata
 /// program for the pool token
 pub fn create_token_metadata(
@@ -2635,6 +2711,44 @@ pub fn create_token_metadata(
         program_id: *program_id,
         accounts,
         data: borsh::to_vec(&StakePoolInstruction::CreateTokenMetadata { name, symbol, uri })
+            .unwrap(),
+    }
+}
+
+/// Creates an instruction to create metadata for token_2022 asset using the mpl token metadata
+/// program for the pool token
+pub fn create_token_2022_metadata(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    manager: &Pubkey,
+    pool_mint: &Pubkey,
+    payer: &Pubkey,
+    token_program_id: &Pubkey,
+    name: String,
+    symbol: String,
+    uri: String,
+) -> Instruction {
+    let (stake_pool_withdraw_authority, _) =
+        find_withdraw_authority_program_address(program_id, stake_pool);
+    let (token_metadata, _) = find_metadata_account(pool_mint);
+
+    let accounts = vec![
+        AccountMeta::new_readonly(*stake_pool, false),
+        AccountMeta::new_readonly(*manager, true),
+        AccountMeta::new_readonly(stake_pool_withdraw_authority, false),
+        AccountMeta::new_readonly(*pool_mint, false),
+        AccountMeta::new(*payer, true),
+        AccountMeta::new(token_metadata, false),
+        AccountMeta::new_readonly(inline_mpl_token_metadata::id(), false),
+        AccountMeta::new_readonly(system_program::id(), false),
+        AccountMeta::new_readonly(solana_program::sysvar::instructions::id(), false),
+        AccountMeta::new_readonly(*token_program_id, false),
+    ];
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: borsh::to_vec(&StakePoolInstruction::CreateToken2022Metadata { name, symbol, uri })
             .unwrap(),
     }
 }

@@ -12,7 +12,7 @@ use {
         transaction::{Transaction, TransactionError},
     },
     spl_stake_pool::{
-        error::StakePoolError::{AlreadyInUse, SignatureMissing, WrongManager},
+        error::StakePoolError::{SignatureMissing, WrongManager},
         instruction, MINIMUM_RESERVE_LAMPORTS,
     },
     test_case::test_case,
@@ -37,7 +37,7 @@ async fn setup(token_program_id: Pubkey) -> (ProgramTestContext, StakePoolAccoun
 }
 
 #[test_case(spl_token::id(); "token")]
-//#[test_case(spl_token_2022::id(); "token-2022")] enable once metaplex supports token-2022
+#[test_case(spl_token_2022::id(); "token-2022")]
 #[tokio::test]
 async fn success(token_program_id: Pubkey) {
     let (mut context, stake_pool_accounts) = setup(token_program_id).await;
@@ -46,16 +46,30 @@ async fn success(token_program_id: Pubkey) {
     let symbol = "SYM";
     let uri = "test_uri";
 
-    let ix = instruction::create_token_metadata(
-        &spl_stake_pool::id(),
-        &stake_pool_accounts.stake_pool.pubkey(),
-        &stake_pool_accounts.manager.pubkey(),
-        &stake_pool_accounts.pool_mint.pubkey(),
-        &context.payer.pubkey(),
-        name.to_string(),
-        symbol.to_string(),
-        uri.to_string(),
-    );
+    let ix = if token_program_id.eq(&spl_token::id()) {
+        instruction::create_token_metadata(
+            &spl_stake_pool::id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.manager.pubkey(),
+            &stake_pool_accounts.pool_mint.pubkey(),
+            &context.payer.pubkey(),
+            name.to_string(),
+            symbol.to_string(),
+            uri.to_string(),
+        )
+    } else {
+        instruction::create_token_2022_metadata(
+            &spl_stake_pool::id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.manager.pubkey(),
+            &stake_pool_accounts.pool_mint.pubkey(),
+            &context.payer.pubkey(),
+            &token_program_id,
+            name.to_string(),
+            symbol.to_string(),
+            uri.to_string(),
+        )
+    };
 
     let transaction = Transaction::new_signed_with_payer(
         &[ix],
@@ -265,7 +279,7 @@ async fn fail_create_metadata_twice() {
 
     match error {
         TransactionError::InstructionError(_, InstructionError::Custom(error_index)) => {
-            let program_error = AlreadyInUse as u32;
+            let program_error = 199; // MetadataErrorExpectedUninitializedAccount
             assert_eq!(error_index, program_error);
         }
         _ => panic!("Wrong error occurs while trying to create pool token metadata twice"),
