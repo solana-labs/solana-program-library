@@ -350,8 +350,8 @@ importers:
         specifier: 2.0.0-rc.2
         version: 2.0.0-rc.2(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
       '@solana/instructions':
-        specifier: 2.0.0-rc.2
-        version: 2.0.0-rc.2(typescript@5.6.3)
+        specifier: 2.0.0
+        version: 2.0.0(typescript@5.6.3)
       '@solana/transaction-messages':
         specifier: 2.0.0-rc.2
         version: 2.0.0-rc.2(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
@@ -2687,7 +2687,6 @@ packages:
       chalk: 5.3.0
       commander: 12.1.0
       typescript: 5.6.3
-    dev: true
 
   /@solana/errors@2.0.0-rc.2(typescript@5.6.3):
     resolution: {integrity: sha512-2NPRQYOLwpwP2J4KC0+Vc+qmwTGcu6VrKA9iRBLP0axR+49er9AqpoK3EowTmt0BvAvyArOJRuaPRIFMQI2IdA==}
@@ -2764,9 +2763,20 @@ packages:
       typescript: 5.6.3
     dev: false
 
+  /@solana/instructions@2.0.0(typescript@5.6.3):
+    resolution: {integrity: sha512-MiTEiNF7Pzp+Y+x4yadl2VUcNHboaW5WP52psBuhHns3GpbbruRv5efMpM9OEQNe1OsN+Eg39vjEidX55+P+DQ==}
+    engines: {node: '>=20.18.0'}
+    peerDependencies:
+      typescript: '>=5'
+    dependencies:
+      '@solana/errors': 2.0.0(typescript@5.6.3)
+      typescript: 5.6.3
+    dev: false
+
   /@solana/instructions@2.0.0-rc.2(typescript@5.6.3):
     resolution: {integrity: sha512-Y8oBKcPoNWrqRgsueDboIuG8lxvn2dsi0yoJvVAxudcLlqugNvQJYOT+Z76zMIxP/76FGsryKvAyvDAXdhlY8Q==}
     engines: {node: '>=20.18.0'}
+    deprecated: This version introduced a bug that broke RPC subscriptions. Please use 2.0.0-rc.3.
     peerDependencies:
       typescript: '>=5'
     dependencies:
