@@ -310,8 +310,8 @@ importers:
   single-pool/js/packages/classic:
     dependencies:
       '@solana/addresses':
-        specifier: 2.0.0-rc.2
-        version: 2.0.0-rc.2(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
+        specifier: 2.0.0
+        version: 2.0.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
       '@solana/spl-single-pool':
         specifier: 1.0.0
         version: link:../modern
@@ -347,8 +347,8 @@ importers:
   single-pool/js/packages/modern:
     dependencies:
       '@solana/addresses':
-        specifier: 2.0.0-rc.2
-        version: 2.0.0-rc.2(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
+        specifier: 2.0.0
+        version: 2.0.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
       '@solana/instructions':
         specifier: 2.0.0
         version: 2.0.0(typescript@5.6.3)
@@ -2534,9 +2534,25 @@ packages:
       '@sinonjs/commons': 3.0.1
     dev: true
 
+  /@solana/addresses@2.0.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3):
+    resolution: {integrity: sha512-8n3c/mUlH1/z+pM8e7OJ6uDSXw26Be0dgYiokiqblO66DGQ0d+7pqFUFZ5pEGjJ9PU2lDTSfY8rHf4cemOqwzQ==}
+    engines: {node: '>=20.18.0'}
+    peerDependencies:
+      typescript: '>=5'
+    dependencies:
+      '@solana/assertions': 2.0.0(typescript@5.6.3)
+      '@solana/codecs-core': 2.0.0(typescript@5.6.3)
+      '@solana/codecs-strings': 2.0.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
+      '@solana/errors': 2.0.0(typescript@5.6.3)
+      typescript: 5.6.3
+    transitivePeerDependencies:
+      - fastestsmallesttextencoderdecoder
+    dev: false
+
   /@solana/addresses@2.0.0-rc.2(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3):
     resolution: {integrity: sha512-B8Ctkc1Ks/cw1wYkwyuQAUoNzlOs5Yc2bWQoPFe0SJQ5EzwqAip8TDel+cvJEeaCRBQ2imApLfu8Grz7TqVn4Q==}
     engines: {node: '>=20.18.0'}
+    deprecated: This version introduced a bug that broke RPC subscriptions. Please use 2.0.0-rc.3.
     peerDependencies:
       typescript: '>=5'
     dependencies:
@@ -2670,6 +2686,7 @@ packages:
   /@solana/codecs-strings@2.0.0-rc.2(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3):
     resolution: {integrity: sha512-EAFAkztLYqOwHG+C4pbRQn8GcPi5yW3lh162m+OSKJJdcMAnpFBG4jN7eJPVgyRMfToxknjFB8veZN7XmNdqqg==}
     engines: {node: '>=20.18.0'}
+    deprecated: This version introduced a bug that broke RPC subscriptions. Please use 2.0.0-rc.3.
     peerDependencies:
       fastestsmallesttextencoderdecoder: ^1.0.22
       typescript: '>=5'
