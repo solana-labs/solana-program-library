@@ -133,8 +133,8 @@ importers:
   libraries/type-length-value/js:
     dependencies:
       '@solana/assertions':
-        specifier: ^2.0.0-rc.2
-        version: 2.0.0-rc.2(typescript@5.6.3)
+        specifier: ^2.0.0
+        version: 2.0.0(typescript@5.6.3)
       buffer:
         specifier: ^6.0.3
         version: 6.0.3
@@ -2549,9 +2549,20 @@ packages:
       - fastestsmallesttextencoderdecoder
     dev: false
 
+  /@solana/assertions@2.0.0(typescript@5.6.3):
+    resolution: {integrity: sha512-NyPPqZRNGXs/GAjfgsw7YS6vCTXWt4ibXveS+ciy5sdmp/0v3pA6DlzYjleF9Sljrew0IiON15rjaXamhDxYfQ==}
+    engines: {node: '>=20.18.0'}
+    peerDependencies:
+      typescript: '>=5'
+    dependencies:
+      '@solana/errors': 2.0.0(typescript@5.6.3)
+      typescript: 5.6.3
+    dev: false
+
   /@solana/assertions@2.0.0-rc.2(typescript@5.6.3):
     resolution: {integrity: sha512-qDeQc9MV3E1L8kOWXT1LjOxbquEWlxshKNQULgfsfrtsr6SucEaWHc6oBwdVMCj80iR/VzfAtOPB9a5HKXHp3Q==}
     engines: {node: '>=20.18.0'}
+    deprecated: This version introduced a bug that broke RPC subscriptions. Please use 2.0.0-rc.3.
     peerDependencies:
       typescript: '>=5'
     dependencies:
@@ -2687,7 +2698,6 @@ packages:
       chalk: 5.3.0
       commander: 12.1.0
       typescript: 5.6.3
-    dev: true
 
   /@solana/errors@2.0.0-rc.2(typescript@5.6.3):
     resolution: {integrity: sha512-2NPRQYOLwpwP2J4KC0+Vc+qmwTGcu6VrKA9iRBLP0axR+49er9AqpoK3EowTmt0BvAvyArOJRuaPRIFMQI2IdA==}
