@@ -43,7 +43,7 @@
         "watch": "tsc --build --verbose --watch tsconfig.all.json"
     },
     "dependencies": {
-        "@solana/assertions": "^2.0.0-rc.2",
+        "@solana/assertions": "^2.0.0",
         "buffer": "^6.0.3"
     },
     "devDependencies": {
