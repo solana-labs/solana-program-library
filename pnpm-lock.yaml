@@ -353,8 +353,8 @@ importers:
         specifier: 2.0.0
         version: 2.0.0(typescript@5.6.3)
       '@solana/transaction-messages':
-        specifier: 2.0.0-rc.2
-        version: 2.0.0-rc.2(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
+        specifier: 2.0.0
+        version: 2.0.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
     devDependencies:
       '@types/node':
         specifier: ^22.9.0
@@ -2637,18 +2637,6 @@ packages:
       typescript: 5.6.3
     dev: false
 
-  /@solana/codecs-data-structures@2.0.0-rc.2(typescript@5.6.3):
-    resolution: {integrity: sha512-W2CZHIycQhQjU2nawC2Yes/cfrk4wT+vaOYZgeAIBZUeW2QRO/GLhJzcQbQ675xYo8Qxpv5nRwlRL8Ux4Q6RyQ==}
-    engines: {node: '>=20.18.0'}
-    peerDependencies:
-      typescript: '>=5'
-    dependencies:
-      '@solana/codecs-core': 2.0.0-rc.2(typescript@5.6.3)
-      '@solana/codecs-numbers': 2.0.0-rc.2(typescript@5.6.3)
-      '@solana/errors': 2.0.0-rc.2(typescript@5.6.3)
-      typescript: 5.6.3
-    dev: false
-
   /@solana/codecs-numbers@2.0.0(typescript@5.6.3):
     resolution: {integrity: sha512-r66i7VzJO1MZkQWZIAI6jjJOFVpnq0+FIabo2Z2ZDtrArFus/SbSEv543yCLeD2tdR/G/p+1+P5On10qF50Y1Q==}
     engines: {node: '>=20.18.0'}
@@ -2662,6 +2650,7 @@ packages:
   /@solana/codecs-numbers@2.0.0-rc.2(typescript@5.6.3):
     resolution: {integrity: sha512-cQoTXVYF+nQjIh6VtrD4i7rfyJL0q46TMOd64+J/+2bQG2UT4Cwwo0b2lHuqtQr+2+BYjHPFDSNLaa3IWpPNog==}
     engines: {node: '>=20.18.0'}
+    deprecated: This version introduced a bug that broke RPC subscriptions. Please use 2.0.0-rc.3.
     peerDependencies:
       typescript: '>=5'
     dependencies:
@@ -2791,8 +2780,8 @@ packages:
       typescript-eslint: 8.12.2(eslint@9.13.0)(typescript@5.6.3)
     dev: true
 
-  /@solana/functional@2.0.0-rc.2(typescript@5.6.3):
-    resolution: {integrity: sha512-aEc3kHibD6Da9w1F/17+TZFmH0WaR4f2ve0AMeT89tNK37rOYNB4DyMti38I6h0PlS7LxogxspvF4rAWMuOwFQ==}
+  /@solana/functional@2.0.0(typescript@5.6.3):
+    resolution: {integrity: sha512-Sj+sLiUTimnMEyGnSLGt0lbih2xPDUhxhonnrIkPwA+hjQ3ULGHAxeevHU06nqiVEgENQYUJ5rCtHs4xhUFAkQ==}
     engines: {node: '>=20.18.0'}
     peerDependencies:
       typescript: '>=5'
@@ -2807,17 +2796,6 @@ packages:
       typescript: '>=5'
     dependencies:
       '@solana/errors': 2.0.0(typescript@5.6.3)
-      typescript: 5.6.3
-    dev: false
-
-  /@solana/instructions@2.0.0-rc.2(typescript@5.6.3):
-    resolution: {integrity: sha512-Y8oBKcPoNWrqRgsueDboIuG8lxvn2dsi0yoJvVAxudcLlqugNvQJYOT+Z76zMIxP/76FGsryKvAyvDAXdhlY8Q==}
-    engines: {node: '>=20.18.0'}
-    deprecated: This version introduced a bug that broke RPC subscriptions. Please use 2.0.0-rc.3.
-    peerDependencies:
-      typescript: '>=5'
-    dependencies:
-      '@solana/errors': 2.0.0-rc.2(typescript@5.6.3)
       typescript: 5.6.3
     dev: false
 
@@ -2845,36 +2823,36 @@ packages:
       prettier: 3.3.3
     dev: true
 
-  /@solana/rpc-types@2.0.0-rc.2(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3):
-    resolution: {integrity: sha512-1fieQLjJK/KifO47XzDwsLJnx1D0cc+SB1EXyCnaz3aRdlLlIoP/p6NG+OHyIow1LrDZrAvoBr66G68ruPV6qA==}
+  /@solana/rpc-types@2.0.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3):
+    resolution: {integrity: sha512-o1ApB9PYR0A3XjVSOh//SOVWgjDcqMlR3UNmtqciuREIBmWqnvPirdOa5EJxD3iPhfA4gnNnhGzT+tMDeDW/Kw==}
     engines: {node: '>=20.18.0'}
     peerDependencies:
       typescript: '>=5'
     dependencies:
-      '@solana/addresses': 2.0.0-rc.2(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
-      '@solana/codecs-core': 2.0.0-rc.2(typescript@5.6.3)
-      '@solana/codecs-numbers': 2.0.0-rc.2(typescript@5.6.3)
-      '@solana/codecs-strings': 2.0.0-rc.2(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
-      '@solana/errors': 2.0.0-rc.2(typescript@5.6.3)
+      '@solana/addresses': 2.0.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
+      '@solana/codecs-core': 2.0.0(typescript@5.6.3)
+      '@solana/codecs-numbers': 2.0.0(typescript@5.6.3)
+      '@solana/codecs-strings': 2.0.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
+      '@solana/errors': 2.0.0(typescript@5.6.3)
       typescript: 5.6.3
     transitivePeerDependencies:
       - fastestsmallesttextencoderdecoder
     dev: false
 
-  /@solana/transaction-messages@2.0.0-rc.2(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3):
-    resolution: {integrity: sha512-1nhkWvtPSyHS1nHMnhVsX82IwQDaO6IhU4a445OGDbSVrYpkZgJ5f6iE+NcjNcZPx8kklO8ynpM15lObvoTxbw==}
+  /@solana/transaction-messages@2.0.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3):
+    resolution: {integrity: sha512-Uc6Fw1EJLBrmgS1lH2ZfLAAKFvprWPQQzOVwZS78Pv8Whsk7tweYTK6S0Upv0nHr50rGpnORJfmdBrXE6OfNGg==}
     engines: {node: '>=20.18.0'}
     peerDependencies:
       typescript: '>=5'
     dependencies:
-      '@solana/addresses': 2.0.0-rc.2(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
-      '@solana/codecs-core': 2.0.0-rc.2(typescript@5.6.3)
-      '@solana/codecs-data-structures': 2.0.0-rc.2(typescript@5.6.3)
-      '@solana/codecs-numbers': 2.0.0-rc.2(typescript@5.6.3)
-      '@solana/errors': 2.0.0-rc.2(typescript@5.6.3)
-      '@solana/functional': 2.0.0-rc.2(typescript@5.6.3)
-      '@solana/instructions': 2.0.0-rc.2(typescript@5.6.3)
-      '@solana/rpc-types': 2.0.0-rc.2(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
+      '@solana/addresses': 2.0.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
+      '@solana/codecs-core': 2.0.0(typescript@5.6.3)
+      '@solana/codecs-data-structures': 2.0.0(typescript@5.6.3)
+      '@solana/codecs-numbers': 2.0.0(typescript@5.6.3)
+      '@solana/errors': 2.0.0(typescript@5.6.3)
+      '@solana/functional': 2.0.0(typescript@5.6.3)
+      '@solana/instructions': 2.0.0(typescript@5.6.3)
+      '@solana/rpc-types': 2.0.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.6.3)
       typescript: 5.6.3
     transitivePeerDependencies:
       - fastestsmallesttextencoderdecoder
