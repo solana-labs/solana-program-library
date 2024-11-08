@@ -6,10 +6,8 @@ use {
     },
     solana_clap_v3_utils::{
         fee_payer::fee_payer_arg,
-        input_validators::{
-            is_amount, is_amount_or_all, is_parsable, is_pubkey, is_url_or_moniker,
-            is_valid_pubkey, is_valid_signer,
-        },
+        input_parsers::Amount,
+        input_validators::{is_pubkey, is_url_or_moniker, is_valid_pubkey, is_valid_signer},
         memo::memo_arg,
         nonce::*,
         offline::{self, *},
@@ -306,16 +304,12 @@ pub fn mint_address_arg<'a>() -> Arg<'a> {
         .help(MINT_ADDRESS_ARG.help)
 }
 
-fn is_mint_decimals(string: &str) -> Result<(), String> {
-    is_parsable::<u8>(string)
-}
-
 pub fn mint_decimals_arg<'a>() -> Arg<'a> {
     Arg::with_name(MINT_DECIMALS_ARG.name)
         .long(MINT_DECIMALS_ARG.long)
         .takes_value(true)
         .value_name("MINT_DECIMALS")
-        .validator(is_mint_decimals)
+        .value_parser(clap::value_parser!(u8))
         .help(MINT_DECIMALS_ARG.help)
 }
 
@@ -344,7 +338,7 @@ pub fn transfer_lamports_arg<'a>() -> Arg<'a> {
         .long(TRANSFER_LAMPORTS_ARG.long)
         .takes_value(true)
         .value_name("LAMPORTS")
-        .validator(|s| is_amount(s))
+        .value_parser(clap::value_parser!(u64))
         .help(TRANSFER_LAMPORTS_ARG.help)
 }
 
@@ -477,7 +471,7 @@ impl BenchSubCommand for App<'_> {
                         )
                         .arg(
                             Arg::with_name("n")
-                                .validator(is_parsable::<usize>)
+                                .value_parser(clap::value_parser!(usize))
                                 .value_name("N")
                                 .takes_value(true)
                                 .index(2)
@@ -500,7 +494,7 @@ impl BenchSubCommand for App<'_> {
                         )
                         .arg(
                             Arg::with_name("n")
-                                .validator(is_parsable::<usize>)
+                                .value_parser(clap::value_parser!(usize))
                                 .value_name("N")
                                 .takes_value(true)
                                 .index(2)
@@ -523,7 +517,7 @@ impl BenchSubCommand for App<'_> {
                         )
                         .arg(
                             Arg::with_name("n")
-                                .validator(is_parsable::<usize>)
+                                .value_parser(clap::value_parser!(usize))
                                 .value_name("N")
                                 .takes_value(true)
                                 .index(2)
@@ -532,7 +526,7 @@ impl BenchSubCommand for App<'_> {
                         )
                         .arg(
                             Arg::with_name("amount")
-                                .validator(|s| is_amount(s))
+                                .value_parser(Amount::parse)
                                 .value_name("TOKEN_AMOUNT")
                                 .takes_value(true)
                                 .index(3)
@@ -563,7 +557,7 @@ impl BenchSubCommand for App<'_> {
                         )
                         .arg(
                             Arg::with_name("n")
-                                .validator(is_parsable::<usize>)
+                                .value_parser(clap::value_parser!(usize))
                                 .value_name("N")
                                 .takes_value(true)
                                 .index(2)
@@ -572,7 +566,7 @@ impl BenchSubCommand for App<'_> {
                         )
                         .arg(
                             Arg::with_name("amount")
-                                .validator(|s| is_amount(s))
+                                .value_parser(Amount::parse)
                                 .value_name("TOKEN_AMOUNT")
                                 .takes_value(true)
                                 .index(3)
@@ -676,7 +670,7 @@ pub fn app<'a>(
                 .takes_value(true)
                 .global(true)
                 .value_name("COMPUTE-UNIT-LIMIT")
-                .validator(is_parsable::<u32>)
+                .value_parser(clap::value_parser!(u32))
                 .help(COMPUTE_UNIT_LIMIT_ARG.help)
         )
         .arg(
@@ -685,7 +679,7 @@ pub fn app<'a>(
                 .takes_value(true)
                 .global(true)
                 .value_name("COMPUTE-UNIT-PRICE")
-                .validator(is_parsable::<u64>)
+                .value_parser(clap::value_parser!(u64))
                 .help(COMPUTE_UNIT_PRICE_ARG.help)
         )
         .bench_subcommand()
@@ -717,7 +711,7 @@ pub fn app<'a>(
                 .arg(
                     Arg::with_name("decimals")
                         .long("decimals")
-                        .validator(is_mint_decimals)
+                        .value_parser(clap::value_parser!(u8))
                         .value_name("DECIMALS")
                         .takes_value(true)
                         .default_value(default_decimals)
@@ -839,7 +833,7 @@ pub fn app<'a>(
                         .number_of_values(1)
                         .conflicts_with("transfer_fee")
                         .requires("transfer_fee_basis_points")
-                        .validator(|s| is_amount(s))
+                        .value_parser(Amount::parse)
                         .help(
                             "Add a UI amount maximum transfer fee to the mint. \
                             The mint authority can set and collect fees"
@@ -1090,7 +1084,7 @@ pub fn app<'a>(
                 )
                 .arg(
                         Arg::with_name("max_size")
-                        .validator(|s| is_amount(s))
+                        .value_parser(clap::value_parser!(u64))
                         .value_name("MAX_SIZE")
                         .takes_value(true)
                         .required(true)
@@ -1136,7 +1130,7 @@ pub fn app<'a>(
                 )
                 .arg(
                         Arg::with_name("new_max_size")
-                        .validator(|s| is_amount(s))
+                        .value_parser(clap::value_parser!(u64))
                         .value_name("NEW_MAX_SIZE")
                         .takes_value(true)
                         .required(true)
@@ -1350,7 +1344,7 @@ pub fn app<'a>(
                 )
                 .arg(
                     Arg::with_name("amount")
-                        .validator(|s| is_amount_or_all(s))
+                        .value_parser(Amount::parse)
                         .value_name("TOKEN_AMOUNT")
                         .takes_value(true)
                         .index(2)
@@ -1434,8 +1428,8 @@ pub fn app<'a>(
                 .arg(
                     Arg::with_name("expected_fee")
                         .long("expected-fee")
-                        .validator(|s| is_amount(s))
-                        .value_name("TOKEN_AMOUNT")
+                        .value_parser(Amount::parse)
+                        .value_name("EXPECTED_FEE")
                         .takes_value(true)
                         .help("Expected fee amount collected during the transfer"),
                 )
@@ -1480,7 +1474,7 @@ pub fn app<'a>(
                 )
                 .arg(
                     Arg::with_name("amount")
-                        .validator(|s| is_amount_or_all(s))
+                        .value_parser(Amount::parse)
                         .value_name("TOKEN_AMOUNT")
                         .takes_value(true)
                         .index(2)
@@ -1514,7 +1508,7 @@ pub fn app<'a>(
                 )
                 .arg(
                     Arg::with_name("amount")
-                        .validator(|s| is_amount(s))
+                        .value_parser(Amount::parse)
                         .value_name("TOKEN_AMOUNT")
                         .takes_value(true)
                         .index(2)
@@ -1624,7 +1618,7 @@ pub fn app<'a>(
                 .about("Wrap native SOL in a SOL token account")
                 .arg(
                     Arg::with_name("amount")
-                        .validator(|s| is_amount(s))
+                        .value_parser(Amount::parse)
                         .value_name("AMOUNT")
                         .takes_value(true)
                         .index(1)
@@ -1706,7 +1700,7 @@ pub fn app<'a>(
                 )
                 .arg(
                     Arg::with_name("amount")
-                        .validator(|s| is_amount(s))
+                        .value_parser(Amount::parse)
                         .value_name("TOKEN_AMOUNT")
                         .takes_value(true)
                         .index(2)
@@ -2337,8 +2331,8 @@ pub fn app<'a>(
                 )
                 .arg(
                     Arg::with_name("maximum_fee")
-                        .value_name("TOKEN_AMOUNT")
-                        .validator(|s| is_amount(s))
+                        .value_name("MAXIMUM_FEE")
+                        .value_parser(Amount::parse)
                         .takes_value(true)
                         .required(true)
                         .help("The new maximum transfer fee in UI amount"),
@@ -2606,7 +2600,7 @@ pub fn app<'a>(
                 )
                 .arg(
                     Arg::with_name("amount")
-                        .validator(|s| is_amount_or_all(s))
+                        .value_parser(Amount::parse)
                         .value_name("TOKEN_AMOUNT")
                         .takes_value(true)
                         .index(2)
@@ -2643,7 +2637,7 @@ pub fn app<'a>(
                 )
                 .arg(
                     Arg::with_name("amount")
-                        .validator(|s| is_amount_or_all(s))
+                        .value_parser(Amount::parse)
                         .value_name("TOKEN_AMOUNT")
                         .takes_value(true)
                         .index(2)

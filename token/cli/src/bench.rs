@@ -1,8 +1,8 @@
 /// The `bench` subcommand
 use {
     crate::{clap_app::Error, command::CommandResult, config::Config},
-    clap::{value_t_or_exit, ArgMatches},
-    solana_clap_v3_utils::input_parsers::pubkey_of_signer,
+    clap::ArgMatches,
+    solana_clap_v3_utils::input_parsers::{pubkey_of_signer, Amount},
     solana_client::{
         nonblocking::rpc_client::RpcClient, rpc_client::RpcClient as BlockingRpcClient,
         tpu_client::TpuClient, tpu_client::TpuClientConfig,
@@ -34,7 +34,7 @@ pub(crate) async fn bench_process_command(
             let token = pubkey_of_signer(arg_matches, "token", wallet_manager)
                 .unwrap()
                 .unwrap();
-            let n = value_t_or_exit!(arg_matches, "n", usize);
+            let n = *arg_matches.get_one::<usize>("n").unwrap();
 
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", wallet_manager);
@@ -46,7 +46,7 @@ pub(crate) async fn bench_process_command(
             let token = pubkey_of_signer(arg_matches, "token", wallet_manager)
                 .unwrap()
                 .unwrap();
-            let n = value_t_or_exit!(arg_matches, "n", usize);
+            let n = *arg_matches.get_one::<usize>("n").unwrap();
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", wallet_manager);
             signers.push(owner_signer);
@@ -57,8 +57,8 @@ pub(crate) async fn bench_process_command(
             let token = pubkey_of_signer(arg_matches, "token", wallet_manager)
                 .unwrap()
                 .unwrap();
-            let n = value_t_or_exit!(arg_matches, "n", usize);
-            let ui_amount = value_t_or_exit!(arg_matches, "amount", f64);
+            let n = *arg_matches.get_one::<usize>("n").unwrap();
+            let ui_amount = *arg_matches.get_one::<Amount>("amount").unwrap();
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", wallet_manager);
             signers.push(owner_signer);
@@ -72,8 +72,8 @@ pub(crate) async fn bench_process_command(
             let token = pubkey_of_signer(arg_matches, "token", wallet_manager)
                 .unwrap()
                 .unwrap();
-            let n = value_t_or_exit!(arg_matches, "n", usize);
-            let ui_amount = value_t_or_exit!(arg_matches, "amount", f64);
+            let n = *arg_matches.get_one::<usize>("n").unwrap();
+            let ui_amount = *arg_matches.get_one::<Amount>("amount").unwrap();
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", wallet_manager);
             signers.push(owner_signer);
@@ -237,7 +237,7 @@ async fn command_deposit_into_or_withdraw_from(
     token: &Pubkey,
     n: usize,
     owner: &Pubkey,
-    ui_amount: f64,
+    ui_amount: Amount,
     from_or_to: Option<Pubkey>,
     deposit_into: bool,
 ) -> Result<(), Error> {
@@ -250,7 +250,17 @@ async fn command_deposit_into_or_withdraw_from(
     let from_or_to = from_or_to
         .unwrap_or_else(|| get_associated_token_address_with_program_id(owner, token, &program_id));
     config.check_account(&from_or_to, Some(*token)).await?;
-    let amount = spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals);
+    let amount = match ui_amount {
+        Amount::Raw(ui_amount) => ui_amount,
+        Amount::Decimal(ui_amount) => spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals),
+        Amount::All => {
+            return Err(
+                "Use of ALL keyword currently not supported for the bench command"
+                    .to_string()
+                    .into(),
+            );
+        }
+    };
 
     let token_addresses_with_seed = get_token_addresses_with_seed(&program_id, token, owner, n);
     let mut messages = vec![];
