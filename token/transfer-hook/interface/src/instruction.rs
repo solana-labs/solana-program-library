@@ -1,17 +1,16 @@
 //! Instruction types
 
 use {
-    solana_program::{
-        instruction::{AccountMeta, Instruction},
-        program_error::ProgramError,
-        pubkey::Pubkey,
-        system_program,
-    },
+    solana_instruction::{AccountMeta, Instruction},
+    solana_program_error::ProgramError,
+    solana_pubkey::Pubkey,
     spl_discriminator::{ArrayDiscriminator, SplDiscriminate},
     spl_pod::{bytemuck::pod_slice_to_bytes, slice::PodSlice},
     spl_tlv_account_resolution::account::ExtraAccountMeta,
     std::convert::TryInto,
 };
+
+const SYSTEM_PROGRAM_ID: Pubkey = Pubkey::from_str_const("11111111111111111111111111111111");
 
 /// Instructions supported by the transfer hook interface.
 #[repr(C)]
@@ -26,8 +25,8 @@ pub enum TransferHookInstruction {
     ///   2. `[]` Destination account
     ///   3. `[]` Source account's owner/delegate
     ///   4. `[]` (Optional) Validation account
-    ///   5..5+M `[]` `M` optional additional accounts, written in validation
-    /// account     data
+    ///   5. ..5+M `[]` `M` optional additional accounts, written in validation
+    ///      account data
     Execute {
         /// Amount of tokens to transfer
         amount: u64,
@@ -215,7 +214,7 @@ pub fn initialize_extra_account_meta_list(
         AccountMeta::new(*extra_account_metas_pubkey, false),
         AccountMeta::new_readonly(*mint_pubkey, false),
         AccountMeta::new_readonly(*authority_pubkey, true),
-        AccountMeta::new_readonly(system_program::id(), false),
+        AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
     ];
 
     Instruction {
@@ -254,6 +253,11 @@ pub fn update_extra_account_meta_list(
 #[cfg(test)]
 mod test {
     use {super::*, crate::NAMESPACE, solana_program::hash, spl_pod::bytemuck::pod_from_bytes};
+
+    #[test]
+    fn system_program_id() {
+        assert_eq!(solana_program::system_program::id(), SYSTEM_PROGRAM_ID);
+    }
 
     #[test]
     fn validate_packing() {

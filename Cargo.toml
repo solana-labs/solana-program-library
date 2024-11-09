@@ -36,6 +36,7 @@ members = [
   "libraries/discriminator",
   "libraries/concurrent-merkle-tree",
   "libraries/math",
+  "libraries/math-example",
   "libraries/merkle-tree-reference",
   "libraries/pod",
   "libraries/program-error",
@@ -68,6 +69,11 @@ members = [
   "token/program",
   "token/program-2022",
   "token/program-2022-test",
+  "token/program-2022-test/transfer-hook-test-programs/downgrade",
+  "token/program-2022-test/transfer-hook-test-programs/fail",
+  "token/program-2022-test/transfer-hook-test-programs/success",
+  "token/program-2022-test/transfer-hook-test-programs/swap",
+  "token/program-2022-test/transfer-hook-test-programs/swap-with-fee",
   "token/transfer-hook/cli",
   "token/transfer-hook/example",
   "token/transfer-hook/interface",
@@ -86,6 +92,13 @@ exclude = [
 ]
 
 resolver = "2"
+
+[workspace.lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = [
+    'cfg(target_os, values("solana"))',
+    'cfg(feature, values("frozen-abi", "no-entrypoint"))',
+]
 
 [workspace.metadata.release]
 pre-release-commit-message = "Publish {{crate_name}} v{{version}}"

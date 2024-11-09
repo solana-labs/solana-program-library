@@ -95,7 +95,7 @@ async fn test_set_manager() {
 
 #[tokio::test]
 async fn test_set_manager_by_malicious() {
-    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, new_pool_fee, new_manager) =
+    let (banks_client, payer, recent_blockhash, stake_pool_accounts, new_pool_fee, new_manager) =
         setup().await;
 
     let mut transaction = Transaction::new_with_payer(
@@ -130,7 +130,7 @@ async fn test_set_manager_by_malicious() {
 
 #[tokio::test]
 async fn test_set_manager_without_existing_signature() {
-    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, new_pool_fee, new_manager) =
+    let (banks_client, payer, recent_blockhash, stake_pool_accounts, new_pool_fee, new_manager) =
         setup().await;
 
     let data = borsh::to_vec(&instruction::StakePoolInstruction::SetManager).unwrap();
@@ -171,7 +171,7 @@ async fn test_set_manager_without_existing_signature() {
 
 #[tokio::test]
 async fn test_set_manager_without_new_signature() {
-    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, new_pool_fee, new_manager) =
+    let (banks_client, payer, recent_blockhash, stake_pool_accounts, new_pool_fee, new_manager) =
         setup().await;
 
     let data = borsh::to_vec(&instruction::StakePoolInstruction::SetManager).unwrap();

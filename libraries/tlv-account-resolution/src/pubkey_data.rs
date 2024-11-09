@@ -6,7 +6,7 @@
 
 #[cfg(feature = "serde-traits")]
 use serde::{Deserialize, Serialize};
-use {crate::error::AccountResolutionError, solana_program::program_error::ProgramError};
+use {crate::error::AccountResolutionError, solana_program_error::ProgramError};
 
 /// Enum to describe a required key stored in some data.
 #[derive(Clone, Debug, PartialEq)]

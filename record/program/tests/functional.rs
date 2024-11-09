@@ -1,18 +1,15 @@
 #![cfg(feature = "test-sbf")]
 
 use {
-    solana_program::{
-        instruction::{AccountMeta, Instruction, InstructionError},
-        pubkey::Pubkey,
-        rent::Rent,
-        system_instruction,
-    },
+    solana_instruction::{error::InstructionError, AccountMeta, Instruction},
     solana_program_test::*,
+    solana_pubkey::Pubkey,
+    solana_rent::Rent,
     solana_sdk::{
         signature::{Keypair, Signer},
+        system_instruction,
         transaction::{Transaction, TransactionError},
     },
-    spl_pod::bytemuck::{pod_from_bytes, pod_get_packed_len},
     spl_record::{
         error::RecordError, id, instruction, processor::process_instruction, state::RecordData,
     },
@@ -28,7 +25,7 @@ async fn initialize_storage_account(
     account: &Keypair,
     data: &[u8],
 ) {
-    let account_length = pod_get_packed_len::<RecordData>()
+    let account_length = std::mem::size_of::<RecordData>()
         .checked_add(data.len())
         .unwrap();
     let transaction = Transaction::new_signed_with_payer(
@@ -70,7 +67,8 @@ async fn initialize_success() {
         .unwrap()
         .unwrap();
     let account_data =
-        pod_from_bytes::<RecordData>(&account.data[..RecordData::WRITABLE_START_INDEX]).unwrap();
+        bytemuck::try_from_bytes::<RecordData>(&account.data[..RecordData::WRITABLE_START_INDEX])
+            .unwrap();
     assert_eq!(account_data.authority, authority.pubkey());
     assert_eq!(account_data.version, RecordData::CURRENT_VERSION);
     assert_eq!(&account.data[RecordData::WRITABLE_START_INDEX..], data);
@@ -78,13 +76,13 @@ async fn initialize_success() {
 
 #[tokio::test]
 async fn initialize_with_seed_success() {
-    let mut context = program_test().start_with_context().await;
+    let context = program_test().start_with_context().await;
 
     let authority = Keypair::new();
     let seed = "storage";
     let account = Pubkey::create_with_seed(&authority.pubkey(), seed, &id()).unwrap();
     let data = &[111u8; 8];
-    let account_length = pod_get_packed_len::<RecordData>()
+    let account_length = std::mem::size_of::<RecordData>()
         .checked_add(data.len())
         .unwrap();
     let transaction = Transaction::new_signed_with_payer(
@@ -117,7 +115,8 @@ async fn initialize_with_seed_success() {
         .unwrap()
         .unwrap();
     let account_data =
-        pod_from_bytes::<RecordData>(&account.data[..RecordData::WRITABLE_START_INDEX]).unwrap();
+        bytemuck::try_from_bytes::<RecordData>(&account.data[..RecordData::WRITABLE_START_INDEX])
+            .unwrap();
     assert_eq!(account_data.authority, authority.pubkey());
     assert_eq!(account_data.version, RecordData::CURRENT_VERSION);
     assert_eq!(&account.data[RecordData::WRITABLE_START_INDEX..], data);
@@ -185,7 +184,8 @@ async fn write_success() {
         .unwrap()
         .unwrap();
     let account_data =
-        pod_from_bytes::<RecordData>(&account.data[..RecordData::WRITABLE_START_INDEX]).unwrap();
+        bytemuck::try_from_bytes::<RecordData>(&account.data[..RecordData::WRITABLE_START_INDEX])
+            .unwrap();
     assert_eq!(account_data.authority, authority.pubkey());
     assert_eq!(account_data.version, RecordData::CURRENT_VERSION);
     assert_eq!(&account.data[RecordData::WRITABLE_START_INDEX..], new_data);
@@ -269,7 +269,7 @@ async fn close_account_success() {
     let authority = Keypair::new();
     let account = Keypair::new();
     let data = &[222u8; 8];
-    let account_length = pod_get_packed_len::<RecordData>()
+    let account_length = std::mem::size_of::<RecordData>()
         .checked_add(data.len())
         .unwrap();
     initialize_storage_account(&mut context, &authority, &account, data).await;
@@ -407,9 +407,10 @@ async fn set_authority_success() {
         .await
         .unwrap()
         .unwrap();
-    let account_data =
-        pod_from_bytes::<RecordData>(&account_handle.data[..RecordData::WRITABLE_START_INDEX])
-            .unwrap();
+    let account_data = bytemuck::try_from_bytes::<RecordData>(
+        &account_handle.data[..RecordData::WRITABLE_START_INDEX],
+    )
+    .unwrap();
     assert_eq!(account_data.authority, new_authority.pubkey());
 
     let new_data = &[200u8; 8];
@@ -436,9 +437,10 @@ async fn set_authority_success() {
         .await
         .unwrap()
         .unwrap();
-    let account_data =
-        pod_from_bytes::<RecordData>(&account_handle.data[..RecordData::WRITABLE_START_INDEX])
-            .unwrap();
+    let account_data = bytemuck::try_from_bytes::<RecordData>(
+        &account_handle.data[..RecordData::WRITABLE_START_INDEX],
+    )
+    .unwrap();
     assert_eq!(account_data.authority, new_authority.pubkey());
     assert_eq!(account_data.version, RecordData::CURRENT_VERSION);
     assert_eq!(

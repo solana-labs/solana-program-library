@@ -8,11 +8,9 @@
 
 use {
     bytemuck::{Pod, Zeroable},
-    solana_program::{
-        program_error::ProgramError,
-        program_option::COption,
-        pubkey::{Pubkey, PUBKEY_BYTES},
-    },
+    solana_program_error::ProgramError,
+    solana_program_option::COption,
+    solana_pubkey::{Pubkey, PUBKEY_BYTES},
 };
 
 /// Trait for types that can be `None`.
@@ -130,36 +128,36 @@ impl Nullable for Pubkey {
 
 #[cfg(test)]
 mod tests {
-
-    use {super::*, crate::bytemuck::pod_slice_from_bytes, solana_program::sysvar};
+    use {super::*, crate::bytemuck::pod_slice_from_bytes};
+    const ID: Pubkey = Pubkey::from_str_const("TestSysvar111111111111111111111111111111111");
 
     #[test]
     fn test_pod_option_pubkey() {
-        let some_pubkey = PodOption::from(sysvar::ID);
-        assert_eq!(some_pubkey.get(), Some(sysvar::ID));
+        let some_pubkey = PodOption::from(ID);
+        assert_eq!(some_pubkey.get(), Some(ID));
 
         let none_pubkey = PodOption::from(Pubkey::default());
         assert_eq!(none_pubkey.get(), None);
 
         let mut data = Vec::with_capacity(64);
-        data.extend_from_slice(sysvar::ID.as_ref());
+        data.extend_from_slice(ID.as_ref());
         data.extend_from_slice(&[0u8; 32]);
 
         let values = pod_slice_from_bytes::<PodOption<Pubkey>>(&data).unwrap();
-        assert_eq!(values[0], PodOption::from(sysvar::ID));
+        assert_eq!(values[0], PodOption::from(ID));
         assert_eq!(values[1], PodOption::from(Pubkey::default()));
 
-        let option_pubkey = Some(sysvar::ID);
+        let option_pubkey = Some(ID);
         let pod_option_pubkey: PodOption<Pubkey> = option_pubkey.try_into().unwrap();
-        assert_eq!(pod_option_pubkey, PodOption::from(sysvar::ID));
+        assert_eq!(pod_option_pubkey, PodOption::from(ID));
         assert_eq!(
             pod_option_pubkey,
             PodOption::try_from(option_pubkey).unwrap()
         );
 
-        let coption_pubkey = COption::Some(sysvar::ID);
+        let coption_pubkey = COption::Some(ID);
         let pod_option_pubkey: PodOption<Pubkey> = coption_pubkey.try_into().unwrap();
-        assert_eq!(pod_option_pubkey, PodOption::from(sysvar::ID));
+        assert_eq!(pod_option_pubkey, PodOption::from(ID));
         assert_eq!(
             pod_option_pubkey,
             PodOption::try_from(coption_pubkey).unwrap()
@@ -168,11 +166,8 @@ mod tests {
 
     #[test]
     fn test_try_from_option() {
-        let some_pubkey = Some(sysvar::ID);
-        assert_eq!(
-            PodOption::try_from(some_pubkey).unwrap(),
-            PodOption(sysvar::ID)
-        );
+        let some_pubkey = Some(ID);
+        assert_eq!(PodOption::try_from(some_pubkey).unwrap(), PodOption(ID));
 
         let none_pubkey = None;
         assert_eq!(

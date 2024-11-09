@@ -2,6 +2,7 @@
 
 set -e
 cd "$(dirname "$0")/.."
+export SOLANA_VERSION="v2.0.14"
 source ./ci/solana-version.sh install
 
 set -x

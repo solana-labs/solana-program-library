@@ -2,12 +2,10 @@
 
 use {
     crate::{account::ExtraAccountMeta, error::AccountResolutionError},
-    solana_program::{
-        account_info::AccountInfo,
-        instruction::{AccountMeta, Instruction},
-        program_error::ProgramError,
-        pubkey::Pubkey,
-    },
+    solana_account_info::AccountInfo,
+    solana_instruction::{AccountMeta, Instruction},
+    solana_program_error::ProgramError,
+    solana_pubkey::Pubkey,
     spl_discriminator::SplDiscriminate,
     spl_pod::slice::{PodSlice, PodSliceMut},
     spl_type_length_value::state::{TlvState, TlvStateBorrowed, TlvStateMut},
@@ -70,10 +68,9 @@ fn de_escalate_account_meta(account_meta: &mut AccountMeta, account_metas: &[Acc
 /// use {
 ///     futures_util::TryFutureExt,
 ///     solana_client::nonblocking::rpc_client::RpcClient,
-///     solana_program::{
-///         account_info::AccountInfo, instruction::{AccountMeta, Instruction},
-///         pubkey::Pubkey
-///     },
+///     solana_account_info::AccountInfo,
+///     solana_instruction::{AccountMeta, Instruction},
+///     solana_pubkey::Pubkey,
 ///     spl_discriminator::{ArrayDiscriminator, SplDiscriminate},
 ///     spl_tlv_account_resolution::{
 ///         account::ExtraAccountMeta,
@@ -374,8 +371,9 @@ mod tests {
     use {
         super::*,
         crate::{pubkey_data::PubkeyData, seeds::Seed},
-        solana_program::{clock::Epoch, instruction::AccountMeta, pubkey::Pubkey},
+        solana_instruction::AccountMeta,
         solana_program_test::tokio,
+        solana_pubkey::Pubkey,
         spl_discriminator::{ArrayDiscriminator, SplDiscriminate},
         std::collections::HashMap,
     };
@@ -467,7 +465,7 @@ mod tests {
                 &mut data1,
                 &owner,
                 false,
-                Epoch::default(),
+                0,
             ),
             AccountInfo::new(
                 &pubkey2,
@@ -477,7 +475,7 @@ mod tests {
                 &mut data2,
                 &owner,
                 false,
-                Epoch::default(),
+                0,
             ),
             AccountInfo::new(
                 &pubkey3,
@@ -487,7 +485,7 @@ mod tests {
                 &mut data3,
                 &owner,
                 false,
-                Epoch::default(),
+                0,
             ),
         ];
 
@@ -848,7 +846,7 @@ mod tests {
                 &mut data1,
                 &owner,
                 false,
-                Epoch::default(),
+                0,
             ),
             AccountInfo::new(
                 &pubkey2,
@@ -858,7 +856,7 @@ mod tests {
                 &mut data2,
                 &owner,
                 false,
-                Epoch::default(),
+                0,
             ),
             AccountInfo::new(
                 &pubkey3,
@@ -868,7 +866,7 @@ mod tests {
                 &mut data3,
                 &owner,
                 false,
-                Epoch::default(),
+                0,
             ),
         ];
 
@@ -1245,7 +1243,7 @@ mod tests {
                 &mut data_ix_1,
                 &owner,
                 false,
-                Epoch::default(),
+                0,
             ),
             AccountInfo::new(
                 &pubkey_ix_2,
@@ -1255,7 +1253,7 @@ mod tests {
                 &mut data_ix_2,
                 &owner,
                 false,
-                Epoch::default(),
+                0,
             ),
             AccountInfo::new(
                 &extra_meta1.pubkey,
@@ -1265,7 +1263,7 @@ mod tests {
                 &mut data1,
                 &owner,
                 false,
-                Epoch::default(),
+                0,
             ),
             AccountInfo::new(
                 &extra_meta2.pubkey,
@@ -1275,7 +1273,7 @@ mod tests {
                 &mut data2,
                 &owner,
                 false,
-                Epoch::default(),
+                0,
             ),
             AccountInfo::new(
                 &extra_meta3.pubkey,
@@ -1285,7 +1283,7 @@ mod tests {
                 &mut data3,
                 &owner,
                 false,
-                Epoch::default(),
+                0,
             ),
             AccountInfo::new(
                 &check_required_pda1_pubkey,
@@ -1295,7 +1293,7 @@ mod tests {
                 &mut data_pda1,
                 &owner,
                 false,
-                Epoch::default(),
+                0,
             ),
             AccountInfo::new(
                 &check_required_pda2_pubkey,
@@ -1305,7 +1303,7 @@ mod tests {
                 &mut data_pda2,
                 &owner,
                 false,
-                Epoch::default(),
+                0,
             ),
             AccountInfo::new(
                 &check_required_pda3_pubkey,
@@ -1315,7 +1313,7 @@ mod tests {
                 &mut data_pda3,
                 &owner,
                 false,
-                Epoch::default(),
+                0,
             ),
             AccountInfo::new(
                 &check_required_pda4_pubkey,
@@ -1325,7 +1323,7 @@ mod tests {
                 &mut data_pda4,
                 &owner,
                 false,
-                Epoch::default(),
+                0,
             ),
             AccountInfo::new(
                 &check_key_data1_pubkey,
@@ -1335,7 +1333,7 @@ mod tests {
                 &mut data_key_data1,
                 &owner,
                 false,
-                Epoch::default(),
+                0,
             ),
             AccountInfo::new(
                 &check_key_data2_pubkey,
@@ -1345,7 +1343,7 @@ mod tests {
                 &mut data_key_data2,
                 &owner,
                 false,
-                Epoch::default(),
+                0,
             ),
             AccountInfo::new(
                 &check_key_data3_pubkey,
@@ -1355,7 +1353,7 @@ mod tests {
                 &mut data_key_data3,
                 &owner,
                 false,
-                Epoch::default(),
+                0,
             ),
             AccountInfo::new(
                 &pubkey_arb_1,
@@ -1365,7 +1363,7 @@ mod tests {
                 &mut data_arb_1,
                 &owner,
                 false,
-                Epoch::default(),
+                0,
             ),
             AccountInfo::new(
                 &pubkey_arb_2,
@@ -1375,7 +1373,7 @@ mod tests {
                 &mut data_arb_2,
                 &owner,
                 false,
-                Epoch::default(),
+                0,
             ),
         ];
 
@@ -1636,7 +1634,7 @@ mod tests {
                 &mut data_ix_1,
                 &owner,
                 false,
-                Epoch::default(),
+                0,
             ),
             // Instruction account 2
             AccountInfo::new(
@@ -1647,7 +1645,7 @@ mod tests {
                 &mut data_ix_2,
                 &owner,
                 false,
-                Epoch::default(),
+                0,
             ),
             // Required account 1
             AccountInfo::new(
@@ -1658,7 +1656,7 @@ mod tests {
                 &mut data1,
                 &owner,
                 false,
-                Epoch::default(),
+                0,
             ),
             // Required account 2
             AccountInfo::new(
@@ -1669,7 +1667,7 @@ mod tests {
                 &mut data2,
                 &owner,
                 false,
-                Epoch::default(),
+                0,
             ),
             // Required account 3 (PDA)
             AccountInfo::new(
@@ -1680,7 +1678,7 @@ mod tests {
                 &mut data3,
                 &owner,
                 false,
-                Epoch::default(),
+                0,
             ),
             // Required account 4 (pubkey data)
             AccountInfo::new(
@@ -1691,7 +1689,7 @@ mod tests {
                 &mut data4,
                 &owner,
                 false,
-                Epoch::default(),
+                0,
             ),
         ];
 

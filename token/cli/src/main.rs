@@ -19,9 +19,8 @@ async fn main() -> Result<(), Error> {
     let mut wallet_manager = None;
     let mut bulk_signers: Vec<Arc<dyn Signer>> = Vec::new();
 
-    let (sub_command, sub_matches) = app_matches.subcommand();
+    let (sub_command, matches) = app_matches.subcommand().unwrap();
     let sub_command = CommandName::from_str(sub_command).unwrap();
-    let matches = sub_matches.unwrap();
 
     let mut multisigner_ids = Vec::new();
     let config = Config::new(

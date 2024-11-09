@@ -1,9 +1,8 @@
 //! Error types
 
 use {
-    num_derive::FromPrimitive,
-    solana_program::{decode_error::DecodeError, program_error::ProgramError},
-    thiserror::Error,
+    num_derive::FromPrimitive, solana_decode_error::DecodeError,
+    solana_program_error::ProgramError, thiserror::Error,
 };
 
 /// Errors that may be returned by the program.

@@ -137,7 +137,7 @@ async fn success_update_pool_token_metadata(token_program_id: Pubkey) {
 
 #[tokio::test]
 async fn fail_manager_did_not_sign() {
-    let (mut context, stake_pool_accounts) = setup(spl_token::id()).await;
+    let (context, stake_pool_accounts) = setup(spl_token::id()).await;
 
     let updated_name = "updated_name";
     let updated_symbol = "USYM";
@@ -180,7 +180,7 @@ async fn fail_manager_did_not_sign() {
 
 #[tokio::test]
 async fn fail_wrong_manager_signed() {
-    let (mut context, stake_pool_accounts) = setup(spl_token::id()).await;
+    let (context, stake_pool_accounts) = setup(spl_token::id()).await;
 
     let updated_name = "updated_name";
     let updated_symbol = "USYM";

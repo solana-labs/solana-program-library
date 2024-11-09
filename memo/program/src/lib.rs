@@ -9,25 +9,28 @@ pub mod processor;
 
 // Export current sdk types for downstream users building with a different sdk
 // version
-pub use solana_program;
-use solana_program::{
-    instruction::{AccountMeta, Instruction},
-    pubkey::Pubkey,
+pub use {
+    solana_account_info, solana_instruction, solana_msg, solana_program_entrypoint,
+    solana_program_error, solana_pubkey,
+};
+use {
+    solana_instruction::{AccountMeta, Instruction},
+    solana_pubkey::Pubkey,
 };
 
 /// Legacy symbols from Memo v1
 pub mod v1 {
-    solana_program::declare_id!("Memo1UhkJRfHyvLMcVucJwxXeuD728EqVDDwQDxFMNo");
+    solana_pubkey::declare_id!("Memo1UhkJRfHyvLMcVucJwxXeuD728EqVDDwQDxFMNo");
 }
 
-solana_program::declare_id!("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr");
+solana_pubkey::declare_id!("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr");
 
 /// Build a memo instruction, possibly signed
 ///
 /// Accounts expected by this instruction:
 ///
 ///   0. ..0+N. `[signer]` Expected signers; if zero provided, instruction will
-///     be processed as a normal, unsigned spl-memo
+///      be processed as a normal, unsigned spl-memo
 pub fn build_memo(memo: &[u8], signer_pubkeys: &[&Pubkey]) -> Instruction {
     Instruction {
         program_id: id(),

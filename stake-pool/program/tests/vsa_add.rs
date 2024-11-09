@@ -145,7 +145,7 @@ async fn success() {
 
 #[tokio::test]
 async fn fail_with_wrong_validator_list_account() {
-    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
+    let (banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
         setup(1).await;
 
     let wrong_validator_list = Keypair::new();
@@ -228,7 +228,7 @@ async fn fail_double_add() {
 
 #[tokio::test]
 async fn fail_wrong_staker() {
-    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
+    let (banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
         setup(1).await;
 
     let malicious = Keypair::new();
@@ -269,7 +269,7 @@ async fn fail_wrong_staker() {
 
 #[tokio::test]
 async fn fail_without_signature() {
-    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
+    let (banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
         setup(1).await;
 
     let accounts = vec![
@@ -323,7 +323,7 @@ async fn fail_without_signature() {
 
 #[tokio::test]
 async fn fail_with_wrong_stake_program_id() {
-    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
+    let (banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
         setup(1).await;
 
     let wrong_stake_program = Pubkey::new_unique();
@@ -375,7 +375,7 @@ async fn fail_with_wrong_stake_program_id() {
 
 #[tokio::test]
 async fn fail_with_wrong_system_program_id() {
-    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
+    let (banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
         setup(1).await;
 
     let wrong_system_program = Pubkey::new_unique();
@@ -634,7 +634,7 @@ async fn fail_with_not_enough_reserve_lamports() {
 
 #[tokio::test]
 async fn fail_with_wrong_reserve() {
-    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
+    let (banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
         setup(1).await;
 
     let wrong_reserve = Pubkey::new_unique();

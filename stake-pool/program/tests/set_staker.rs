@@ -112,8 +112,7 @@ async fn success_set_staker_as_staker() {
 
 #[tokio::test]
 async fn fail_wrong_manager() {
-    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, new_staker) =
-        setup().await;
+    let (banks_client, payer, recent_blockhash, stake_pool_accounts, new_staker) = setup().await;
 
     let mut transaction = Transaction::new_with_payer(
         &[instruction::set_staker(
@@ -146,8 +145,7 @@ async fn fail_wrong_manager() {
 
 #[tokio::test]
 async fn fail_set_staker_without_signature() {
-    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, new_staker) =
-        setup().await;
+    let (banks_client, payer, recent_blockhash, stake_pool_accounts, new_staker) = setup().await;
 
     let data = borsh::to_vec(&instruction::StakePoolInstruction::SetStaker).unwrap();
     let accounts = vec![

@@ -1,4 +1,5 @@
 #![allow(clippy::arithmetic_side_effects)]
+#![allow(clippy::doc_lazy_continuation)]
 #![deny(missing_docs)]
 //! A Governance program for the Solana blockchain.
 

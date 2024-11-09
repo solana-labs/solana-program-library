@@ -38,7 +38,7 @@ impl ProgramTestBench {
     /// Create new bench given a ProgramTest instance populated with all of the
     /// desired programs.
     pub async fn start_new(program_test: ProgramTest) -> Self {
-        let mut context = program_test.start_with_context().await;
+        let context = program_test.start_with_context().await;
         let rent = context.banks_client.get_rent().await.unwrap();
 
         let payer = clone_keypair(&context.payer);

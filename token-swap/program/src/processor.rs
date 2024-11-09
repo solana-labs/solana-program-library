@@ -1263,9 +1263,8 @@ fn invoke_signed_wrapper<T>(
 where
     T: 'static + PrintProgramError + DecodeError<T> + FromPrimitive + Error,
 {
-    invoke_signed(instruction, account_infos, signers_seeds).map_err(|err| {
+    invoke_signed(instruction, account_infos, signers_seeds).inspect_err(|err| {
         err.print::<T>();
-        err
     })
 }
 

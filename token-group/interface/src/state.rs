@@ -3,7 +3,8 @@
 use {
     crate::error::TokenGroupError,
     bytemuck::{Pod, Zeroable},
-    solana_program::{program_error::ProgramError, pubkey::Pubkey},
+    solana_program_error::ProgramError,
+    solana_pubkey::Pubkey,
     spl_discriminator::SplDiscriminate,
     spl_pod::{error::PodSliceError, optional_keys::OptionalNonZeroPubkey, primitives::PodU64},
 };
@@ -88,7 +89,7 @@ mod tests {
     use {
         super::*,
         crate::NAMESPACE,
-        solana_program::hash,
+        solana_sha256_hasher::hashv,
         spl_discriminator::ArrayDiscriminator,
         spl_type_length_value::state::{TlvState, TlvStateBorrowed, TlvStateMut},
         std::mem::size_of,
@@ -96,12 +97,12 @@ mod tests {
 
     #[test]
     fn discriminators() {
-        let preimage = hash::hashv(&[format!("{NAMESPACE}:group").as_bytes()]);
+        let preimage = hashv(&[format!("{NAMESPACE}:group").as_bytes()]);
         let discriminator =
             ArrayDiscriminator::try_from(&preimage.as_ref()[..ArrayDiscriminator::LENGTH]).unwrap();
         assert_eq!(TokenGroup::SPL_DISCRIMINATOR, discriminator);
 
-        let preimage = hash::hashv(&[format!("{NAMESPACE}:member").as_bytes()]);
+        let preimage = hashv(&[format!("{NAMESPACE}:member").as_bytes()]);
         let discriminator =
             ArrayDiscriminator::try_from(&preimage.as_ref()[..ArrayDiscriminator::LENGTH]).unwrap();
         assert_eq!(TokenGroupMember::SPL_DISCRIMINATOR, discriminator);

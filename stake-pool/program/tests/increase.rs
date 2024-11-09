@@ -150,7 +150,7 @@ async fn success(use_additional_instruction: bool) {
 
 #[tokio::test]
 async fn fail_with_wrong_withdraw_authority() {
-    let (mut context, stake_pool_accounts, validator_stake, reserve_lamports) = setup().await;
+    let (context, stake_pool_accounts, validator_stake, reserve_lamports) = setup().await;
 
     let wrong_authority = Pubkey::new_unique();
 
@@ -191,7 +191,7 @@ async fn fail_with_wrong_withdraw_authority() {
 
 #[tokio::test]
 async fn fail_with_wrong_validator_list() {
-    let (mut context, stake_pool_accounts, validator_stake, reserve_lamports) = setup().await;
+    let (context, stake_pool_accounts, validator_stake, reserve_lamports) = setup().await;
 
     let wrong_validator_list = Pubkey::new_unique();
 

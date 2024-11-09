@@ -220,7 +220,7 @@ async fn success_execute() {
         AccountMeta::new(writable_pubkey, false),
     ];
 
-    let mut context = program_test.start_with_context().await;
+    let context = program_test.start_with_context().await;
     let rent = context.banks_client.get_rent().await.unwrap();
     let rent_lamports = rent
         .minimum_balance(ExtraAccountMetaList::size_of(init_extra_account_metas.len()).unwrap());
@@ -460,7 +460,7 @@ async fn fail_incorrect_derivation() {
     // wrong derivation
     let extra_account_metas = get_extra_account_metas_address(&program_id, &mint_address);
 
-    let mut context = program_test.start_with_context().await;
+    let context = program_test.start_with_context().await;
     let rent = context.banks_client.get_rent().await.unwrap();
     let rent_lamports = rent.minimum_balance(ExtraAccountMetaList::size_of(0).unwrap());
 
@@ -523,7 +523,7 @@ async fn fail_incorrect_mint() {
 
     let extra_account_metas = get_extra_account_metas_address(&mint_address, &program_id);
 
-    let mut context = program_test.start_with_context().await;
+    let context = program_test.start_with_context().await;
     let rent = context.banks_client.get_rent().await.unwrap();
     let rent_lamports = rent.minimum_balance(ExtraAccountMetaList::size_of(0).unwrap());
 
@@ -671,7 +671,7 @@ async fn success_on_chain_invoke() {
         AccountMeta::new(writable_pubkey, false),
     ];
 
-    let mut context = program_test.start_with_context().await;
+    let context = program_test.start_with_context().await;
     let rent = context.banks_client.get_rent().await.unwrap();
     let rent_lamports = rent
         .minimum_balance(ExtraAccountMetaList::size_of(init_extra_account_metas.len()).unwrap());
@@ -758,7 +758,7 @@ async fn fail_without_transferring_flag() {
     let extra_account_metas_address = get_extra_account_metas_address(&mint_address, &program_id);
     let extra_account_metas = [];
     let init_extra_account_metas = [];
-    let mut context = program_test.start_with_context().await;
+    let context = program_test.start_with_context().await;
     let rent = context.banks_client.get_rent().await.unwrap();
     let rent_lamports = rent
         .minimum_balance(ExtraAccountMetaList::size_of(init_extra_account_metas.len()).unwrap());
@@ -884,7 +884,7 @@ async fn success_on_chain_invoke_with_updated_extra_account_metas() {
         ExtraAccountMeta::new_with_pubkey(&writable_pubkey, false, true).unwrap(),
     ];
 
-    let mut context = program_test.start_with_context().await;
+    let context = program_test.start_with_context().await;
     let rent = context.banks_client.get_rent().await.unwrap();
     let rent_lamports = rent
         .minimum_balance(ExtraAccountMetaList::size_of(init_extra_account_metas.len()).unwrap());
@@ -1112,7 +1112,7 @@ async fn success_execute_with_updated_extra_account_metas() {
         AccountMeta::new(writable_pubkey, false),
     ];
 
-    let mut context = program_test.start_with_context().await;
+    let context = program_test.start_with_context().await;
     let rent = context.banks_client.get_rent().await.unwrap();
     let rent_lamports = rent
         .minimum_balance(ExtraAccountMetaList::size_of(init_extra_account_metas.len()).unwrap());
