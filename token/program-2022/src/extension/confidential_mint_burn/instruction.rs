@@ -1,6 +1,8 @@
 #[cfg(feature = "serde-traits")]
 use {
-    crate::serialization::{aeciphertext_fromstr, elgamalpubkey_fromstr},
+    crate::serialization::{
+        aeciphertext_fromstr, elgamalciphertext_fromstr, elgamalpubkey_fromstr,
+    },
     serde::{Deserialize, Serialize},
 };
 use {

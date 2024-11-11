@@ -3,7 +3,7 @@ pub use solana_zk_sdk::zk_elgamal_proof_program::{
 };
 #[cfg(feature = "serde-traits")]
 use {
-    crate::serialization::aeciphertext_fromstr,
+    crate::serialization::{aeciphertext_fromstr, elgamalciphertext_fromstr},
     serde::{Deserialize, Serialize},
 };
 use {
