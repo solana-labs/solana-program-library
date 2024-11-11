@@ -51,7 +51,7 @@ use {
             encryption::{
                 auth_encryption::AeKey,
                 elgamal::{ElGamalCiphertext, ElGamalKeypair, ElGamalPubkey, ElGamalSecretKey},
-                pod::elgamal::PodElGamalPubkey,
+                pod::elgamal::{PodElGamalCiphertext, PodElGamalPubkey},
             },
             zk_elgamal_proof_program::{
                 self,
@@ -2201,6 +2201,8 @@ where
         ciphertext_validity_proof_account: Option<&ProofAccount>,
         range_proof_account: Option<&ProofAccount>,
         transfer_amount: u64,
+        transfer_amount_auditor_ciphertext_lo: Option<&PodElGamalCiphertext>,
+        transfer_amount_auditor_ciphertext_hi: Option<&PodElGamalCiphertext>,
         account_info: Option<TransferAccountInfo>,
         source_elgamal_keypair: &ElGamalKeypair,
         source_aes_key: &AeKey,
@@ -2261,6 +2263,32 @@ where
             )
         };
 
+        let (transfer_amount_auditor_ciphertext_lo, transfer_amount_auditor_ciphertext_hi) =
+            if let Some(proof_data) = ciphertext_validity_proof_data {
+                let transfer_amount_auditor_ciphertext_lo = proof_data
+                    .context_data()
+                    .grouped_ciphertext_lo
+                    .try_extract_ciphertext(2)
+                    .map_err(|_| TokenError::ProofGeneration)?;
+                let transfer_amount_auditor_ciphertext_hi = proof_data
+                    .context_data()
+                    .grouped_ciphertext_hi
+                    .try_extract_ciphertext(2)
+                    .map_err(|_| TokenError::ProofGeneration)?;
+                (
+                    transfer_amount_auditor_ciphertext_lo,
+                    transfer_amount_auditor_ciphertext_hi,
+                )
+            } else {
+                // the validity proof data is always generated unless
+                // `transfer_amount_auditor_ciphertext_lo` and `transfer_amount_auditor_ciphertext_hi`
+                // are `Some`, so it is safe to unwrap
+                (
+                    *transfer_amount_auditor_ciphertext_lo.unwrap(),
+                    *transfer_amount_auditor_ciphertext_hi.unwrap(),
+                )
+            };
+
         // cannot panic as long as either `proof_data` or `proof_account` is `Some(..)`,
         // which is guaranteed by the previous check
         let equality_proof_location = Self::confidential_transfer_create_proof_location(
@@ -2292,6 +2320,8 @@ where
             self.get_address(),
             destination_account,
             new_decryptable_available_balance.into(),
+            &transfer_amount_auditor_ciphertext_lo.into(),
+            &transfer_amount_auditor_ciphertext_hi.into(),
             source_authority,
             &multisig_signers,
             equality_proof_location,
@@ -2531,6 +2561,8 @@ where
         fee_ciphertext_validity_proof_account: Option<&ProofAccount>,
         range_proof_account: Option<&ProofAccount>,
         transfer_amount: u64,
+        transfer_amount_auditor_ciphertext_lo: Option<&PodElGamalCiphertext>,
+        transfer_amount_auditor_ciphertext_hi: Option<&PodElGamalCiphertext>,
         account_info: Option<TransferAccountInfo>,
         source_elgamal_keypair: &ElGamalKeypair,
         source_aes_key: &AeKey,
@@ -2615,6 +2647,32 @@ where
             )
         };
 
+        let (transfer_amount_auditor_ciphertext_lo, transfer_amount_auditor_ciphertext_hi) =
+            if let Some(proof_data) = transfer_amount_ciphertext_validity_proof_data {
+                let transfer_amount_auditor_ciphertext_lo = proof_data
+                    .context_data()
+                    .grouped_ciphertext_lo
+                    .try_extract_ciphertext(2)
+                    .map_err(|_| TokenError::ProofGeneration)?;
+                let transfer_amount_auditor_ciphertext_hi = proof_data
+                    .context_data()
+                    .grouped_ciphertext_hi
+                    .try_extract_ciphertext(2)
+                    .map_err(|_| TokenError::ProofGeneration)?;
+                (
+                    transfer_amount_auditor_ciphertext_lo,
+                    transfer_amount_auditor_ciphertext_hi,
+                )
+            } else {
+                // the validity proof data is always generated unless
+                // `transfer_amount_auditor_ciphertext_lo` and `transfer_amount_auditor_ciphertext_hi`
+                // are `Some`, so it is safe to unwrap
+                (
+                    *transfer_amount_auditor_ciphertext_lo.unwrap(),
+                    *transfer_amount_auditor_ciphertext_hi.unwrap(),
+                )
+            };
+
         // cannot panic as long as either `proof_data` or `proof_account` is `Some(..)`,
         // which is guaranteed by the previous check
         let equality_proof_location = Self::confidential_transfer_create_proof_location(
@@ -2660,6 +2718,8 @@ where
             self.get_address(),
             destination_account,
             new_decryptable_available_balance.into(),
+            &transfer_amount_auditor_ciphertext_lo.into(),
+            &transfer_amount_auditor_ciphertext_hi.into(),
             source_authority,
             &multisig_signers,
             equality_proof_location,

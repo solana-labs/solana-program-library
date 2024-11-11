@@ -1321,6 +1321,8 @@ async fn confidential_transfer_with_option<S: Signers>(
                     None,
                     transfer_amount,
                     None,
+                    None,
+                    None,
                     source_elgamal_keypair,
                     source_aes_key,
                     destination_elgamal_pubkey,
@@ -1348,6 +1350,17 @@ async fn confidential_transfer_with_option<S: Signers>(
                     destination_elgamal_pubkey,
                     auditor_elgamal_pubkey,
                 )
+                .unwrap();
+
+            let transfer_amount_auditor_ciphertext_lo = ciphertext_validity_proof_data
+                .context_data()
+                .grouped_ciphertext_lo
+                .try_extract_ciphertext(2)
+                .unwrap();
+            let transfer_amount_auditor_ciphertext_hi = ciphertext_validity_proof_data
+                .context_data()
+                .grouped_ciphertext_hi
+                .try_extract_ciphertext(2)
                 .unwrap();
 
             let equality_proof_record_account = Keypair::new();
@@ -1418,6 +1431,8 @@ async fn confidential_transfer_with_option<S: Signers>(
                     Some(&ciphertext_validity_proof_account),
                     Some(&range_proof_account),
                     transfer_amount,
+                    Some(&transfer_amount_auditor_ciphertext_lo),
+                    Some(&transfer_amount_auditor_ciphertext_hi),
                     None,
                     source_elgamal_keypair,
                     source_aes_key,
@@ -1478,6 +1493,17 @@ async fn confidential_transfer_with_option<S: Signers>(
                     destination_elgamal_pubkey,
                     auditor_elgamal_pubkey,
                 )
+                .unwrap();
+
+            let transfer_amount_auditor_ciphertext_lo = ciphertext_validity_proof_data
+                .context_data()
+                .grouped_ciphertext_lo
+                .try_extract_ciphertext(2)
+                .unwrap();
+            let transfer_amount_auditor_ciphertext_hi = ciphertext_validity_proof_data
+                .context_data()
+                .grouped_ciphertext_hi
+                .try_extract_ciphertext(2)
                 .unwrap();
 
             let equality_proof_context_account = Keypair::new();
@@ -1542,6 +1568,8 @@ async fn confidential_transfer_with_option<S: Signers>(
                     Some(&ciphertext_validity_proof_context_proof_account),
                     Some(&range_proof_context_proof_account),
                     transfer_amount,
+                    Some(&transfer_amount_auditor_ciphertext_lo),
+                    Some(&transfer_amount_auditor_ciphertext_hi),
                     None,
                     source_elgamal_keypair,
                     source_aes_key,
@@ -1872,6 +1900,8 @@ async fn confidential_transfer_with_fee_with_option<S: Signers>(
                     None,
                     transfer_amount,
                     None,
+                    None,
+                    None,
                     source_elgamal_keypair,
                     source_aes_key,
                     destination_elgamal_pubkey,
@@ -1908,6 +1938,19 @@ async fn confidential_transfer_with_fee_with_option<S: Signers>(
                     maximum_fee,
                 )
                 .unwrap();
+
+            let transfer_amount_auditor_ciphertext_lo =
+                transfer_amount_ciphertext_validity_proof_data
+                    .context_data()
+                    .grouped_ciphertext_lo
+                    .try_extract_ciphertext(2)
+                    .unwrap();
+            let transfer_amount_auditor_ciphertext_hi =
+                transfer_amount_ciphertext_validity_proof_data
+                    .context_data()
+                    .grouped_ciphertext_hi
+                    .try_extract_ciphertext(2)
+                    .unwrap();
 
             let equality_proof_record_account = Keypair::new();
             let transfer_amount_ciphertext_validity_proof_record_account = Keypair::new();
@@ -2013,6 +2056,8 @@ async fn confidential_transfer_with_fee_with_option<S: Signers>(
                     Some(&fee_ciphertext_validity_proof_account),
                     Some(&range_proof_account),
                     transfer_amount,
+                    Some(&transfer_amount_auditor_ciphertext_lo),
+                    Some(&transfer_amount_auditor_ciphertext_hi),
                     None,
                     source_elgamal_keypair,
                     source_aes_key,
@@ -2102,6 +2147,19 @@ async fn confidential_transfer_with_fee_with_option<S: Signers>(
                     maximum_fee,
                 )
                 .unwrap();
+
+            let transfer_amount_auditor_ciphertext_lo =
+                transfer_amount_ciphertext_validity_proof_data
+                    .context_data()
+                    .grouped_ciphertext_lo
+                    .try_extract_ciphertext(2)
+                    .unwrap();
+            let transfer_amount_auditor_ciphertext_hi =
+                transfer_amount_ciphertext_validity_proof_data
+                    .context_data()
+                    .grouped_ciphertext_hi
+                    .try_extract_ciphertext(2)
+                    .unwrap();
 
             let equality_proof_context_account = Keypair::new();
             let transfer_amount_ciphertext_validity_proof_context_account = Keypair::new();
@@ -2200,6 +2258,8 @@ async fn confidential_transfer_with_fee_with_option<S: Signers>(
                     Some(&fee_ciphertext_validity_proof_context_proof_account),
                     Some(&range_proof_context_proof_account),
                     transfer_amount,
+                    Some(&transfer_amount_auditor_ciphertext_lo),
+                    Some(&transfer_amount_auditor_ciphertext_hi),
                     None,
                     source_elgamal_keypair,
                     source_aes_key,

@@ -591,6 +591,8 @@ fn process_transfer(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     new_source_decryptable_available_balance: DecryptableBalance,
+    transfer_amount_auditor_ciphertext_lo: &PodElGamalCiphertext,
+    transfer_amount_auditor_ciphertext_hi: &PodElGamalCiphertext,
     equality_proof_instruction_offset: i64,
     transfer_amount_ciphertext_validity_proof_instruction_offset: i64,
     fee_sigma_proof_instruction_offset: Option<i64>,
@@ -642,6 +644,22 @@ fn process_transfer(
         {
             return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
         }
+
+        let proof_context_auditor_ciphertext_lo = proof_context
+            .ciphertext_lo
+            .try_extract_ciphertext(2)
+            .map_err(|e| -> TokenError { e.into() })?;
+        let proof_context_auditor_ciphertext_hi = proof_context
+            .ciphertext_hi
+            .try_extract_ciphertext(2)
+            .map_err(|e| -> TokenError { e.into() })?;
+
+        check_auditor_ciphertext(
+            transfer_amount_auditor_ciphertext_lo,
+            transfer_amount_auditor_ciphertext_hi,
+            &proof_context_auditor_ciphertext_lo,
+            &proof_context_auditor_ciphertext_hi,
+        )?;
 
         process_source_for_transfer(
             program_id,
@@ -708,6 +726,22 @@ fn process_transfer(
             return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
         }
 
+        let proof_context_auditor_ciphertext_lo = proof_context
+            .ciphertext_lo
+            .try_extract_ciphertext(2)
+            .map_err(|e| -> TokenError { e.into() })?;
+        let proof_context_auditor_ciphertext_hi = proof_context
+            .ciphertext_hi
+            .try_extract_ciphertext(2)
+            .map_err(|e| -> TokenError { e.into() })?;
+
+        check_auditor_ciphertext(
+            transfer_amount_auditor_ciphertext_lo,
+            transfer_amount_auditor_ciphertext_hi,
+            &proof_context_auditor_ciphertext_lo,
+            &proof_context_auditor_ciphertext_hi,
+        )?;
+
         process_source_for_transfer_with_fee(
             program_id,
             source_account_info,
@@ -764,6 +798,23 @@ fn process_transfer(
         transfer_hook::unset_transferring(destination_account_info)?;
     }
 
+    Ok(())
+}
+
+/// Check instruction data and proof data auditor ciphertext consistency
+#[cfg(feature = "zk-ops")]
+fn check_auditor_ciphertext(
+    instruction_data_auditor_ciphertext_lo: &PodElGamalCiphertext,
+    instruction_data_auditor_ciphertext_hi: &PodElGamalCiphertext,
+    proof_context_auditor_ciphertext_lo: &PodElGamalCiphertext,
+    proof_context_auditor_ciphertext_hi: &PodElGamalCiphertext,
+) -> ProgramResult {
+    if instruction_data_auditor_ciphertext_lo != proof_context_auditor_ciphertext_lo {
+        return Err(TokenError::ConfidentialTransferBalanceMismatch.into());
+    }
+    if instruction_data_auditor_ciphertext_hi != proof_context_auditor_ciphertext_hi {
+        return Err(TokenError::ConfidentialTransferBalanceMismatch.into());
+    }
     Ok(())
 }
 
@@ -1291,6 +1342,8 @@ pub(crate) fn process_instruction(
                     program_id,
                     accounts,
                     data.new_source_decryptable_available_balance,
+                    &data.transfer_amount_auditor_ciphertext_lo,
+                    &data.transfer_amount_auditor_ciphertext_hi,
                     data.equality_proof_instruction_offset as i64,
                     data.ciphertext_validity_proof_instruction_offset as i64,
                     None,
@@ -1341,6 +1394,8 @@ pub(crate) fn process_instruction(
                     program_id,
                     accounts,
                     data.new_source_decryptable_available_balance,
+                    &data.transfer_amount_auditor_ciphertext_lo,
+                    &data.transfer_amount_auditor_ciphertext_hi,
                     data.equality_proof_instruction_offset as i64,
                     data.transfer_amount_ciphertext_validity_proof_instruction_offset as i64,
                     Some(data.fee_sigma_proof_instruction_offset as i64),

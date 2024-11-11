@@ -619,6 +619,12 @@ pub struct TransferInstructionData {
     /// The new source decryptable balance if the transfer succeeds
     #[cfg_attr(feature = "serde-traits", serde(with = "aeciphertext_fromstr"))]
     pub new_source_decryptable_available_balance: DecryptableBalance,
+    /// The transfer amount encrypted under the auditor ElGamal public key
+    #[cfg_attr(feature = "serde-traits", serde(with = "elgamalciphertext_fromstr"))]
+    pub transfer_amount_auditor_ciphertext_lo: PodElGamalCiphertext,
+    /// The transfer amount encrypted under the auditor ElGamal public key
+    #[cfg_attr(feature = "serde-traits", serde(with = "elgamalciphertext_fromstr"))]
+    pub transfer_amount_auditor_ciphertext_hi: PodElGamalCiphertext,
     /// Relative location of the
     /// `ProofInstruction::VerifyCiphertextCommitmentEquality` instruction
     /// to the `Transfer` instruction in the transaction. If the offset is
@@ -658,6 +664,12 @@ pub struct TransferWithFeeInstructionData {
     /// The new source decryptable balance if the transfer succeeds
     #[cfg_attr(feature = "serde-traits", serde(with = "aeciphertext_fromstr"))]
     pub new_source_decryptable_available_balance: DecryptableBalance,
+    /// The transfer amount encrypted under the auditor ElGamal public key
+    #[cfg_attr(feature = "serde-traits", serde(with = "elgamalciphertext_fromstr"))]
+    pub transfer_amount_auditor_ciphertext_lo: PodElGamalCiphertext,
+    /// The transfer amount encrypted under the auditor ElGamal public key
+    #[cfg_attr(feature = "serde-traits", serde(with = "elgamalciphertext_fromstr"))]
+    pub transfer_amount_auditor_ciphertext_hi: PodElGamalCiphertext,
     /// Relative location of the
     /// `ProofInstruction::VerifyCiphertextCommitmentEquality` instruction
     /// to the `TransferWithFee` instruction in the transaction. If the offset
@@ -1151,6 +1163,8 @@ pub fn inner_transfer(
     mint: &Pubkey,
     destination_token_account: &Pubkey,
     new_source_decryptable_available_balance: DecryptableBalance,
+    transfer_amount_auditor_ciphertext_lo: &PodElGamalCiphertext,
+    transfer_amount_auditor_ciphertext_hi: &PodElGamalCiphertext,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     equality_proof_data_location: ProofLocation<CiphertextCommitmentEqualityProofData>,
@@ -1231,6 +1245,8 @@ pub fn inner_transfer(
         ConfidentialTransferInstruction::Transfer,
         &TransferInstructionData {
             new_source_decryptable_available_balance,
+            transfer_amount_auditor_ciphertext_lo: *transfer_amount_auditor_ciphertext_lo,
+            transfer_amount_auditor_ciphertext_hi: *transfer_amount_auditor_ciphertext_hi,
             equality_proof_instruction_offset,
             ciphertext_validity_proof_instruction_offset,
             range_proof_instruction_offset,
@@ -1246,6 +1262,8 @@ pub fn transfer(
     mint: &Pubkey,
     destination_token_account: &Pubkey,
     new_source_decryptable_available_balance: DecryptableBalance,
+    transfer_amount_auditor_ciphertext_lo: &PodElGamalCiphertext,
+    transfer_amount_auditor_ciphertext_hi: &PodElGamalCiphertext,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     equality_proof_data_location: ProofLocation<CiphertextCommitmentEqualityProofData>,
@@ -1260,6 +1278,8 @@ pub fn transfer(
         mint,
         destination_token_account,
         new_source_decryptable_available_balance,
+        transfer_amount_auditor_ciphertext_lo,
+        transfer_amount_auditor_ciphertext_hi,
         authority,
         multisig_signers,
         equality_proof_data_location,
@@ -1484,6 +1504,8 @@ pub fn inner_transfer_with_fee(
     mint: &Pubkey,
     destination_token_account: &Pubkey,
     new_source_decryptable_available_balance: DecryptableBalance,
+    transfer_amount_auditor_ciphertext_lo: &PodElGamalCiphertext,
+    transfer_amount_auditor_ciphertext_hi: &PodElGamalCiphertext,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     equality_proof_data_location: ProofLocation<CiphertextCommitmentEqualityProofData>,
@@ -1597,6 +1619,8 @@ pub fn inner_transfer_with_fee(
         ConfidentialTransferInstruction::TransferWithFee,
         &TransferWithFeeInstructionData {
             new_source_decryptable_available_balance,
+            transfer_amount_auditor_ciphertext_lo: *transfer_amount_auditor_ciphertext_lo,
+            transfer_amount_auditor_ciphertext_hi: *transfer_amount_auditor_ciphertext_hi,
             equality_proof_instruction_offset,
             transfer_amount_ciphertext_validity_proof_instruction_offset,
             fee_sigma_proof_instruction_offset,
@@ -1614,6 +1638,8 @@ pub fn transfer_with_fee(
     mint: &Pubkey,
     destination_token_account: &Pubkey,
     new_source_decryptable_available_balance: DecryptableBalance,
+    transfer_amount_auditor_ciphertext_lo: &PodElGamalCiphertext,
+    transfer_amount_auditor_ciphertext_hi: &PodElGamalCiphertext,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     equality_proof_data_location: ProofLocation<CiphertextCommitmentEqualityProofData>,
@@ -1632,6 +1658,8 @@ pub fn transfer_with_fee(
         mint,
         destination_token_account,
         new_source_decryptable_available_balance,
+        transfer_amount_auditor_ciphertext_lo,
+        transfer_amount_auditor_ciphertext_hi,
         authority,
         multisig_signers,
         equality_proof_data_location,
