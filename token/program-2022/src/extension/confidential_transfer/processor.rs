@@ -7,7 +7,7 @@ use {
 };
 use {
     crate::{
-        check_elgamal_registry_program_account, check_program_account,
+        check_auditor_ciphertext, check_elgamal_registry_program_account, check_program_account,
         error::TokenError,
         extension::{
             confidential_transfer::{instruction::*, verify_proof::*, *},
@@ -798,23 +798,6 @@ fn process_transfer(
         transfer_hook::unset_transferring(destination_account_info)?;
     }
 
-    Ok(())
-}
-
-/// Check instruction data and proof data auditor ciphertext consistency
-#[cfg(feature = "zk-ops")]
-fn check_auditor_ciphertext(
-    instruction_data_auditor_ciphertext_lo: &PodElGamalCiphertext,
-    instruction_data_auditor_ciphertext_hi: &PodElGamalCiphertext,
-    proof_context_auditor_ciphertext_lo: &PodElGamalCiphertext,
-    proof_context_auditor_ciphertext_hi: &PodElGamalCiphertext,
-) -> ProgramResult {
-    if instruction_data_auditor_ciphertext_lo != proof_context_auditor_ciphertext_lo {
-        return Err(TokenError::ConfidentialTransferBalanceMismatch.into());
-    }
-    if instruction_data_auditor_ciphertext_hi != proof_context_auditor_ciphertext_hi {
-        return Err(TokenError::ConfidentialTransferBalanceMismatch.into());
-    }
     Ok(())
 }
 

@@ -23,8 +23,12 @@ mod entrypoint;
 
 // Export current sdk types for downstream users building with a different sdk
 // version
-use solana_program::{
-    entrypoint::ProgramResult, program_error::ProgramError, pubkey::Pubkey, system_program,
+use {
+    error::TokenError,
+    solana_program::{
+        entrypoint::ProgramResult, program_error::ProgramError, pubkey::Pubkey, system_program,
+    },
+    solana_zk_sdk::encryption::pod::elgamal::PodElGamalCiphertext,
 };
 pub use {solana_program, solana_zk_sdk};
 
@@ -136,6 +140,23 @@ pub(crate) fn check_elgamal_registry_program_account(
 ) -> ProgramResult {
     if elgamal_registry_account_program_id != &spl_elgamal_registry::id() {
         return Err(ProgramError::IncorrectProgramId);
+    }
+    Ok(())
+}
+
+/// Check instruction data and proof data auditor ciphertext consistency
+#[cfg(feature = "zk-ops")]
+pub(crate) fn check_auditor_ciphertext(
+    instruction_data_auditor_ciphertext_lo: &PodElGamalCiphertext,
+    instruction_data_auditor_ciphertext_hi: &PodElGamalCiphertext,
+    proof_context_auditor_ciphertext_lo: &PodElGamalCiphertext,
+    proof_context_auditor_ciphertext_hi: &PodElGamalCiphertext,
+) -> ProgramResult {
+    if instruction_data_auditor_ciphertext_lo != proof_context_auditor_ciphertext_lo {
+        return Err(TokenError::ConfidentialTransferBalanceMismatch.into());
+    }
+    if instruction_data_auditor_ciphertext_hi != proof_context_auditor_ciphertext_hi {
+        return Err(TokenError::ConfidentialTransferBalanceMismatch.into());
     }
     Ok(())
 }

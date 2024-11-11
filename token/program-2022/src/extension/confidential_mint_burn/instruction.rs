@@ -16,7 +16,10 @@ use {
         program_error::ProgramError,
         pubkey::Pubkey,
     },
-    solana_zk_sdk::encryption::pod::{auth_encryption::PodAeCiphertext, elgamal::PodElGamalPubkey},
+    solana_zk_sdk::encryption::pod::{
+        auth_encryption::PodAeCiphertext,
+        elgamal::{PodElGamalCiphertext, PodElGamalPubkey},
+    },
 };
 #[cfg(not(target_os = "solana"))]
 use {
@@ -229,6 +232,12 @@ pub struct MintInstructionData {
     /// The new decryptable supply if the mint succeeds
     #[cfg_attr(feature = "serde-traits", serde(with = "aeciphertext_fromstr"))]
     pub new_decryptable_supply: PodAeCiphertext,
+    /// The transfer amount encrypted under the auditor ElGamal public key
+    #[cfg_attr(feature = "serde-traits", serde(with = "elgamalciphertext_fromstr"))]
+    pub mint_amount_auditor_ciphertext_lo: PodElGamalCiphertext,
+    /// The transfer amount encrypted under the auditor ElGamal public key
+    #[cfg_attr(feature = "serde-traits", serde(with = "elgamalciphertext_fromstr"))]
+    pub mint_amount_auditor_ciphertext_hi: PodElGamalCiphertext,
     /// Relative location of the
     /// `ProofInstruction::VerifyCiphertextCommitmentEquality` instruction
     /// to the `ConfidentialMint` instruction in the transaction. 0 if the
@@ -254,6 +263,12 @@ pub struct BurnInstructionData {
     /// The new decryptable balance of the burner if the burn succeeds
     #[cfg_attr(feature = "serde-traits", serde(with = "aeciphertext_fromstr"))]
     pub new_decryptable_available_balance: DecryptableBalance,
+    /// The transfer amount encrypted under the auditor ElGamal public key
+    #[cfg_attr(feature = "serde-traits", serde(with = "elgamalciphertext_fromstr"))]
+    pub burn_amount_auditor_ciphertext_lo: PodElGamalCiphertext,
+    /// The transfer amount encrypted under the auditor ElGamal public key
+    #[cfg_attr(feature = "serde-traits", serde(with = "elgamalciphertext_fromstr"))]
+    pub burn_amount_auditor_ciphertext_hi: PodElGamalCiphertext,
     /// Relative location of the
     /// `ProofInstruction::VerifyCiphertextCommitmentEquality` instruction
     /// to the `ConfidentialMint` instruction in the transaction. 0 if the
@@ -391,6 +406,8 @@ pub fn confidential_mint_with_split_proofs(
     token_account: &Pubkey,
     mint: &Pubkey,
     supply_elgamal_pubkey: Option<ElGamalPubkey>,
+    mint_amount_auditor_ciphertext_lo: &PodElGamalCiphertext,
+    mint_amount_auditor_ciphertext_hi: &PodElGamalCiphertext,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     equality_proof_location: ProofLocation<CiphertextCommitmentEqualityProofData>,
@@ -455,6 +472,8 @@ pub fn confidential_mint_with_split_proofs(
         ConfidentialMintBurnInstruction::Mint,
         &MintInstructionData {
             new_decryptable_supply: new_decryptable_supply.into(),
+            mint_amount_auditor_ciphertext_lo: *mint_amount_auditor_ciphertext_lo,
+            mint_amount_auditor_ciphertext_hi: *mint_amount_auditor_ciphertext_hi,
             equality_proof_instruction_offset,
             ciphertext_validity_proof_instruction_offset,
             range_proof_instruction_offset,
@@ -475,6 +494,8 @@ pub fn confidential_burn_with_split_proofs(
     mint: &Pubkey,
     supply_elgamal_pubkey: Option<ElGamalPubkey>,
     new_decryptable_available_balance: DecryptableBalance,
+    burn_amount_auditor_ciphertext_lo: &PodElGamalCiphertext,
+    burn_amount_auditor_ciphertext_hi: &PodElGamalCiphertext,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     equality_proof_location: ProofLocation<CiphertextCommitmentEqualityProofData>,
@@ -537,6 +558,8 @@ pub fn confidential_burn_with_split_proofs(
         ConfidentialMintBurnInstruction::Burn,
         &BurnInstructionData {
             new_decryptable_available_balance,
+            burn_amount_auditor_ciphertext_lo: *burn_amount_auditor_ciphertext_lo,
+            burn_amount_auditor_ciphertext_hi: *burn_amount_auditor_ciphertext_hi,
             equality_proof_instruction_offset,
             ciphertext_validity_proof_instruction_offset,
             range_proof_instruction_offset,
