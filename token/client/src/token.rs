@@ -2281,8 +2281,9 @@ where
                 )
             } else {
                 // the validity proof data is always generated unless
-                // `transfer_amount_auditor_ciphertext_lo` and `transfer_amount_auditor_ciphertext_hi`
-                // are `Some`, so it is safe to unwrap
+                // `transfer_amount_auditor_ciphertext_lo` and
+                // `transfer_amount_auditor_ciphertext_hi` are `Some`, so it is
+                // safe to unwrap
                 (
                     *transfer_amount_auditor_ciphertext_lo.unwrap(),
                     *transfer_amount_auditor_ciphertext_hi.unwrap(),
@@ -2665,8 +2666,9 @@ where
                 )
             } else {
                 // the validity proof data is always generated unless
-                // `transfer_amount_auditor_ciphertext_lo` and `transfer_amount_auditor_ciphertext_hi`
-                // are `Some`, so it is safe to unwrap
+                // `transfer_amount_auditor_ciphertext_lo` and
+                // `transfer_amount_auditor_ciphertext_hi` are `Some`, so it is
+                // safe to unwrap
                 (
                     *transfer_amount_auditor_ciphertext_lo.unwrap(),
                     *transfer_amount_auditor_ciphertext_hi.unwrap(),
