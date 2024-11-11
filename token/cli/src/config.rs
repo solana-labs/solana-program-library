@@ -26,7 +26,7 @@ use {
         },
         token::ComputeUnitLimit,
     },
-    std::{process::exit, rc::Rc, str::FromStr, sync::Arc},
+    std::{process::exit, rc::Rc, str::FromStr, sync::Arc, time::Duration},
 };
 
 type SignersOf = Vec<(Arc<dyn Signer>, Pubkey)>;
@@ -54,6 +54,9 @@ pub(crate) struct MintInfo {
     pub address: Pubkey,
     pub decimals: u8,
 }
+
+const DEFAULT_RPC_TIMEOUT: Duration = Duration::from_secs(30);
+const DEFAULT_CONFIRM_TX_TIMEOUT: Duration = Duration::from_secs(5);
 
 pub struct Config<'a> {
     pub default_signer: Option<Arc<dyn Signer>>,
@@ -97,9 +100,11 @@ impl<'a> Config<'a> {
                 .unwrap_or(&cli_config.json_rpc_url),
         );
         let websocket_url = solana_cli_config::Config::compute_websocket_url(&json_rpc_url);
-        let rpc_client = Arc::new(RpcClient::new_with_commitment(
+        let rpc_client = Arc::new(RpcClient::new_with_timeouts_and_commitment(
             json_rpc_url,
+            DEFAULT_RPC_TIMEOUT,
             CommitmentConfig::confirmed(),
+            DEFAULT_CONFIRM_TX_TIMEOUT,
         ));
         let sign_only = matches.is_present(SIGN_ONLY_ARG.name);
         let program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>> = if sign_only {
