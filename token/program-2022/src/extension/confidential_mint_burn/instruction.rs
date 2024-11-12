@@ -337,7 +337,7 @@ pub fn rotate_supply_elgamal_pubkey(
         },
     )];
 
-    instructions.extend_from_slice(&proof_instructions);
+    instructions.extend(proof_instructions);
 
     Ok(instructions)
 }
@@ -461,7 +461,7 @@ pub fn confidential_mint_with_split_proofs(
         },
     )];
 
-    instructions.extend_from_slice(&proof_instructions);
+    instructions.extend(proof_instructions);
 
     Ok(instructions)
 }
@@ -543,7 +543,7 @@ pub fn confidential_burn_with_split_proofs(
         },
     )];
 
-    instructions.extend_from_slice(&proof_instructions);
+    instructions.extend(proof_instructions);
 
     Ok(instructions)
 }
