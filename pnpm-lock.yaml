@@ -73,8 +73,8 @@ importers:
         specifier: ^22.9.0
         version: 22.9.0
       '@types/node-fetch':
-        specifier: ^2.6.11
-        version: 2.6.11
+        specifier: ^2.6.12
+        version: 2.6.12
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.4.0
         version: 8.12.2(@typescript-eslint/parser@8.12.2)(eslint@8.57.0)(typescript@5.6.3)
@@ -201,8 +201,8 @@ importers:
         specifier: ^22.9.0
         version: 22.9.0
       '@types/node-fetch':
-        specifier: ^2.6.11
-        version: 2.6.11
+        specifier: ^2.6.12
+        version: 2.6.12
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.4.0
         version: 8.4.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)(typescript@5.6.3)
@@ -424,8 +424,8 @@ importers:
         specifier: ^22.9.0
         version: 22.9.0
       '@types/node-fetch':
-        specifier: ^2.6.11
-        version: 2.6.11
+        specifier: ^2.6.12
+        version: 2.6.12
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.4.0
         version: 8.4.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)(typescript@5.6.3)
@@ -732,8 +732,8 @@ importers:
         specifier: ^22.9.0
         version: 22.9.0
       '@types/node-fetch':
-        specifier: ^2.6.11
-        version: 2.6.11
+        specifier: ^2.6.12
+        version: 2.6.12
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.4.0
         version: 8.4.0(@typescript-eslint/parser@8.4.0)(eslint@8.57.0)(typescript@5.6.3)
@@ -2950,8 +2950,8 @@ packages:
     resolution: {integrity: sha512-sicdRoWtYevwxjOHNMPTl3vSfJM6oyW8o1wXeI7uww6b6xHg8eBznQDNSGBCDJmsE8UMxP05JgZRtsKbTqt//Q==}
     dev: true
 
-  /@types/node-fetch@2.6.11:
-    resolution: {integrity: sha512-24xFj9R5+rfQJLRyM56qh+wnVSYhyXC2tkoBndtY0U+vubqNsYXGjufB2nn8Q6gt0LrARwL6UBtMCSVCwl4B1g==}
+  /@types/node-fetch@2.6.12:
+    resolution: {integrity: sha512-8nneRWKCg3rMtF69nLQJnOYUcbafYeFSjqkw3jCRLsqkWFlHaoQrr5mXmofFGOx3DKn7UfmBMyov8ySvLRVldA==}
     dependencies:
       '@types/node': 22.9.0
       form-data: 4.0.0
