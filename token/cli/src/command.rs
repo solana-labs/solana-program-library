@@ -57,10 +57,13 @@ use {
             transfer_hook::TransferHook,
             BaseStateWithExtensions, ExtensionType, StateWithExtensionsOwned,
         },
-        solana_zk_sdk::encryption::{
-            auth_encryption::AeKey,
-            elgamal::{self, ElGamalKeypair},
-            pod::elgamal::PodElGamalPubkey,
+        solana_zk_sdk::{
+            encryption::{
+                auth_encryption::AeKey,
+                elgamal::{self, ElGamalKeypair},
+                pod::elgamal::PodElGamalPubkey,
+            },
+            zk_elgamal_proof_program::proof_data::ZkProofData,
         },
         state::{Account, AccountState, Mint},
     },
@@ -1623,6 +1626,17 @@ async fn command_transfer(
                 )
                 .unwrap();
 
+            let transfer_amount_auditor_ciphertext_lo = ciphertext_validity_proof_data
+                .context_data()
+                .grouped_ciphertext_lo
+                .try_extract_ciphertext(2)
+                .unwrap();
+            let transfer_amount_auditor_ciphertext_hi = ciphertext_validity_proof_data
+                .context_data()
+                .grouped_ciphertext_hi
+                .try_extract_ciphertext(2)
+                .unwrap();
+
             // setup proofs
             let create_range_proof_context_signer = &[&range_proof_context_state_account];
             let create_equality_proof_context_signer = &[&equality_proof_context_state_account];
@@ -1670,6 +1684,8 @@ async fn command_transfer(
                     Some(&ciphertext_validity_proof_context_proof_account),
                     Some(&range_proof_context_proof_account),
                     transfer_balance,
+                    Some(&transfer_amount_auditor_ciphertext_lo),
+                    Some(&transfer_amount_auditor_ciphertext_hi),
                     Some(transfer_account_info),
                     &args.sender_elgamal_keypair,
                     &args.sender_aes_key,
