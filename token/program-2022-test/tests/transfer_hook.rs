@@ -1004,8 +1004,6 @@ async fn success_confidential_transfer() {
             None,
             amount,
             None,
-            None,
-            None,
             &alice_meta.elgamal_keypair,
             &alice_meta.aes_key,
             bob_meta.elgamal_keypair.pubkey(),
