@@ -729,11 +729,11 @@ fn process_transfer(
         let proof_context_auditor_ciphertext_lo = proof_context
             .ciphertext_lo
             .try_extract_ciphertext(2)
-            .map_err(|e| -> TokenError { e.into() })?;
+            .map_err(TokenError::from)?;
         let proof_context_auditor_ciphertext_hi = proof_context
             .ciphertext_hi
             .try_extract_ciphertext(2)
-            .map_err(|e| -> TokenError { e.into() })?;
+            .map_err(TokenError::from)?;
 
         check_auditor_ciphertext(
             transfer_amount_auditor_ciphertext_lo,
@@ -852,11 +852,11 @@ fn process_source_for_transfer(
     let source_transfer_amount_lo = proof_context
         .ciphertext_lo
         .try_extract_ciphertext(0)
-        .map_err(|e| -> TokenError { e.into() })?;
+        .map_err(TokenError::from)?;
     let source_transfer_amount_hi = proof_context
         .ciphertext_hi
         .try_extract_ciphertext(0)
-        .map_err(|e| -> TokenError { e.into() })?;
+        .map_err(TokenError::from)?;
 
     let new_source_available_balance = ciphertext_arithmetic::subtract_with_lo_hi(
         &confidential_transfer_account.available_balance,
@@ -914,11 +914,11 @@ fn process_destination_for_transfer(
     let destination_ciphertext_lo = proof_context
         .ciphertext_lo
         .try_extract_ciphertext(1)
-        .map_err(|e| -> TokenError { e.into() })?;
+        .map_err(TokenError::from)?;
     let destination_ciphertext_hi = proof_context
         .ciphertext_hi
         .try_extract_ciphertext(1)
-        .map_err(|e| -> TokenError { e.into() })?;
+        .map_err(TokenError::from)?;
 
     destination_confidential_transfer_account.pending_balance_lo = ciphertext_arithmetic::add(
         &destination_confidential_transfer_account.pending_balance_lo,
@@ -990,11 +990,11 @@ fn process_source_for_transfer_with_fee(
     let source_transfer_amount_lo = proof_context
         .ciphertext_lo
         .try_extract_ciphertext(0)
-        .map_err(|e| -> TokenError { e.into() })?;
+        .map_err(TokenError::from)?;
     let source_transfer_amount_hi = proof_context
         .ciphertext_hi
         .try_extract_ciphertext(0)
-        .map_err(|e| -> TokenError { e.into() })?;
+        .map_err(TokenError::from)?;
 
     let new_source_available_balance = ciphertext_arithmetic::subtract_with_lo_hi(
         &confidential_transfer_account.available_balance,
@@ -1053,11 +1053,11 @@ fn process_destination_for_transfer_with_fee(
     let destination_transfer_amount_lo = proof_context
         .ciphertext_lo
         .try_extract_ciphertext(1)
-        .map_err(|e| -> TokenError { e.into() })?;
+        .map_err(TokenError::from)?;
     let destination_transfer_amount_hi = proof_context
         .ciphertext_hi
         .try_extract_ciphertext(1)
-        .map_err(|e| -> TokenError { e.into() })?;
+        .map_err(TokenError::from)?;
 
     destination_confidential_transfer_account.pending_balance_lo = ciphertext_arithmetic::add(
         &destination_confidential_transfer_account.pending_balance_lo,
@@ -1080,11 +1080,11 @@ fn process_destination_for_transfer_with_fee(
         let destination_fee_lo = proof_context
             .fee_ciphertext_lo
             .try_extract_ciphertext(0)
-            .map_err(|e| -> TokenError { e.into() })?;
+            .map_err(TokenError::from)?;
         let destination_fee_hi = proof_context
             .fee_ciphertext_hi
             .try_extract_ciphertext(0)
-            .map_err(|e| -> TokenError { e.into() })?;
+            .map_err(TokenError::from)?;
 
         // Subtract the fee amount from the destination pending balance
         destination_confidential_transfer_account.pending_balance_lo =
@@ -1105,11 +1105,11 @@ fn process_destination_for_transfer_with_fee(
         let withdraw_withheld_authority_fee_lo = proof_context
             .fee_ciphertext_lo
             .try_extract_ciphertext(1)
-            .map_err(|e| -> TokenError { e.into() })?;
+            .map_err(TokenError::from)?;
         let withdraw_withheld_authority_fee_hi = proof_context
             .fee_ciphertext_hi
             .try_extract_ciphertext(1)
-            .map_err(|e| -> TokenError { e.into() })?;
+            .map_err(TokenError::from)?;
 
         let destination_confidential_transfer_fee_amount =
             destination_token_account.get_extension_mut::<ConfidentialTransferFeeAmount>()?;

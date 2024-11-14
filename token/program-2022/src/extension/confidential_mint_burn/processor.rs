@@ -213,11 +213,11 @@ fn process_confidential_mint(
     let proof_context_auditor_ciphertext_lo = proof_context
         .mint_amount_ciphertext_lo
         .try_extract_ciphertext(2)
-        .map_err(|e| -> TokenError { e.into() })?;
+        .map_err(TokenError::from)?;
     let proof_context_auditor_ciphertext_hi = proof_context
         .mint_amount_ciphertext_hi
         .try_extract_ciphertext(2)
-        .map_err(|e| -> TokenError { e.into() })?;
+        .map_err(TokenError::from)?;
 
     check_auditor_ciphertext(
         &data.mint_amount_auditor_ciphertext_lo,
@@ -231,7 +231,7 @@ fn process_confidential_mint(
         &proof_context
             .mint_amount_ciphertext_lo
             .try_extract_ciphertext(0)
-            .map_err(|e| -> TokenError { e.into() })?,
+            .map_err(TokenError::from)?,
     )
     .ok_or(TokenError::CiphertextArithmeticFailed)?;
     confidential_transfer_account.pending_balance_hi = ciphertext_arithmetic::add(
@@ -239,7 +239,7 @@ fn process_confidential_mint(
         &proof_context
             .mint_amount_ciphertext_hi
             .try_extract_ciphertext(0)
-            .map_err(|e| -> TokenError { e.into() })?,
+            .map_err(TokenError::from)?,
     )
     .ok_or(TokenError::CiphertextArithmeticFailed)?;
 
@@ -330,11 +330,11 @@ fn process_confidential_burn(
     let proof_context_auditor_ciphertext_lo = proof_context
         .burn_amount_ciphertext_lo
         .try_extract_ciphertext(2)
-        .map_err(|e| -> TokenError { e.into() })?;
+        .map_err(TokenError::from)?;
     let proof_context_auditor_ciphertext_hi = proof_context
         .burn_amount_ciphertext_hi
         .try_extract_ciphertext(2)
-        .map_err(|e| -> TokenError { e.into() })?;
+        .map_err(TokenError::from)?;
 
     check_auditor_ciphertext(
         &data.burn_amount_auditor_ciphertext_lo,
@@ -346,11 +346,11 @@ fn process_confidential_burn(
     let burn_amount_lo = &proof_context
         .burn_amount_ciphertext_lo
         .try_extract_ciphertext(0)
-        .map_err(|e| -> TokenError { e.into() })?;
+        .map_err(TokenError::from)?;
     let burn_amount_hi = &proof_context
         .burn_amount_ciphertext_hi
         .try_extract_ciphertext(0)
-        .map_err(|e| -> TokenError { e.into() })?;
+        .map_err(TokenError::from)?;
 
     let new_source_available_balance = ciphertext_arithmetic::subtract_with_lo_hi(
         &confidential_transfer_account.available_balance,
