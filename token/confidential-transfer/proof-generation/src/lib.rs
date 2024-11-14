@@ -92,6 +92,15 @@ pub fn try_combine_lo_hi_openings(
     Some(opening_lo + opening_hi * Scalar::from(two_power))
 }
 
+/// A type that wraps a ciphertext validity proof along with two `lo` and `hi`
+/// ciphertexts.
+///
+/// Ciphertext validity proof data contains grouped ElGamal ciphertexts (`lo`
+/// and `hi`) and a proof containing the
+/// validity of these ciphertexts. Token client-side logic often requires a
+/// function to extract specific forms of the grouped ElGamal ciphertexts. This
+/// type is a convenience type that contains the proof data and the extracted
+/// ciphertexts.
 #[derive(Clone, Copy)]
 pub struct CiphertextValidityProofWithCiphertext {
     pub proof_data: BatchedGroupedCiphertext3HandlesValidityProofData,
