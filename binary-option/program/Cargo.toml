@@ -15,7 +15,7 @@ spl-token = { version = "7.0", path = "../../token/program", features = [
   "no-entrypoint",
 ] }
 arrayref = "0.3.9"
-borsh = "1.5.2"
+borsh = "1.5.3"
 uint = "0.10"
 
 [lib]

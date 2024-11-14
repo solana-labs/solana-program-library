@@ -12,7 +12,7 @@ serde-traits = ["dep:serde"]
 borsh = ["dep:borsh"]
 
 [dependencies]
-borsh = { version = "1.5.2", optional = true }
+borsh = { version = "1.5.3", optional = true }
 bytemuck = { version = "1.19.0" }
 bytemuck_derive = { version = "1.8.0" }
 num-derive = "0.4"
