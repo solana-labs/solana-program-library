@@ -96,13 +96,12 @@ pub fn try_combine_lo_hi_openings(
 /// ciphertexts.
 ///
 /// Ciphertext validity proof data contains grouped ElGamal ciphertexts (`lo`
-/// and `hi`) and a proof containing the
-/// validity of these ciphertexts. Token client-side logic often requires a
-/// function to extract specific forms of the grouped ElGamal ciphertexts. This
-/// type is a convenience type that contains the proof data and the extracted
-/// ciphertexts.
+/// and `hi`) and a proof containing the validity of these ciphertexts. Token
+/// client-side logic often requires a function to extract specific forms of
+/// the grouped ElGamal ciphertexts. This type is a convenience type that
+/// contains the proof data and the extracted ciphertexts.
 #[derive(Clone, Copy)]
-pub struct CiphertextValidityProofWithCiphertext {
+pub struct CiphertextValidityProofWithAuditorCiphertext {
     pub proof_data: BatchedGroupedCiphertext3HandlesValidityProofData,
     pub ciphertext_lo: PodElGamalCiphertext,
     pub ciphertext_hi: PodElGamalCiphertext,

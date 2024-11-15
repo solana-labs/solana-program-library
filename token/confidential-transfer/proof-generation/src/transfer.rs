@@ -1,7 +1,7 @@
 use {
     crate::{
         encryption::TransferAmountCiphertext, errors::TokenProofGenerationError,
-        try_combine_lo_hi_ciphertexts, try_split_u64, CiphertextValidityProofWithCiphertext,
+        try_combine_lo_hi_ciphertexts, try_split_u64, CiphertextValidityProofWithAuditorCiphertext,
         REMAINING_BALANCE_BIT_LENGTH, TRANSFER_AMOUNT_HI_BITS, TRANSFER_AMOUNT_LO_BITS,
     },
     solana_zk_sdk::{
@@ -25,7 +25,8 @@ const RANGE_PROOF_PADDING_BIT_LENGTH: usize = 16;
 /// mint is not extended for fees
 pub struct TransferProofData {
     pub equality_proof_data: CiphertextCommitmentEqualityProofData,
-    pub ciphertext_validity_proof_data_with_ciphertext: CiphertextValidityProofWithCiphertext,
+    pub ciphertext_validity_proof_data_with_ciphertext:
+        CiphertextValidityProofWithAuditorCiphertext,
     pub range_proof_data: BatchedRangeProofU128Data,
 }
 
@@ -132,11 +133,12 @@ pub fn transfer_split_proof_data(
         .try_extract_ciphertext(2)
         .map_err(|_| TokenProofGenerationError::CiphertextExtraction)?;
 
-    let ciphertext_validity_proof_data_with_ciphertext = CiphertextValidityProofWithCiphertext {
-        proof_data: ciphertext_validity_proof_data,
-        ciphertext_lo: transfer_amount_auditor_ciphertext_lo,
-        ciphertext_hi: transfer_amount_auditor_ciphertext_hi,
-    };
+    let ciphertext_validity_proof_data_with_ciphertext =
+        CiphertextValidityProofWithAuditorCiphertext {
+            proof_data: ciphertext_validity_proof_data,
+            ciphertext_lo: transfer_amount_auditor_ciphertext_lo,
+            ciphertext_hi: transfer_amount_auditor_ciphertext_hi,
+        };
 
     // generate range proof data
     let (padding_commitment, padding_opening) = Pedersen::new(0_u64);

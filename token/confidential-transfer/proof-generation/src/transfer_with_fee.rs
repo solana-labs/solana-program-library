@@ -3,7 +3,7 @@ use {
         encryption::{FeeCiphertext, TransferAmountCiphertext},
         errors::TokenProofGenerationError,
         try_combine_lo_hi_ciphertexts, try_combine_lo_hi_commitments, try_combine_lo_hi_openings,
-        try_split_u64, CiphertextValidityProofWithCiphertext, TRANSFER_AMOUNT_HI_BITS,
+        try_split_u64, CiphertextValidityProofWithAuditorCiphertext, TRANSFER_AMOUNT_HI_BITS,
         TRANSFER_AMOUNT_LO_BITS,
     },
     curve25519_dalek::scalar::Scalar,
@@ -36,7 +36,7 @@ const DELTA_BIT_LENGTH: usize = 48;
 pub struct TransferWithFeeProofData {
     pub equality_proof_data: CiphertextCommitmentEqualityProofData,
     pub transfer_amount_ciphertext_validity_proof_data_with_ciphertext:
-        CiphertextValidityProofWithCiphertext,
+        CiphertextValidityProofWithAuditorCiphertext,
     pub percentage_with_cap_proof_data: PercentageWithCapProofData,
     pub fee_ciphertext_validity_proof_data: BatchedGroupedCiphertext2HandlesValidityProofData,
     pub range_proof_data: BatchedRangeProofU256Data,
@@ -152,7 +152,7 @@ pub fn transfer_with_fee_split_proof_data(
         .map_err(|_| TokenProofGenerationError::CiphertextExtraction)?;
 
     let transfer_amount_ciphertext_validity_proof_data_with_ciphertext =
-        CiphertextValidityProofWithCiphertext {
+        CiphertextValidityProofWithAuditorCiphertext {
             proof_data: transfer_amount_ciphertext_validity_proof_data,
             ciphertext_lo: transfer_amount_auditor_ciphertext_lo,
             ciphertext_hi: transfer_amount_auditor_ciphertext_hi,
