@@ -6,7 +6,7 @@ use {
     },
     solana_clap_v3_utils::{
         fee_payer::fee_payer_arg,
-        input_parsers::Amount,
+        input_parsers::{signer::SignerSourceParserBuilder, Amount},
         input_validators::{is_pubkey, is_url_or_moniker, is_valid_pubkey, is_valid_signer},
         memo::memo_arg,
         nonce::*,
@@ -279,6 +279,17 @@ pub fn owner_address_arg<'a>() -> Arg<'a> {
         .takes_value(true)
         .value_name("OWNER_ADDRESS")
         .validator(|s| is_valid_pubkey(s))
+        .help(OWNER_ADDRESS_ARG.help)
+}
+
+// Temporary function that uses proper parsing to minimize commit size
+// TODO: use this to replace `owner_address_arg`
+pub fn owner_address_arg_temp<'a>() -> Arg<'a> {
+    Arg::with_name(OWNER_ADDRESS_ARG.name)
+        .long(OWNER_ADDRESS_ARG.long)
+        .takes_value(true)
+        .value_name("OWNER_ADDRESS")
+        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
         .help(OWNER_ADDRESS_ARG.help)
 }
 
@@ -1228,7 +1239,7 @@ pub fn app<'a>(
                             "Lock the owner of this token account from ever being changed"
                         ),
                 )
-                .arg(owner_address_arg())
+                .arg(owner_address_arg_temp())
                 .nonce_args(true)
         )
         .subcommand(
@@ -1759,7 +1770,7 @@ pub fn app<'a>(
                 .arg(
                     Arg::with_name("recipient")
                         .long("recipient")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("REFUND_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .help("The address of the account to receive remaining SOL [default: --owner]"),
@@ -1807,7 +1818,7 @@ pub fn app<'a>(
                 .arg(
                     Arg::with_name("recipient")
                         .long("recipient")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("REFUND_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .help("The address of the account to receive remaining SOL [default: --owner]"),
@@ -1834,17 +1845,17 @@ pub fn app<'a>(
                 .about("Get token account balance")
                 .arg(
                     Arg::with_name("token")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
                         .required_unless("address")
                         .help("Token of associated account. To query a specific account, use the `--address` parameter instead"),
                 )
-                .arg(owner_address_arg().conflicts_with("address"))
+                .arg(owner_address_arg_temp().conflicts_with("address"))
                 .arg(
                     Arg::with_name("address")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .long("address")
@@ -1905,7 +1916,7 @@ pub fn app<'a>(
                             "Print token account addresses only"
                         ),
                 )
-                .arg(owner_address_arg())
+                .arg(owner_address_arg_temp())
         )
         .subcommand(
             SubCommand::with_name(CommandName::Address.into())
@@ -1921,7 +1932,7 @@ pub fn app<'a>(
                                [Default: return the client keypair address]")
                 )
                 .arg(
-                    owner_address_arg()
+                    owner_address_arg_temp()
                         .requires("token")
                         .help("Return the associated token address for the given owner. \
                                [Default: return the associated token address for the client keypair]"),
@@ -1933,7 +1944,7 @@ pub fn app<'a>(
                 .setting(AppSettings::Hidden)
                 .arg(
                     Arg::with_name("token")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2028,7 +2039,7 @@ pub fn app<'a>(
                 .about("Enable required transfer memos for token account")
                 .arg(
                     Arg::with_name("account")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2046,7 +2057,7 @@ pub fn app<'a>(
                 .about("Disable required transfer memos for token account")
                 .arg(
                     Arg::with_name("account")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2064,7 +2075,7 @@ pub fn app<'a>(
                 .about("Enable CPI Guard for token account")
                 .arg(
                     Arg::with_name("account")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2082,7 +2093,7 @@ pub fn app<'a>(
                 .about("Disable CPI Guard for token account")
                 .arg(
                     Arg::with_name("account")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2357,7 +2368,7 @@ pub fn app<'a>(
                 .about("Withdraw lamports from a Token Program owned account")
                 .arg(
                     Arg::with_name("from")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("SOURCE_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .required(true)
@@ -2365,7 +2376,7 @@ pub fn app<'a>(
                 )
                 .arg(
                     Arg::with_name("recipient")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("REFUND_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .required(true)

@@ -2,7 +2,7 @@ use {
     crate::clap_app::{Error, COMPUTE_UNIT_LIMIT_ARG, COMPUTE_UNIT_PRICE_ARG, MULTISIG_SIGNER_ARG},
     clap::ArgMatches,
     solana_clap_v3_utils::{
-        input_parsers::pubkey_of_signer,
+        input_parsers::{pubkey_of_signer, signer::SignerSource},
         input_validators::normalize_to_url_if_moniker,
         keypair::SignerFromPathConfig,
         nonce::{NONCE_ARG, NONCE_AUTHORITY_ARG},
@@ -398,7 +398,7 @@ impl<'a> Config<'a> {
         override_name: &str,
         wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
     ) -> Result<Pubkey, Error> {
-        let token = pubkey_of_signer(arg_matches, "token", wallet_manager)
+        let token = SignerSource::try_get_pubkey(arg_matches, "token", wallet_manager)
             .map_err(|e| -> Error { e.to_string().into() })?;
         self.associated_token_address_for_token_or_override(
             arg_matches,
@@ -449,8 +449,9 @@ impl<'a> Config<'a> {
         address_name: &str,
         wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
     ) -> Result<Pubkey, Error> {
-        if let Some(address) = pubkey_of_signer(arg_matches, address_name, wallet_manager)
-            .map_err(|e| -> Error { e.to_string().into() })?
+        if let Some(address) =
+            SignerSource::try_get_pubkey(arg_matches, address_name, wallet_manager)
+                .map_err(|e| -> Error { e.to_string().into() })?
         {
             return Ok(address);
         }
