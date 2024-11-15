@@ -3,7 +3,8 @@ use {
         encryption::{FeeCiphertext, TransferAmountCiphertext},
         errors::TokenProofGenerationError,
         try_combine_lo_hi_ciphertexts, try_combine_lo_hi_commitments, try_combine_lo_hi_openings,
-        try_split_u64, TRANSFER_AMOUNT_HI_BITS, TRANSFER_AMOUNT_LO_BITS,
+        try_split_u64, CiphertextValidityProofWithAuditorCiphertext, TRANSFER_AMOUNT_HI_BITS,
+        TRANSFER_AMOUNT_LO_BITS,
     },
     curve25519_dalek::scalar::Scalar,
     solana_zk_sdk::{
@@ -16,7 +17,7 @@ use {
         zk_elgamal_proof_program::proof_data::{
             BatchedGroupedCiphertext2HandlesValidityProofData,
             BatchedGroupedCiphertext3HandlesValidityProofData, BatchedRangeProofU256Data,
-            CiphertextCommitmentEqualityProofData, PercentageWithCapProofData,
+            CiphertextCommitmentEqualityProofData, PercentageWithCapProofData, ZkProofData,
         },
     },
 };
@@ -34,8 +35,8 @@ const DELTA_BIT_LENGTH: usize = 48;
 /// mint is extended for fees
 pub struct TransferWithFeeProofData {
     pub equality_proof_data: CiphertextCommitmentEqualityProofData,
-    pub transfer_amount_ciphertext_validity_proof_data:
-        BatchedGroupedCiphertext3HandlesValidityProofData,
+    pub transfer_amount_ciphertext_validity_proof_data_with_ciphertext:
+        CiphertextValidityProofWithAuditorCiphertext,
     pub percentage_with_cap_proof_data: PercentageWithCapProofData,
     pub fee_ciphertext_validity_proof_data: BatchedGroupedCiphertext2HandlesValidityProofData,
     pub range_proof_data: BatchedRangeProofU256Data,
@@ -137,6 +138,25 @@ pub fn transfer_with_fee_split_proof_data(
             &transfer_amount_opening_hi,
         )
         .map_err(TokenProofGenerationError::from)?;
+
+    let transfer_amount_auditor_ciphertext_lo = transfer_amount_ciphertext_validity_proof_data
+        .context_data()
+        .grouped_ciphertext_lo
+        .try_extract_ciphertext(2)
+        .map_err(|_| TokenProofGenerationError::CiphertextExtraction)?;
+
+    let transfer_amount_auditor_ciphertext_hi = transfer_amount_ciphertext_validity_proof_data
+        .context_data()
+        .grouped_ciphertext_hi
+        .try_extract_ciphertext(2)
+        .map_err(|_| TokenProofGenerationError::CiphertextExtraction)?;
+
+    let transfer_amount_ciphertext_validity_proof_data_with_ciphertext =
+        CiphertextValidityProofWithAuditorCiphertext {
+            proof_data: transfer_amount_ciphertext_validity_proof_data,
+            ciphertext_lo: transfer_amount_auditor_ciphertext_lo,
+            ciphertext_hi: transfer_amount_auditor_ciphertext_hi,
+        };
 
     // calculate fee
     let transfer_fee_basis_points = fee_rate_basis_points;
@@ -298,7 +318,7 @@ pub fn transfer_with_fee_split_proof_data(
 
     Ok(TransferWithFeeProofData {
         equality_proof_data,
-        transfer_amount_ciphertext_validity_proof_data,
+        transfer_amount_ciphertext_validity_proof_data_with_ciphertext,
         percentage_with_cap_proof_data,
         fee_ciphertext_validity_proof_data,
         range_proof_data,

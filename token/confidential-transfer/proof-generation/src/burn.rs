@@ -1,7 +1,7 @@
 use {
     crate::{
         encryption::BurnAmountCiphertext, errors::TokenProofGenerationError,
-        try_combine_lo_hi_ciphertexts, try_split_u64,
+        try_combine_lo_hi_ciphertexts, try_split_u64, CiphertextValidityProofWithAuditorCiphertext,
     },
     solana_zk_sdk::{
         encryption::{
@@ -11,7 +11,7 @@ use {
         },
         zk_elgamal_proof_program::proof_data::{
             BatchedGroupedCiphertext3HandlesValidityProofData, BatchedRangeProofU128Data,
-            CiphertextCommitmentEqualityProofData,
+            CiphertextCommitmentEqualityProofData, ZkProofData,
         },
     },
 };
@@ -25,7 +25,8 @@ const RANGE_PROOF_PADDING_BIT_LENGTH: usize = 16;
 /// The proof data required for a confidential burn instruction
 pub struct BurnProofData {
     pub equality_proof_data: CiphertextCommitmentEqualityProofData,
-    pub ciphertext_validity_proof_data: BatchedGroupedCiphertext3HandlesValidityProofData,
+    pub ciphertext_validity_proof_data_with_ciphertext:
+        CiphertextValidityProofWithAuditorCiphertext,
     pub range_proof_data: BatchedRangeProofU128Data,
 }
 
@@ -113,6 +114,25 @@ pub fn burn_split_proof_data(
     )
     .map_err(TokenProofGenerationError::from)?;
 
+    let burn_amount_auditor_ciphertext_lo = ciphertext_validity_proof_data
+        .context_data()
+        .grouped_ciphertext_lo
+        .try_extract_ciphertext(2)
+        .map_err(|_| TokenProofGenerationError::CiphertextExtraction)?;
+
+    let burn_amount_auditor_ciphertext_hi = ciphertext_validity_proof_data
+        .context_data()
+        .grouped_ciphertext_hi
+        .try_extract_ciphertext(2)
+        .map_err(|_| TokenProofGenerationError::CiphertextExtraction)?;
+
+    let ciphertext_validity_proof_data_with_ciphertext =
+        CiphertextValidityProofWithAuditorCiphertext {
+            proof_data: ciphertext_validity_proof_data,
+            ciphertext_lo: burn_amount_auditor_ciphertext_lo,
+            ciphertext_hi: burn_amount_auditor_ciphertext_hi,
+        };
+
     // generate range proof data
     let (padding_commitment, padding_opening) = Pedersen::new(0_u64);
     let range_proof_data = BatchedRangeProofU128Data::new(
@@ -140,7 +160,7 @@ pub fn burn_split_proof_data(
 
     Ok(BurnProofData {
         equality_proof_data,
-        ciphertext_validity_proof_data,
+        ciphertext_validity_proof_data_with_ciphertext,
         range_proof_data,
     })
 }

@@ -66,7 +66,10 @@ use {
     },
     spl_token_client::{
         client::{ProgramRpcClientSendTransaction, RpcClientResponse},
-        token::{ComputeUnitLimit, ExtensionInitializationParams, ProofAccount, Token},
+        token::{
+            ComputeUnitLimit, ExtensionInitializationParams, ProofAccount,
+            ProofAccountWithCiphertext, Token,
+        },
     },
     spl_token_confidential_transfer_proof_generation::{
         transfer::TransferProofData, withdraw::WithdrawProofData,
@@ -1611,7 +1614,7 @@ async fn command_transfer(
 
             let TransferProofData {
                 equality_proof_data,
-                ciphertext_validity_proof_data,
+                ciphertext_validity_proof_data_with_ciphertext,
                 range_proof_data,
             } = transfer_account_info
                 .generate_split_transfer_proof_data(
@@ -1622,6 +1625,11 @@ async fn command_transfer(
                     auditor_elgamal_pubkey.as_ref(),
                 )
                 .unwrap();
+
+            let transfer_amount_auditor_ciphertext_lo =
+                ciphertext_validity_proof_data_with_ciphertext.ciphertext_lo;
+            let transfer_amount_auditor_ciphertext_hi =
+                ciphertext_validity_proof_data_with_ciphertext.ciphertext_hi;
 
             // setup proofs
             let create_range_proof_context_signer = &[&range_proof_context_state_account];
@@ -1647,7 +1655,7 @@ async fn command_transfer(
                 token.confidential_transfer_create_context_state_account(
                     &ciphertext_validity_proof_pubkey,
                     &context_state_authority_pubkey,
-                    &ciphertext_validity_proof_data,
+                    &ciphertext_validity_proof_data_with_ciphertext.proof_data,
                     false,
                     create_ciphertext_validity_proof_context_signer
                 )
@@ -1661,13 +1669,19 @@ async fn command_transfer(
             let range_proof_context_proof_account =
                 ProofAccount::ContextAccount(range_proof_pubkey);
 
+            let ciphertext_validity_proof_account_with_ciphertext = ProofAccountWithCiphertext {
+                proof_account: ciphertext_validity_proof_context_proof_account,
+                ciphertext_lo: transfer_amount_auditor_ciphertext_lo,
+                ciphertext_hi: transfer_amount_auditor_ciphertext_hi,
+            };
+
             let transfer_result = token
                 .confidential_transfer_transfer(
                     &sender,
                     &recipient_token_account,
                     &sender_owner,
                     Some(&equality_proof_context_proof_account),
-                    Some(&ciphertext_validity_proof_context_proof_account),
+                    Some(&ciphertext_validity_proof_account_with_ciphertext),
                     Some(&range_proof_context_proof_account),
                     transfer_balance,
                     Some(transfer_account_info),

@@ -42,7 +42,7 @@ fn test_transfer_proof_validity(spendable_balance: u64, transfer_amount: u64) {
 
     let TransferProofData {
         equality_proof_data,
-        ciphertext_validity_proof_data,
+        ciphertext_validity_proof_data_with_ciphertext,
         range_proof_data,
     } = transfer_split_proof_data(
         &spendable_ciphertext,
@@ -56,12 +56,17 @@ fn test_transfer_proof_validity(spendable_balance: u64, transfer_amount: u64) {
     .unwrap();
 
     equality_proof_data.verify_proof().unwrap();
-    ciphertext_validity_proof_data.verify_proof().unwrap();
+    ciphertext_validity_proof_data_with_ciphertext
+        .proof_data
+        .verify_proof()
+        .unwrap();
     range_proof_data.verify_proof().unwrap();
 
     TransferProofContext::verify_and_extract(
         equality_proof_data.context_data(),
-        ciphertext_validity_proof_data.context_data(),
+        ciphertext_validity_proof_data_with_ciphertext
+            .proof_data
+            .context_data(),
         range_proof_data.context_data(),
     )
     .unwrap();
@@ -112,7 +117,7 @@ fn test_transfer_with_fee_proof_validity(
 
     let TransferWithFeeProofData {
         equality_proof_data,
-        transfer_amount_ciphertext_validity_proof_data,
+        transfer_amount_ciphertext_validity_proof_data_with_ciphertext,
         percentage_with_cap_proof_data,
         fee_ciphertext_validity_proof_data,
         range_proof_data,
@@ -131,7 +136,8 @@ fn test_transfer_with_fee_proof_validity(
     .unwrap();
 
     equality_proof_data.verify_proof().unwrap();
-    transfer_amount_ciphertext_validity_proof_data
+    transfer_amount_ciphertext_validity_proof_data_with_ciphertext
+        .proof_data
         .verify_proof()
         .unwrap();
     percentage_with_cap_proof_data.verify_proof().unwrap();
@@ -140,7 +146,9 @@ fn test_transfer_with_fee_proof_validity(
 
     TransferWithFeeProofContext::verify_and_extract(
         equality_proof_data.context_data(),
-        transfer_amount_ciphertext_validity_proof_data.context_data(),
+        transfer_amount_ciphertext_validity_proof_data_with_ciphertext
+            .proof_data
+            .context_data(),
         percentage_with_cap_proof_data.context_data(),
         fee_ciphertext_validity_proof_data.context_data(),
         range_proof_data.context_data(),
@@ -220,7 +228,7 @@ fn test_mint_validity(mint_amount: u64, supply: u64) {
 
     let MintProofData {
         equality_proof_data,
-        ciphertext_validity_proof_data,
+        ciphertext_validity_proof_data_with_ciphertext,
         range_proof_data,
         new_decryptable_supply: _,
     } = mint_split_proof_data(
@@ -235,12 +243,17 @@ fn test_mint_validity(mint_amount: u64, supply: u64) {
     .unwrap();
 
     equality_proof_data.verify_proof().unwrap();
-    ciphertext_validity_proof_data.verify_proof().unwrap();
+    ciphertext_validity_proof_data_with_ciphertext
+        .proof_data
+        .verify_proof()
+        .unwrap();
     range_proof_data.verify_proof().unwrap();
 
     MintProofContext::verify_and_extract(
         equality_proof_data.context_data(),
-        ciphertext_validity_proof_data.context_data(),
+        ciphertext_validity_proof_data_with_ciphertext
+            .proof_data
+            .context_data(),
         range_proof_data.context_data(),
     )
     .unwrap();
@@ -270,7 +283,7 @@ fn test_burn_validity(spendable_balance: u64, burn_amount: u64) {
 
     let BurnProofData {
         equality_proof_data,
-        ciphertext_validity_proof_data,
+        ciphertext_validity_proof_data_with_ciphertext,
         range_proof_data,
     } = burn_split_proof_data(
         &spendable_balance_ciphertext,
@@ -284,12 +297,17 @@ fn test_burn_validity(spendable_balance: u64, burn_amount: u64) {
     .unwrap();
 
     equality_proof_data.verify_proof().unwrap();
-    ciphertext_validity_proof_data.verify_proof().unwrap();
+    ciphertext_validity_proof_data_with_ciphertext
+        .proof_data
+        .verify_proof()
+        .unwrap();
     range_proof_data.verify_proof().unwrap();
 
     BurnProofContext::verify_and_extract(
         equality_proof_data.context_data(),
-        ciphertext_validity_proof_data.context_data(),
+        ciphertext_validity_proof_data_with_ciphertext
+            .proof_data
+            .context_data(),
         range_proof_data.context_data(),
     )
     .unwrap();
