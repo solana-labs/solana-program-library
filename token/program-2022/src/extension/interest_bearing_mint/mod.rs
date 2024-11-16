@@ -22,7 +22,7 @@ pub type BasisPoints = PodI16;
 const ONE_IN_BASIS_POINTS: f64 = 10_000.;
 const SECONDS_PER_YEAR: f64 = 60. * 60. * 24. * 365.24;
 
-/// UnixTimestamp expressed with an alignment-independent type
+/// `UnixTimestamp` expressed with an alignment-independent type
 pub type UnixTimestamp = PodI64;
 
 /// Interest-bearing extension data for mints
@@ -120,11 +120,13 @@ impl InterestBearingConfig {
     /// The new average rate is the time-weighted average of the current rate
     /// and average rate, solving for r such that:
     ///
+    /// ```no_run
     /// exp(r_1 * t_1) * exp(r_2 * t_2) = exp(r * (t_1 + t_2))
     ///
     /// r_1 * t_1 + r_2 * t_2 = r * (t_1 + t_2)
     ///
     /// r = (r_1 * t_1 + r_2 * t_2) / (t_1 + t_2)
+    /// ```
     pub fn time_weighted_average_rate(&self, current_timestamp: i64) -> Option<i16> {
         let initialization_timestamp = i64::from(self.initialization_timestamp) as i128;
         let last_update_timestamp = i64::from(self.last_update_timestamp) as i128;

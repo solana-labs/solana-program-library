@@ -43,7 +43,7 @@ fn check_update_authority(
     Ok(())
 }
 
-/// Processes a [Initialize](enum.TokenMetadataInstruction.html) instruction.
+/// Processes a [`Initialize`](enum.TokenMetadataInstruction.html) instruction.
 pub fn process_initialize(
     _program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -106,7 +106,8 @@ pub fn process_initialize(
     Ok(())
 }
 
-/// Processes an [UpdateField](enum.TokenMetadataInstruction.html) instruction.
+/// Processes an [`UpdateField`](enum.TokenMetadataInstruction.html)
+/// instruction.
 pub fn process_update_field(
     _program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -135,7 +136,7 @@ pub fn process_update_field(
     Ok(())
 }
 
-/// Processes a [RemoveKey](enum.TokenMetadataInstruction.html) instruction.
+/// Processes a [`RemoveKey`](enum.TokenMetadataInstruction.html) instruction.
 pub fn process_remove_key(
     _program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -161,7 +162,7 @@ pub fn process_remove_key(
     Ok(())
 }
 
-/// Processes a [UpdateAuthority](enum.TokenMetadataInstruction.html)
+/// Processes a [`UpdateAuthority`](enum.TokenMetadataInstruction.html)
 /// instruction.
 pub fn process_update_authority(
     _program_id: &Pubkey,
@@ -188,7 +189,7 @@ pub fn process_update_authority(
     Ok(())
 }
 
-/// Processes an [Emit](enum.TokenMetadataInstruction.html) instruction.
+/// Processes an [`Emit`](enum.TokenMetadataInstruction.html) instruction.
 pub fn process_emit(program_id: &Pubkey, accounts: &[AccountInfo], data: Emit) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let metadata_info = next_account_info(account_info_iter)?;
@@ -207,7 +208,7 @@ pub fn process_emit(program_id: &Pubkey, accounts: &[AccountInfo], data: Emit) -
     Ok(())
 }
 
-/// Processes an [Instruction](enum.Instruction.html).
+/// Processes an [`Instruction`](enum.Instruction.html).
 pub fn process_instruction(
     program_id: &Pubkey,
     accounts: &[AccountInfo],

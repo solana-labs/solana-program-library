@@ -98,7 +98,7 @@ pub struct Account {
     pub delegate: COption<Pubkey>,
     /// The account's state
     pub state: AccountState,
-    /// If is_native.is_some, this is a native token, and the value logs the
+    /// If `is_native.is_some`, this is a native token, and the value logs the
     /// rent-exempt reserve. An Account is required to be rent-exempt, so
     /// the value is used by the Processor to ensure that wrapped SOL
     /// accounts do not drop below this threshold.
@@ -117,7 +117,7 @@ impl Account {
     pub fn is_native(&self) -> bool {
         self.is_native.is_some()
     }
-    /// Checks if a token Account's owner is the system_program or the
+    /// Checks if a token Account's owner is the `system_program` or the
     /// incinerator
     pub fn is_owned_by_system_program_or_incinerator(&self) -> bool {
         solana_program::system_program::check_id(&self.owner)
@@ -344,7 +344,7 @@ pub trait GenericTokenAccount {
 pub const ACCOUNT_INITIALIZED_INDEX: usize = 108;
 
 /// Check if the account data buffer represents an initialized account.
-/// This is checking the `state` (AccountState) field of an Account object.
+/// This is checking the `state` (`AccountState`) field of an Account object.
 pub fn is_initialized_account(account_data: &[u8]) -> bool {
     *account_data
         .get(ACCOUNT_INITIALIZED_INDEX)

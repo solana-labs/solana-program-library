@@ -18,7 +18,7 @@ use {
     },
 };
 
-/// Toggle the CpiGuard extension, initializing the extension if not already
+/// Toggle the `CpiGuard` extension, initializing the extension if not already
 /// present.
 fn process_toggle_cpi_guard(
     program_id: &Pubkey,

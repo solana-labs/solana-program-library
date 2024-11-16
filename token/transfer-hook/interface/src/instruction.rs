@@ -25,8 +25,8 @@ pub enum TransferHookInstruction {
     ///   2. `[]` Destination account
     ///   3. `[]` Source account's owner/delegate
     ///   4. `[]` (Optional) Validation account
-    ///   5. ..5+M `[]` `M` optional additional accounts, written in validation
-    ///      account data
+    ///   5. ..`5+M` `[]` `M` optional additional accounts, written in
+    ///      validation account data
     Execute {
         /// Amount of tokens to transfer
         amount: u64,
@@ -80,7 +80,7 @@ pub struct UpdateExtraAccountMetaListInstruction;
 
 impl TransferHookInstruction {
     /// Unpacks a byte buffer into a
-    /// [TransferHookInstruction](enum.TransferHookInstruction.html).
+    /// [`TransferHookInstruction`](enum.TransferHookInstruction.html).
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
         if input.len() < ArrayDiscriminator::LENGTH {
             return Err(ProgramError::InvalidInstructionData);
@@ -113,8 +113,8 @@ impl TransferHookInstruction {
         })
     }
 
-    /// Packs a [TokenInstruction](enum.TokenInstruction.html) into a byte
-    /// buffer.
+    /// Packs a [`TransferHookInstruction`](enum.TransferHookInstruction.html)
+    /// into a byte buffer.
     pub fn pack(&self) -> Vec<u8> {
         let mut buf = vec![];
         match self {

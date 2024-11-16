@@ -5,7 +5,7 @@ A token program on the Solana blockchain, usable for fungible and non-fungible t
 This program provides an interface and implementation that third parties can
 utilize to create and use their tokens.
 
-Full documentation is available at https://spl.solana.com/token
+Full documentation is available at the [SPL Token docs](https://spl.solana.com/token).
 
 ## Audit
 

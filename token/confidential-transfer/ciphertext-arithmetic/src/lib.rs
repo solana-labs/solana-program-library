@@ -119,7 +119,7 @@ pub fn subtract_from(
     Some(ristretto_to_elgamal_ciphertext(&result_commitment, &handle))
 }
 
-/// Convert a `u64` amount into a curve25519 scalar
+/// Convert a `u64` amount into a curve-25519 scalar
 fn u64_to_scalar(amount: u64) -> PodScalar {
     let mut amount_bytes = [0u8; 32];
     amount_bytes[..8].copy_from_slice(&amount.to_le_bytes());
@@ -141,7 +141,7 @@ fn elgamal_ciphertext_to_ristretto(
 }
 
 /// Convert a pair of `PodRistrettoPoint` to a `PodElGamalCiphertext`
-/// interpretting the first as the commitment and the second as the handle
+/// interpreting the first as the commitment and the second as the handle
 fn ristretto_to_elgamal_ciphertext(
     commitment: &PodRistrettoPoint,
     handle: &PodRistrettoPoint,

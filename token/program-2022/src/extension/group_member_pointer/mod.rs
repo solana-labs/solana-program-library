@@ -6,9 +6,9 @@ use {
     spl_pod::optional_keys::OptionalNonZeroPubkey,
 };
 
-/// Instructions for the GroupMemberPointer extension
+/// Instructions for the `GroupMemberPointer` extension
 pub mod instruction;
-/// Instruction processor for the GroupMemberPointer extension
+/// Instruction processor for the `GroupMemberPointer` extension
 pub mod processor;
 
 /// Group member pointer extension data for mints.

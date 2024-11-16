@@ -1,4 +1,4 @@
-//! Generic Token Account, copied from spl_token::state
+//! Generic Token Account, copied from `spl_token::state`
 // Remove all of this and use spl-token's version once token 3.4.0 is released
 use {
     crate::state::AccountState,
@@ -56,7 +56,7 @@ pub trait GenericTokenAccount {
 pub const ACCOUNT_INITIALIZED_INDEX: usize = 108;
 
 /// Check if the account data buffer represents an initialized account.
-/// This is checking the `state` (AccountState) field of an Account object.
+/// This is checking the `state` (`AccountState`) field of an Account object.
 pub fn is_initialized_account(account_data: &[u8]) -> bool {
     *account_data
         .get(ACCOUNT_INITIALIZED_INDEX)

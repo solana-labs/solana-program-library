@@ -194,7 +194,7 @@ pub struct InitializeMintData {
     /// The ElGamal pubkey used to encrypt the confidential supply
     #[cfg_attr(feature = "serde-traits", serde(with = "elgamalpubkey_fromstr"))]
     pub supply_elgamal_pubkey: PodElGamalPubkey,
-    /// The initial 0 supply ecrypted with the supply aes key
+    /// The initial 0 supply encrypted with the supply aes key
     #[cfg_attr(feature = "serde-traits", serde(with = "aeciphertext_fromstr"))]
     pub decryptable_supply: PodAeCiphertext,
 }

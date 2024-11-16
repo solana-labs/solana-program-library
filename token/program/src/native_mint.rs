@@ -1,6 +1,6 @@
 //! The Mint that represents the native token
 
-/// There are 10^9 lamports in one SOL
+/// There are `10^9` lamports in one SOL
 pub const DECIMALS: u8 = 9;
 
 // The Mint for native SOL Token accounts

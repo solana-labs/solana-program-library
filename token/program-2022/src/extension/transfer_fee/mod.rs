@@ -23,7 +23,7 @@ pub mod instruction;
 /// Transfer fee extension processor
 pub mod processor;
 
-/// Maximum possible fee in basis points is 100%, aka 10_000 basis points
+/// Maximum possible fee in basis points is `100%`, aka 10,000 basis points
 pub const MAX_FEE_BASIS_POINTS: u16 = 10_000;
 const ONE_IN_BASIS_POINTS: u128 = MAX_FEE_BASIS_POINTS as u128;
 
@@ -38,7 +38,7 @@ pub struct TransferFee {
     /// Maximum fee assessed on transfers, expressed as an amount of tokens
     pub maximum_fee: PodU64,
     /// Amount of transfer collected as fees, expressed as basis points of the
-    /// transfer amount, ie. increments of 0.01%
+    /// transfer amount (increments of `0.01%`)
     pub transfer_fee_basis_points: PodU16,
 }
 impl TransferFee {
@@ -80,9 +80,9 @@ impl TransferFee {
     ///
     /// The original transfer amount may not always be unique due to rounding.
     /// In this case, the smaller amount will be chosen.
-    /// e.g. Both transfer amount 10, 11 with 10% fee rate results in net
+    /// e.g. Both transfer amount 10, 11 with `10%` fee rate results in net
     /// transfer amount of 9. In this case, 10 will be chosen.
-    /// e.g. Fee rate is 100%. In this case, 0 will be chosen.
+    /// e.g. Fee rate is `100%`. In this case, 0 will be chosen.
     ///
     /// The original transfer amount may not always exist on large net transfer
     /// amounts due to overflow. In this case, `None` is returned.
@@ -141,9 +141,9 @@ pub struct TransferFeeConfig {
     /// Withheld transfer fee tokens that have been moved to the mint for
     /// withdrawal
     pub withheld_amount: PodU64,
-    /// Older transfer fee, used if the current epoch < new_transfer_fee.epoch
+    /// Older transfer fee, used if `current epoch < new_transfer_fee.epoch`
     pub older_transfer_fee: TransferFee,
-    /// Newer transfer fee, used if the current epoch >= new_transfer_fee.epoch
+    /// Newer transfer fee, used if `current epoch >= new_transfer_fee.epoch`
     pub newer_transfer_fee: TransferFee,
 }
 impl TransferFeeConfig {

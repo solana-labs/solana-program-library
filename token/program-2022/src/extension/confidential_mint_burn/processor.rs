@@ -37,7 +37,7 @@ use {
     spl_token_confidential_transfer_proof_extraction::instruction::verify_and_extract_context,
 };
 
-/// Processes an [InitializeMint] instruction.
+/// Processes an [`InitializeMint`] instruction.
 fn process_initialize_mint(accounts: &[AccountInfo], data: &InitializeMintData) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let mint_info = next_account_info(account_info_iter)?;
@@ -54,7 +54,7 @@ fn process_initialize_mint(accounts: &[AccountInfo], data: &InitializeMintData) 
     Ok(())
 }
 
-/// Processes an [RotateSupplyElGamal] instruction.
+/// Processes an [`RotateSupplyElGamal`] instruction.
 #[cfg(feature = "zk-ops")]
 fn process_rotate_supply_elgamal_pubkey(
     program_id: &Pubkey,
@@ -110,7 +110,7 @@ fn process_rotate_supply_elgamal_pubkey(
     Ok(())
 }
 
-/// Processes an [UpdateAuthority] instruction.
+/// Processes an [`UpdateAuthority`] instruction.
 fn process_update_decryptable_supply(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -142,7 +142,7 @@ fn process_update_decryptable_supply(
     Ok(())
 }
 
-/// Processes a [ConfidentialMint] instruction.
+/// Processes a [`ConfidentialMint`] instruction.
 #[cfg(feature = "zk-ops")]
 fn process_confidential_mint(
     program_id: &Pubkey,
@@ -267,7 +267,7 @@ fn process_confidential_mint(
     Ok(())
 }
 
-/// Processes a [ConfidentialBurn] instruction.
+/// Processes a [`ConfidentialBurn`] instruction.
 #[cfg(feature = "zk-ops")]
 fn process_confidential_burn(
     program_id: &Pubkey,

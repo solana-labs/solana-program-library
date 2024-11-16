@@ -9,7 +9,7 @@ use {
 
 /// Maximum bit length of any mint or burn amount
 ///
-/// Any mint or burn amount must be less than 2^48
+/// Any mint or burn amount must be less than `2^48`
 pub const MAXIMUM_DEPOSIT_TRANSFER_AMOUNT: u64 = (u16::MAX as u64) + (1 << 16) * (u32::MAX as u64);
 
 /// Bit length of the low bits of pending balance plaintext

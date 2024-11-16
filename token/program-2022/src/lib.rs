@@ -126,7 +126,7 @@ pub fn check_zk_elgamal_proof_program_account(
     Ok(())
 }
 
-/// Checks if the spplied program ID is that of the system program
+/// Checks if the supplied program ID is that of the system program
 pub fn check_system_program_account(system_program_id: &Pubkey) -> ProgramResult {
     if system_program_id != &system_program::id() {
         return Err(ProgramError::IncorrectProgramId);

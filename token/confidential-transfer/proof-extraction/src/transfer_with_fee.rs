@@ -48,8 +48,8 @@ pub struct TransferWithFeeProofContext {
     pub ciphertext_lo: PodTransferAmountCiphertext,
     /// Group encryption of the high 48 bits of the transfer amount
     pub ciphertext_hi: PodTransferAmountCiphertext,
-    /// The public encryption keys associated with the transfer: source, dest,
-    /// auditor, and withdraw withheld authority
+    /// The public encryption keys associated with the transfer: source,
+    /// destination, auditor, and withdraw withheld authority
     pub transfer_with_fee_pubkeys: TransferWithFeePubkeys,
     /// The final spendable ciphertext after the transfer,
     pub new_source_ciphertext: PodElGamalCiphertext,
@@ -250,20 +250,20 @@ impl TransferWithFeeProofContext {
     }
 }
 
-/// Ristretto generator point for curve25519
+/// Ristretto generator point for curve-25519
 const G: PodRistrettoPoint = PodRistrettoPoint([
     226, 242, 174, 10, 106, 188, 78, 113, 168, 132, 169, 97, 197, 0, 81, 95, 88, 227, 11, 106, 165,
     130, 221, 141, 182, 166, 89, 69, 224, 141, 45, 118,
 ]);
 
-/// Convert a `u64` amount into a curve25519 scalar
+/// Convert a `u64` amount into a curve-25519 scalar
 fn u64_to_scalar(amount: u64) -> PodScalar {
     let mut bytes = [0u8; 32];
     bytes[..8].copy_from_slice(&amount.to_le_bytes());
     PodScalar(bytes)
 }
 
-/// Convert a `u16` amount into a curve25519 scalar
+/// Convert a `u16` amount into a curve-25519 scalar
 fn u16_to_scalar(amount: u16) -> PodScalar {
     let mut bytes = [0u8; 32];
     bytes[..2].copy_from_slice(&amount.to_le_bytes());

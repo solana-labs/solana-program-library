@@ -21,9 +21,9 @@ pub struct TransferPubkeys {
 
 /// The proof context information needed to process a [Transfer] instruction.
 pub struct TransferProofContext {
-    /// Ciphertext containing the low 16 bits of the transafer amount
+    /// Ciphertext containing the low 16 bits of the transfer amount
     pub ciphertext_lo: PodTransferAmountCiphertext,
-    /// Ciphertext containing the high 32 bits of the transafer amount
+    /// Ciphertext containing the high 32 bits of the transfer amount
     pub ciphertext_hi: PodTransferAmountCiphertext,
     /// The transfer public keys associated with a transfer
     pub transfer_pubkeys: TransferPubkeys,

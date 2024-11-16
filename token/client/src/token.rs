@@ -901,7 +901,7 @@ where
         mint_result
     }
 
-    /// Retrive mint information.
+    /// Retrieve mint information.
     pub async fn get_mint_info(&self) -> TokenResult<StateWithExtensionsOwned<Mint>> {
         let account = self.get_account(self.pubkey).await?;
         self.unpack_mint_info(account)
@@ -1669,7 +1669,7 @@ where
     }
 
     /// Reallocate a token account to be large enough for a set of
-    /// ExtensionTypes
+    /// `ExtensionType`s
     pub async fn reallocate<S: Signers>(
         &self,
         account: &Pubkey,

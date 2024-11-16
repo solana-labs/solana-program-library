@@ -13,9 +13,9 @@ use {
     spl_pod::{optional_keys::OptionalNonZeroPubkey, primitives::PodBool},
 };
 
-/// Instructions for the TransferHook extension
+/// Instructions for the `TransferHook` extension
 pub mod instruction;
-/// Instruction processor for the TransferHook extension
+/// Instruction processor for the `TransferHook` extension
 pub mod processor;
 
 /// Transfer hook extension data for mints.
