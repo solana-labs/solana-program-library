@@ -120,7 +120,7 @@ impl InterestBearingConfig {
     /// The new average rate is the time-weighted average of the current rate
     /// and average rate, solving for r such that:
     ///
-    /// ```no_run
+    /// ```text
     /// exp(r_1 * t_1) * exp(r_2 * t_2) = exp(r * (t_1 + t_2))
     ///
     /// r_1 * t_1 + r_2 * t_2 = r * (t_1 + t_2)

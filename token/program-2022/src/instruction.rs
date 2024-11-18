@@ -1951,10 +1951,26 @@ pub fn decode_instruction_type<T: TryFrom<u8>>(input: &[u8]) -> Result<T, Progra
 /// instruction type as the first byte.  This makes the code concise and safe
 /// at the expense of clarity, allowing flows such as:
 ///
-/// ```no_run
-/// match decode_instruction_type(input)? {
+/// ```
+/// use spl_token_2022::instruction::{decode_instruction_data, decode_instruction_type};
+/// use num_enum::TryFromPrimitive;
+/// use bytemuck::{Pod, Zeroable};
+///
+/// #[repr(u8)]
+/// #[derive(Clone, Copy, TryFromPrimitive)]
+/// enum InstructionType {
+///     First
+/// }
+/// #[derive(Pod, Zeroable, Copy, Clone)]
+/// #[repr(transparent)]
+/// struct FirstData {
+///     a: u8,
+/// }
+/// let input = [0, 1];
+/// match decode_instruction_type(&input).unwrap() {
 ///     InstructionType::First => {
-///         let FirstData { ... } = decode_instruction_data(input)?;
+///         let FirstData { a } = decode_instruction_data(&input).unwrap();
+///         assert_eq!(*a, 1);
 ///     }
 /// }
 /// ```

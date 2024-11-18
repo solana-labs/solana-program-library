@@ -280,7 +280,7 @@ fn check_account_type<S: BaseState>(account_type: AccountType) -> Result<(), Pro
 /// Account with an extension, even if we add the account type. For example,
 /// let's say we have:
 ///
-/// ```no_run
+/// ```text
 /// Account: 165 bytes... + [2, 0, 3, 0, 100, ....]
 ///                          ^     ^       ^     ^
 ///                     acct type  extension length data...
@@ -1367,8 +1367,8 @@ pub trait Extension {
 /// `size_of::<AccountType>() = 1`, `size_of::<ExtensionType>() = 2`,
 /// `size_of::<Length>() = 2`.
 ///
-/// ```no_run
-/// 355 - 165 - 1 - 2 - 2 = 185
+/// ```
+/// assert_eq!(355 - 165 - 1 - 2 - 2, 185);
 /// ```
 #[cfg(test)]
 #[repr(C)]
