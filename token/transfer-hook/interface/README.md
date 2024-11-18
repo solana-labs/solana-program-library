@@ -86,7 +86,7 @@ Developers must implement the `Execute` instruction, and optionally the
 pubkeys into the program-derived address defined by the mint and program id.
 
 Note: it's technically not required to implement `InitializeExtraAccountMetaList`
-at that instruction descriminator. Your program may implement multiple interfaces,
+at that instruction discriminator. Your program may implement multiple interfaces,
 so any other instruction in your program can create the account at the program-derived
 address!
 
@@ -98,7 +98,7 @@ automatically resolved!
 
 ### Account Resolution
 
-Implementers of the transfer-hook interface are encouraged to make use of the
+Implementations of the transfer-hook interface are encouraged to make use of the
 [spl-tlv-account-resolution](https://github.com/solana-labs/solana-program-library/tree/master/libraries/tlv-account-resolution/README.md)
 library to manage the additional required accounts for their transfer hook
 program.

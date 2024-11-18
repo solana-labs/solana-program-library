@@ -494,7 +494,7 @@ pub enum ConfidentialTransferInstruction {
     /// validity proof as well as the token owner signature.
     ///
     /// If the token account is not large enough to include the new
-    /// cconfidential transfer extension, then optionally reallocate the
+    /// confidential transfer extension, then optionally reallocate the
     /// account to increase the data size. To reallocate, a payer account to
     /// fund the reallocation and the system account should be included in the
     /// instruction.

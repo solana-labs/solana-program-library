@@ -50,7 +50,7 @@ pub enum MetadataPointerInstruction {
     ///   * Multisignature authority
     ///   0. `[writable]` The mint.
     ///   1. `[]` The mint's metadata pointer authority.
-    ///   2. ..2+M `[signer]` M signer accounts.
+    ///   2. `..2+M` `[signer]` M signer accounts.
     ///
     /// Data expected by this instruction:
     ///   `crate::extension::metadata_pointer::instruction::UpdateInstructionData`

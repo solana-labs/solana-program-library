@@ -25,13 +25,13 @@ pub struct SupplyAccountInfo {
     pub current_supply: PodElGamalCiphertext,
     /// The decryptable supply
     pub decryptable_supply: PodAeCiphertext,
-    /// The supply's elgamal pubkey
+    /// The supply's ElGamal pubkey
     pub supply_elgamal_pubkey: PodElGamalPubkey,
 }
 
 impl SupplyAccountInfo {
-    /// Creates a SupplyAccountInfo from ConfidentialMintBurn extension account
-    /// data
+    /// Creates a `SupplyAccountInfo` from `ConfidentialMintBurn` extension
+    /// account data
     pub fn new(extension: &ConfidentialMintBurn) -> Self {
         Self {
             current_supply: extension.confidential_supply,
@@ -41,7 +41,7 @@ impl SupplyAccountInfo {
     }
 
     /// Computes the current supply from the decryptable supply and the
-    /// difference between the decryptable supply and the elgamal encrypted
+    /// difference between the decryptable supply and the ElGamal encrypted
     /// supply ciphertext
     pub fn decrypt_current_supply(
         &self,

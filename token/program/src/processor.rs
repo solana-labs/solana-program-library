@@ -61,7 +61,7 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes an [InitializeMint](enum.TokenInstruction.html) instruction.
+    /// Processes an [`InitializeMint`](enum.TokenInstruction.html) instruction.
     pub fn process_initialize_mint(
         accounts: &[AccountInfo],
         decimals: u8,
@@ -71,7 +71,8 @@ impl Processor {
         Self::_process_initialize_mint(accounts, decimals, mint_authority, freeze_authority, true)
     }
 
-    /// Processes an [InitializeMint2](enum.TokenInstruction.html) instruction.
+    /// Processes an [`InitializeMint2`](enum.TokenInstruction.html)
+    /// instruction.
     pub fn process_initialize_mint2(
         accounts: &[AccountInfo],
         decimals: u8,
@@ -141,7 +142,7 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes an [InitializeAccount](enum.TokenInstruction.html)
+    /// Processes an [`InitializeAccount`](enum.TokenInstruction.html)
     /// instruction.
     pub fn process_initialize_account(
         program_id: &Pubkey,
@@ -150,7 +151,7 @@ impl Processor {
         Self::_process_initialize_account(program_id, accounts, None, true)
     }
 
-    /// Processes an [InitializeAccount2](enum.TokenInstruction.html)
+    /// Processes an [`InitializeAccount2`](enum.TokenInstruction.html)
     /// instruction.
     pub fn process_initialize_account2(
         program_id: &Pubkey,
@@ -160,7 +161,7 @@ impl Processor {
         Self::_process_initialize_account(program_id, accounts, Some(&owner), true)
     }
 
-    /// Processes an [InitializeAccount3](enum.TokenInstruction.html)
+    /// Processes an [`InitializeAccount3`](enum.TokenInstruction.html)
     /// instruction.
     pub fn process_initialize_account3(
         program_id: &Pubkey,
@@ -212,19 +213,19 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes a [InitializeMultisig](enum.TokenInstruction.html)
+    /// Processes a [`InitializeMultisig`](enum.TokenInstruction.html)
     /// instruction.
     pub fn process_initialize_multisig(accounts: &[AccountInfo], m: u8) -> ProgramResult {
         Self::_process_initialize_multisig(accounts, m, true)
     }
 
-    /// Processes a [InitializeMultisig2](enum.TokenInstruction.html)
+    /// Processes a [`InitializeMultisig2`](enum.TokenInstruction.html)
     /// instruction.
     pub fn process_initialize_multisig2(accounts: &[AccountInfo], m: u8) -> ProgramResult {
         Self::_process_initialize_multisig(accounts, m, false)
     }
 
-    /// Processes a [Transfer](enum.TokenInstruction.html) instruction.
+    /// Processes a [`Transfer`](enum.TokenInstruction.html) instruction.
     pub fn process_transfer(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -341,7 +342,7 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes an [Approve](enum.TokenInstruction.html) instruction.
+    /// Processes an [`Approve`](enum.TokenInstruction.html) instruction.
     pub fn process_approve(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -392,7 +393,7 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes an [Revoke](enum.TokenInstruction.html) instruction.
+    /// Processes an [`Revoke`](enum.TokenInstruction.html) instruction.
     pub fn process_revoke(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let source_account_info = next_account_info(account_info_iter)?;
@@ -420,7 +421,7 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes a [SetAuthority](enum.TokenInstruction.html) instruction.
+    /// Processes a [`SetAuthority`](enum.TokenInstruction.html) instruction.
     pub fn process_set_authority(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -518,7 +519,7 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes a [MintTo](enum.TokenInstruction.html) instruction.
+    /// Processes a [`MintTo`](enum.TokenInstruction.html) instruction.
     pub fn process_mint_to(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -583,7 +584,7 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes a [Burn](enum.TokenInstruction.html) instruction.
+    /// Processes a [`Burn`](enum.TokenInstruction.html) instruction.
     pub fn process_burn(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -668,7 +669,7 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes a [CloseAccount](enum.TokenInstruction.html) instruction.
+    /// Processes a [`CloseAccount`](enum.TokenInstruction.html) instruction.
     pub fn process_close_account(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let source_account_info = next_account_info(account_info_iter)?;
@@ -709,8 +710,8 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes a [FreezeAccount](enum.TokenInstruction.html) or a
-    /// [ThawAccount](enum.TokenInstruction.html) instruction.
+    /// Processes a [`FreezeAccount`](enum.TokenInstruction.html) or a
+    /// [`ThawAccount`](enum.TokenInstruction.html) instruction.
     pub fn process_toggle_freeze_account(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -754,7 +755,7 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes a [SyncNative](enum.TokenInstruction.html) instruction
+    /// Processes a [`SyncNative`](enum.TokenInstruction.html) instruction
     pub fn process_sync_native(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let native_account_info = next_account_info(account_info_iter)?;
@@ -779,7 +780,8 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes a [GetAccountDataSize](enum.TokenInstruction.html) instruction
+    /// Processes a [`GetAccountDataSize`](enum.TokenInstruction.html)
+    /// instruction
     pub fn process_get_account_data_size(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -794,7 +796,7 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes an [InitializeImmutableOwner](enum.TokenInstruction.html)
+    /// Processes an [`InitializeImmutableOwner`](enum.TokenInstruction.html)
     /// instruction
     pub fn process_initialize_immutable_owner(accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
@@ -807,7 +809,8 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes an [AmountToUiAmount](enum.TokenInstruction.html) instruction
+    /// Processes an [`AmountToUiAmount`](enum.TokenInstruction.html)
+    /// instruction
     pub fn process_amount_to_ui_amount(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -825,7 +828,8 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes an [AmountToUiAmount](enum.TokenInstruction.html) instruction
+    /// Processes an [`AmountToUiAmount`](enum.TokenInstruction.html)
+    /// instruction
     pub fn process_ui_amount_to_amount(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -843,7 +847,7 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes an [Instruction](enum.Instruction.html).
+    /// Processes an [`Instruction`](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         let instruction = TokenInstruction::unpack(input)?;
 

@@ -41,7 +41,7 @@ use {
     spl_token_confidential_transfer_proof_extraction::instruction::verify_and_extract_context,
 };
 
-/// Processes an [InitializeConfidentialTransferFeeConfig] instruction.
+/// Processes an [`InitializeConfidentialTransferFeeConfig`] instruction.
 fn process_initialize_confidential_transfer_fee_config(
     accounts: &[AccountInfo],
     authority: &OptionalNonZeroPubkey,
@@ -62,7 +62,7 @@ fn process_initialize_confidential_transfer_fee_config(
     Ok(())
 }
 
-/// Processes a [WithdrawWithheldTokensFromMint] instruction.
+/// Processes a [`WithdrawWithheldTokensFromMint`] instruction.
 #[cfg(feature = "zk-ops")]
 fn process_withdraw_withheld_tokens_from_mint(
     program_id: &Pubkey,
@@ -167,7 +167,7 @@ fn process_withdraw_withheld_tokens_from_mint(
     Ok(())
 }
 
-/// Processes a [WithdrawWithheldTokensFromAccounts] instruction.
+/// Processes a [`WithdrawWithheldTokensFromAccounts`] instruction.
 #[cfg(feature = "zk-ops")]
 fn process_withdraw_withheld_tokens_from_accounts(
     program_id: &Pubkey,
@@ -322,7 +322,7 @@ fn harvest_from_account<'b>(
     Ok(withheld_amount)
 }
 
-/// Process a [HarvestWithheldTokensToMint] instruction.
+/// Process a [`HarvestWithheldTokensToMint`] instruction.
 #[cfg(feature = "zk-ops")]
 fn process_harvest_withheld_tokens_to_mint(accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
@@ -361,7 +361,7 @@ fn process_harvest_withheld_tokens_to_mint(accounts: &[AccountInfo]) -> ProgramR
     Ok(())
 }
 
-/// Process a [EnableHarvestToMint] instruction.
+/// Process a [`EnableHarvestToMint`] instruction.
 fn process_enable_harvest_to_mint(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let mint_info = next_account_info(account_info_iter)?;
@@ -391,7 +391,7 @@ fn process_enable_harvest_to_mint(program_id: &Pubkey, accounts: &[AccountInfo])
     Ok(())
 }
 
-/// Process a [DisableHarvestToMint] instruction.
+/// Process a [`DisableHarvestToMint`] instruction.
 fn process_disable_harvest_to_mint(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let mint_info = next_account_info(account_info_iter)?;

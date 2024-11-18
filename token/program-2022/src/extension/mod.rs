@@ -106,7 +106,7 @@ impl TryFrom<usize> for Length {
     }
 }
 
-/// Helper function to get the current TlvIndices from the current spot
+/// Helper function to get the current `TlvIndices` from the current spot
 fn get_tlv_indices(type_start: usize) -> TlvIndices {
     let length_start = type_start.saturating_add(size_of::<ExtensionType>());
     let value_start = length_start.saturating_add(pod_get_packed_len::<Length>());
@@ -280,6 +280,7 @@ fn check_account_type<S: BaseState>(account_type: AccountType) -> Result<(), Pro
 /// Account with an extension, even if we add the account type. For example,
 /// let's say we have:
 ///
+/// ```text
 /// Account: 165 bytes... + [2, 0, 3, 0, 100, ....]
 ///                          ^     ^       ^     ^
 ///                     acct type  extension length data...
@@ -287,14 +288,15 @@ fn check_account_type<S: BaseState>(account_type: AccountType) -> Result<(), Pro
 /// Mint: 82 bytes... + 83 bytes of other extension data
 ///     + [2, 0, 3, 0, 100, ....]
 ///      (data in extension just happens to look like this)
+/// ```
 ///
-/// With this approach, we only start writing the TLV data after Account::LEN,
+/// With this approach, we only start writing the TLV data after `Account::LEN`,
 /// which means we always know that the account type is going to be right after
 /// that. We do a special case checking for a Multisig length, because those
 /// aren't extensible under any circumstances.
 const BASE_ACCOUNT_LENGTH: usize = Account::LEN;
-/// Helper that tacks on the AccountType length, which gives the minimum for any
-/// account with extensions
+/// Helper that tacks on the `AccountType` length, which gives the minimum for
+/// any account with extensions
 const BASE_ACCOUNT_AND_TYPE_LENGTH: usize = BASE_ACCOUNT_LENGTH + size_of::<AccountType>();
 
 fn type_and_tlv_indices<S: BaseState>(
@@ -423,7 +425,7 @@ pub trait BaseStateWithExtensions<S: BaseState> {
         get_tlv_data_info(self.get_tlv_data()).map(|x| x.extension_types)
     }
 
-    /// Get just the first extension type, useful to track mixed initializations
+    /// Get just the first extension type, useful to track mixed initialization
     fn get_first_extension_type(&self) -> Result<Option<ExtensionType>, ProgramError> {
         get_first_extension_type(self.get_tlv_data())
     }
@@ -737,12 +739,12 @@ pub trait BaseStateWithExtensionsMut<S: BaseState>: BaseStateWithExtensions<S> {
         }
     }
 
-    /// If `extension_type` is an Account-associated ExtensionType that requires
-    /// initialization on InitializeAccount, this method packs the default
-    /// relevant Extension of an ExtensionType into an open slot if not
-    /// already found in the data buffer, otherwise overwrites the
-    /// existing extension with the default state. For all other ExtensionTypes,
-    /// this is a no-op.
+    /// If `extension_type` is an Account-associated `ExtensionType` that
+    /// requires initialization on `InitializeAccount`, this method packs
+    /// the default relevant `Extension` of an `ExtensionType` into an open
+    /// slot if not already found in the data buffer, otherwise overwrites
+    /// the existing extension with the default state. For all other
+    /// `ExtensionType`s, this is a no-op.
     fn init_account_extension_from_type(
         &mut self,
         extension_type: ExtensionType,
@@ -996,10 +998,10 @@ fn unpack_uninitialized_type_and_tlv_data_mut<S: BaseState>(
     })
 }
 
-/// If AccountType is uninitialized, set it to the BaseState's ACCOUNT_TYPE;
-/// if AccountType is already set, check is set correctly for BaseState
-/// This method assumes that the `base_data` has already been packed with data
-/// of the desired type.
+/// If `AccountType` is uninitialized, set it to the `BaseState`'s
+/// `ACCOUNT_TYPE`; if `AccountType` is already set, check is set correctly for
+/// `BaseState`. This method assumes that the `base_data` has already been
+/// packed with data of the desired type.
 pub fn set_account_type<S: BaseState>(input: &mut [u8]) -> Result<(), ProgramError> {
     check_min_len_and_not_multisig(input, S::SIZE_OF)?;
     let (base_data, rest) = input.split_at_mut(S::SIZE_OF);
@@ -1198,14 +1200,14 @@ impl ExtensionType {
         })
     }
 
-    /// Get the TLV length for an ExtensionType
+    /// Get the TLV length for an `ExtensionType`
     ///
     /// Fails if the extension type has a variable length
     fn try_get_tlv_len(&self) -> Result<usize, ProgramError> {
         Ok(add_type_and_length_to_len(self.try_get_type_len()?))
     }
 
-    /// Get the TLV length for a set of ExtensionTypes
+    /// Get the TLV length for a set of `ExtensionType`s
     ///
     /// Fails if any of the extension types has a variable length
     fn try_get_total_tlv_len(extension_types: &[Self]) -> Result<usize, ProgramError> {
@@ -1219,7 +1221,7 @@ impl ExtensionType {
         extensions.iter().map(|e| e.try_get_tlv_len()).sum()
     }
 
-    /// Get the required account data length for the given ExtensionTypes
+    /// Get the required account data length for the given `ExtensionType`s
     ///
     /// Fails if any of the extension types has a variable length
     pub fn try_calculate_account_len<S: BaseState>(
@@ -1271,8 +1273,8 @@ impl ExtensionType {
         }
     }
 
-    /// Based on a set of AccountType::Mint ExtensionTypes, get the list of
-    /// AccountType::Account ExtensionTypes required on InitializeAccount
+    /// Based on a set of `AccountType::Mint` `ExtensionType`s, get the list of
+    /// `AccountType::Account` `ExtensionType`s required on `InitializeAccount`
     pub fn get_required_init_account_extensions(mint_extension_types: &[Self]) -> Vec<Self> {
         let mut account_extension_types = vec![];
         for extension_type in mint_extension_types {
@@ -1360,10 +1362,14 @@ pub trait Extension {
     const TYPE: ExtensionType;
 }
 
-/// Padding a mint account to be exactly Multisig::LEN.
-/// We need to pad 185 bytes, since Multisig::LEN = 355, Account::LEN = 165,
-/// size_of AccountType = 1, size_of ExtensionType = 2, size_of Length = 2.
-/// 355 - 165 - 1 - 2 - 2 = 185
+/// Padding a mint account to be exactly `Multisig::LEN`.
+/// We need to pad 185 bytes, since `Multisig::LEN = 355`, `Account::LEN = 165`,
+/// `size_of::<AccountType>() = 1`, `size_of::<ExtensionType>() = 2`,
+/// `size_of::<Length>() = 2`.
+///
+/// ```
+/// assert_eq!(355 - 165 - 1 - 2 - 2, 185);
+/// ```
 #[cfg(test)]
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
@@ -1389,7 +1395,7 @@ impl Default for MintPaddingTest {
         }
     }
 }
-/// Account version of the MintPadding
+/// Account version of the `MintPadding`
 #[cfg(test)]
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]

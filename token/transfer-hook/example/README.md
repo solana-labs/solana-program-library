@@ -10,7 +10,7 @@ code for more information.
 ### Example usage of example
 
 When testing your program that uses `spl-transfer-hook-interface`, you can also
-import this crate, and then use it with `solana-program-test`, ie:
+import this crate, and then use it with `solana-program-test`:
 
 ```rust
 use {

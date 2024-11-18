@@ -3,7 +3,7 @@ use {
     spl_token_group_interface::state::{TokenGroup, TokenGroupMember},
 };
 
-/// Instruction processor for the TokenGroup extensions
+/// Instruction processor for the `TokenGroup` extension
 pub mod processor;
 
 impl Extension for TokenGroup {

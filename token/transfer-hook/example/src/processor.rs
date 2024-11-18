@@ -74,7 +74,7 @@ pub fn process_execute(
 }
 
 /// Processes a
-/// [InitializeExtraAccountMetaList](enum.TransferHookInstruction.html)
+/// [`InitializeExtraAccountMetaList`](enum.TransferHookInstruction.html)
 /// instruction.
 pub fn process_initialize_extra_account_meta_list(
     program_id: &Pubkey,
@@ -142,7 +142,7 @@ pub fn process_initialize_extra_account_meta_list(
 }
 
 /// Processes a
-/// [UpdateExtraAccountMetaList](enum.TransferHookInstruction.html)
+/// [`UpdateExtraAccountMetaList`](enum.TransferHookInstruction.html)
 /// instruction.
 pub fn process_update_extra_account_meta_list(
     program_id: &Pubkey,

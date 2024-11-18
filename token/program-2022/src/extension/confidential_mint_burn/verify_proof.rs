@@ -17,8 +17,8 @@ use {
     std::slice::Iter,
 };
 
-/// Verify zero-knowledge proofs needed for a [ConfidentialMint] instruction and
-/// return the corresponding proof context information.
+/// Verify zero-knowledge proofs needed for a [`ConfidentialMint`] instruction
+/// and return the corresponding proof context information.
 #[cfg(feature = "zk-ops")]
 pub fn verify_mint_proof(
     account_info_iter: &mut Iter<'_, AccountInfo<'_>>,
@@ -65,8 +65,8 @@ pub fn verify_mint_proof(
     .map_err(|e| -> TokenError { e.into() })?)
 }
 
-/// Verify zero-knowledge proofs needed for a [ConfidentialBurn] instruction and
-/// return the corresponding proof context information.
+/// Verify zero-knowledge proofs needed for a [`ConfidentialBurn`] instruction
+/// and return the corresponding proof context information.
 #[cfg(feature = "zk-ops")]
 pub fn verify_burn_proof(
     account_info_iter: &mut Iter<'_, AccountInfo<'_>>,

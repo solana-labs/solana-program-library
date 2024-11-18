@@ -50,7 +50,7 @@ pub enum GroupMemberPointerInstruction {
     ///   * Multisignature authority
     ///   0. `[writable]` The mint.
     ///   1. `[]`         The group member pointer authority.
-    ///   2. ..2+M `[signer]` M signer accounts.
+    ///   2. `..2+M` `[signer]` M signer accounts.
     ///
     /// Data expected by this instruction:
     ///   `crate::extension::group_member_pointer::instruction::UpdateInstructionData`

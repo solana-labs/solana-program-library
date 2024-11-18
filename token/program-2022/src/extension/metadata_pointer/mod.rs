@@ -6,9 +6,9 @@ use {
     spl_pod::optional_keys::OptionalNonZeroPubkey,
 };
 
-/// Instructions for the MetadataPointer extension
+/// Instructions for the `MetadataPointer` extension
 pub mod instruction;
-/// Instruction processor for the MetadataPointer extension
+/// Instruction processor for the `MetadataPointer` extension
 pub mod processor;
 
 /// Metadata pointer extension data for mints.

@@ -51,7 +51,7 @@ pub enum InterestBearingMintInstruction {
     ///   * Multisignature authority
     ///   0. `[writable]` The mint.
     ///   1. `[]` The mint's multisignature rate authority.
-    ///   2. ..2+M `[signer]` M signer accounts.
+    ///   2. `..2+M` `[signer]` M signer accounts.
     ///
     /// Data expected by this instruction:
     ///   `crate::extension::interest_bearing::BasisPoints`

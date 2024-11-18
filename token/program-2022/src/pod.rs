@@ -71,9 +71,9 @@ pub struct PodAccount {
     /// If `delegate` is `Some` then `delegated_amount` represents
     /// the amount authorized by the delegate
     pub delegate: PodCOption<Pubkey>,
-    /// The account's [AccountState], stored as a u8
+    /// The account's [`AccountState`], stored as a `u8`
     pub state: u8,
-    /// If is_some, this is a native token, and the value logs the rent-exempt
+    /// If `is_some`, this is a native token, and the value logs the rent-exempt
     /// reserve. An Account is required to be rent-exempt, so the value is
     /// used by the Processor to ensure that wrapped SOL accounts do not
     /// drop below this threshold.
@@ -92,7 +92,7 @@ impl PodAccount {
     pub fn is_native(&self) -> bool {
         self.is_native.is_some()
     }
-    /// Checks if a token Account's owner is the system_program or the
+    /// Checks if a token Account's owner is the `system_program` or the
     /// incinerator
     pub fn is_owned_by_system_program_or_incinerator(&self) -> bool {
         solana_program::system_program::check_id(&self.owner)
@@ -156,7 +156,7 @@ impl From<Multisig> for PodMultisig {
     }
 }
 
-/// COption<T> stored as a Pod type
+/// `COption<T>` stored as a Pod type
 #[repr(C, packed)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct PodCOption<T>
@@ -176,7 +176,7 @@ where
     /// `Option::Some(v)`
     pub const SOME: [u8; 4] = [1, 0, 0, 0];
 
-    /// Create a PodCOption equivalent of `Option::None`
+    /// Create a `PodCOption` equivalent of `Option::None`
     ///
     /// This could be made `const` by using `std::mem::zeroed`, but that would
     /// require `unsafe` code, which is prohibited at the crate level.
@@ -187,7 +187,7 @@ where
         }
     }
 
-    /// Create a PodCOption equivalent of `Option::Some(value)`
+    /// Create a `PodCOption` equivalent of `Option::Some(value)`
     pub const fn some(value: T) -> Self {
         Self {
             option: Self::SOME,
