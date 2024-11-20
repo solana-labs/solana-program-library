@@ -34,7 +34,7 @@ solana-sdk = "2.0.3"
 solana-ledger = "2.0.3"
 solana-entry = "2.0.3"
 solana-client = "2.0.3"
-spl-record = "0.2.1"
+spl-record = { version = "0.3.0", path = "../../record/program" }
 rand = "0.8.5"
 
 [lib]
