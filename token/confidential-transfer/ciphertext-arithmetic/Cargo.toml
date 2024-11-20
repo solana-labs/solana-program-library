@@ -9,7 +9,7 @@ edition = "2021"
 
 [dependencies]
 base64 = "0.22.1"
-bytemuck = "1.19.0"
+bytemuck = "1.20.0"
 solana-curve25519 = "2.1.0"
 solana-zk-sdk = "2.1.0"
 
