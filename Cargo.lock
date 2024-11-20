@@ -8189,19 +8189,6 @@ dependencies = [
 
 [[package]]
 name = "spl-pod"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "00e38c99f09d58df06ca9a29fc0211786a4c34f4d099c1df27b1abaa206569a4"
-dependencies = [
- "bytemuck",
- "bytemuck_derive",
- "solana-program",
- "solana-zk-sdk",
- "spl-program-error 0.5.0",
-]
-
-[[package]]
-name = "spl-pod"
 version = "0.5.0"
 dependencies = [
  "base64 0.22.1",
@@ -8268,20 +8255,6 @@ dependencies = [
  "quote",
  "sha2 0.10.8",
  "syn 2.0.89",
-]
-
-[[package]]
-name = "spl-record"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2a56a3aa73b4168e684d79f0b264bb73dba50b060eda71ed501e8f520875861f"
-dependencies = [
- "bytemuck",
- "num-derive",
- "num-traits",
- "solana-program",
- "spl-pod 0.4.0",
- "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -8394,7 +8367,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-pod 0.5.0",
- "spl-record 0.2.1",
+ "spl-record",
  "thiserror 1.0.69",
 ]
 
@@ -8600,7 +8573,7 @@ dependencies = [
  "spl-instruction-padding",
  "spl-memo 6.0.0",
  "spl-pod 0.5.0",
- "spl-record 0.3.0",
+ "spl-record",
  "spl-tlv-account-resolution 0.9.0",
  "spl-token-2022 6.0.0",
  "spl-token-client",
@@ -8671,7 +8644,7 @@ dependencies = [
  "spl-associated-token-account-client",
  "spl-elgamal-registry",
  "spl-memo 6.0.0",
- "spl-record 0.3.0",
+ "spl-record",
  "spl-token 7.0.0",
  "spl-token-2022 6.0.0",
  "spl-token-confidential-transfer-proof-extraction",
