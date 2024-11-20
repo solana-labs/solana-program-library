@@ -19,12 +19,7 @@ pub struct DuplicateBlockProofData {
 impl SlashingProofData for DuplicateBlockProofData {
     const PROOF_TYPE: ProofType = ProofType::DuplicateBlockProof;
 
-    fn verify_proof(self, slot: Slot, node_pubkey: Pubkey) -> Result<(), SlashingError> {
-        msg!(
-            "Verifying duplicate proof for {} slot {}",
-            node_pubkey,
-            slot
-        );
+    fn verify_proof(self, slot: Slot, _node_pubkey: Pubkey) -> Result<(), SlashingError> {
         // TODO: verify through instruction inspection that the shreds were sigverified
         // earlier in this transaction.
         // Ed25519 Singature verification is performed on the merkle root:

@@ -31,8 +31,7 @@ where
     // TODO: follow up PR will record this violation in context state account. just
     // log for now.
     msg!(
-        "{} committed a {} violation in slot {}. This incident will be recorded",
-        pubkey,
+        "{} violation verified in slot {}. This incident will be recorded",
         T::PROOF_TYPE.violation_str(),
         slot
     );
