@@ -115,6 +115,7 @@ pub(crate) enum PodTokenInstruction {
     GroupPointerExtension,
     GroupMemberPointerExtension,
     ConfidentialMintBurnExtension,
+    ScaledUiAmountExtension,
 }
 
 fn unpack_pubkey_option(input: &[u8]) -> Result<PodCOption<Pubkey>, ProgramError> {

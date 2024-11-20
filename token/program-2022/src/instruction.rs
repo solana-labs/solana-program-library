@@ -712,6 +712,9 @@ pub enum TokenInstruction<'a> {
     /// Instruction prefix for instructions to the confidential-mint-burn
     /// extension
     ConfidentialMintBurnExtension,
+    /// Instruction prefix for instructions to the scaled ui amount
+    /// extension
+    ScaledUiAmountExtension,
 }
 impl<'a> TokenInstruction<'a> {
     /// Unpacks a byte buffer into a
@@ -852,6 +855,7 @@ impl<'a> TokenInstruction<'a> {
             40 => Self::GroupPointerExtension,
             41 => Self::GroupMemberPointerExtension,
             42 => Self::ConfidentialMintBurnExtension,
+            43 => Self::ScaledUiAmountExtension,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -1026,6 +1030,9 @@ impl<'a> TokenInstruction<'a> {
             &Self::ConfidentialMintBurnExtension => {
                 buf.push(42);
             }
+            &Self::ScaledUiAmountExtension => {
+                buf.push(43);
+            }
         };
         buf
     }
@@ -1123,6 +1130,8 @@ pub enum AuthorityType {
     GroupPointer,
     /// Authority to set the group member address
     GroupMemberPointer,
+    /// Authority to set the UI amount scale
+    ScaledUiAmount,
 }
 
 impl AuthorityType {
@@ -1143,6 +1152,7 @@ impl AuthorityType {
             AuthorityType::MetadataPointer => 12,
             AuthorityType::GroupPointer => 13,
             AuthorityType::GroupMemberPointer => 14,
+            AuthorityType::ScaledUiAmount => 15,
         }
     }
 
@@ -1163,6 +1173,7 @@ impl AuthorityType {
             12 => Ok(AuthorityType::MetadataPointer),
             13 => Ok(AuthorityType::GroupPointer),
             14 => Ok(AuthorityType::GroupMemberPointer),
+            15 => Ok(AuthorityType::ScaledUiAmount),
             _ => Err(TokenError::InvalidInstruction.into()),
         }
     }
