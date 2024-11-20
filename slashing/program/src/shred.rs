@@ -136,18 +136,18 @@ impl Shred {
     ) -> Result<[u8; SIZE], SlashingError> {
         let end_index: usize = OFFSET
             .checked_add(SIZE)
-            .ok_or(SlashingError::DeserializationError)?;
+            .ok_or(SlashingError::ShredDeserializationError)?;
         <[u8; SIZE]>::try_from(
             self.payload
                 .get(OFFSET..end_index)
-                .ok_or(SlashingError::DeserializationError)?,
+                .ok_or(SlashingError::ShredDeserializationError)?,
         )
-        .map_err(|_| SlashingError::DeserializationError)
+        .map_err(|_| SlashingError::ShredDeserializationError)
     }
 
     fn get_shred_variant(payload: &[u8]) -> Result<ShredVariant, SlashingError> {
         let Some(&shred_variant) = payload.get(OFFSET_OF_SHRED_VARIANT) else {
-            return Err(SlashingError::DeserializationError);
+            return Err(SlashingError::ShredDeserializationError);
         };
         ShredVariant::try_from(shred_variant).map_err(|_| SlashingError::InvalidShredVariant)
     }
@@ -179,7 +179,7 @@ impl Shred {
     pub(crate) fn last_in_slot(&self) -> Result<bool, SlashingError> {
         debug_assert!(self.shred_type == ShredType::Data);
         let Some(&flags) = self.payload.get(OFFSET_OF_DATA_SHRED_FLAGS) else {
-            return Err(SlashingError::DeserializationError);
+            return Err(SlashingError::ShredDeserializationError);
         };
 
         let flags: ShredFlags =
@@ -211,10 +211,10 @@ impl Shred {
     pub(crate) fn next_fec_set_index(&self) -> Result<u32, SlashingError> {
         debug_assert!(self.shred_type == ShredType::Code);
         let num_data = u32::try_from(self.num_data_shreds()?)
-            .map_err(|_| SlashingError::DeserializationError)?;
+            .map_err(|_| SlashingError::ShredDeserializationError)?;
         self.fec_set_index()?
             .checked_add(num_data)
-            .ok_or(SlashingError::DeserializationError)
+            .ok_or(SlashingError::ShredDeserializationError)
     }
 
     pub(crate) fn erasure_meta(&self) -> Result<ErasureMeta, SlashingError> {
@@ -224,9 +224,10 @@ impl Shred {
         let first_coding_index = self
             .index()?
             .checked_sub(
-                u32::try_from(self.position()?).map_err(|_| SlashingError::DeserializationError)?,
+                u32::try_from(self.position()?)
+                    .map_err(|_| SlashingError::ShredDeserializationError)?,
             )
-            .ok_or(SlashingError::DeserializationError)?;
+            .ok_or(SlashingError::ShredDeserializationError)?;
         Ok(ErasureMeta {
             num_data_shreds,
             num_coding_shreds,
@@ -240,11 +241,11 @@ impl Shred {
                 .index()?
                 .checked_sub(self.fec_set_index()?)
                 .and_then(|x| usize::try_from(x).ok())
-                .ok_or(SlashingError::DeserializationError),
+                .ok_or(SlashingError::ShredDeserializationError),
             ShredType::Code => self
                 .num_data_shreds()?
                 .checked_add(self.position()?)
-                .ok_or(SlashingError::DeserializationError),
+                .ok_or(SlashingError::ShredDeserializationError),
         }
     }
 
@@ -252,7 +253,7 @@ impl Shred {
         let (proof_offset, proof_size) = self.get_proof_offset_and_size()?;
         let proof_end = proof_offset
             .checked_add(proof_size)
-            .ok_or(SlashingError::DeserializationError)?;
+            .ok_or(SlashingError::ShredDeserializationError)?;
         let index = self.erasure_batch_index()?;
 
         let proof = self
@@ -278,20 +279,20 @@ impl Shred {
         };
         let proof_size = usize::from(self.proof_size)
             .checked_mul(SIZE_OF_MERKLE_PROOF_ENTRY)
-            .ok_or(SlashingError::DeserializationError)?;
+            .ok_or(SlashingError::ShredDeserializationError)?;
         let bytes_past_end = header_size
             .checked_add(if self.chained { SIZE_OF_MERKLE_ROOT } else { 0 })
             .and_then(|x| x.checked_add(proof_size))
             .and_then(|x| x.checked_add(if self.resigned { SIZE_OF_SIGNATURE } else { 0 }))
-            .ok_or(SlashingError::DeserializationError)?;
+            .ok_or(SlashingError::ShredDeserializationError)?;
 
         let capacity = payload_size
             .checked_sub(bytes_past_end)
-            .ok_or(SlashingError::DeserializationError)?;
+            .ok_or(SlashingError::ShredDeserializationError)?;
         let proof_offset = header_size
             .checked_add(capacity)
             .and_then(|x| x.checked_add(if self.chained { SIZE_OF_MERKLE_ROOT } else { 0 }))
-            .ok_or(SlashingError::DeserializationError)?;
+            .ok_or(SlashingError::ShredDeserializationError)?;
         Ok((proof_offset, proof_size))
     }
 

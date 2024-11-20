@@ -24,7 +24,7 @@ where
         return Err(ProgramError::InvalidAccountData);
     }
     let proof_data: T =
-        bincode::deserialize(proof_data).map_err(|_| SlashingError::DeserializationError)?;
+        bincode::deserialize(proof_data).map_err(|_| SlashingError::ShredDeserializationError)?;
 
     SlashingProofData::verify_proof(proof_data, slot, pubkey)?;
 

@@ -11,7 +11,7 @@ use {
 pub enum SlashingError {
     /// Shred deserialization error
     #[error("Deserialization error")]
-    DeserializationError,
+    ShredDeserializationError,
 
     /// Invalid shred variant
     #[error("Invalid shred variant")]
@@ -22,23 +22,23 @@ pub enum SlashingError {
     InvalidMerkleShred,
 
     /// Invalid duplicate block payload proof
-    #[error("invalid duplicate shreds")]
+    #[error("Invalid payload proof")]
     InvalidPayloadProof,
 
     /// Invalid duplicate block erasure meta proof
-    #[error("invalid erasure meta conflict")]
+    #[error("Invalid erasure meta conflict")]
     InvalidErasureMetaConflict,
 
     /// Invalid duplicate block last index proof
-    #[error("invalid last index conflict")]
+    #[error("Invalid last index conflict")]
     InvalidLastIndexConflict,
 
     /// Invalid shred version on duplicate block proof shreds
-    #[error("invalid shred version")]
+    #[error("Invalid shred version")]
     InvalidShredVersion,
 
     /// Invalid signature on duplicate block proof shreds
-    #[error("invalid signature")]
+    #[error("Invalid signature")]
     InvalidSignature,
 
     /// Legacy shreds are not supported
@@ -46,11 +46,11 @@ pub enum SlashingError {
     LegacyShreds,
 
     /// Invalid shred type on duplicate block proof shreds
-    #[error("shred type mismatch")]
+    #[error("Shred type mismatch")]
     ShredTypeMismatch,
 
     /// Invalid slot on duplicate block proof shreds
-    #[error("slot mismatch")]
+    #[error("Slot mismatch")]
     SlotMismatch,
 }
 
