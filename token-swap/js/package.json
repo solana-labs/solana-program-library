@@ -54,7 +54,7 @@
     "@types/bn.js": "^5.1.6",
     "@types/chai-as-promised": "^8.0.1",
     "@types/chai": "^5.0.1",
-    "@types/mocha": "^10.0.9",
+    "@types/mocha": "^10.0.10",
     "@typescript-eslint/eslint-plugin": "^8.4.0",
     "@typescript-eslint/parser": "^8.4.0",
     "eslint": "^8.57.0",
