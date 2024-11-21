@@ -4,8 +4,11 @@ use {
         error::TokenError,
         extension::{
             scaled_ui_amount::{
-                instruction::{InitializeInstructionData, ScaledUiAmountMintInstruction},
-                PodF64, ScaledUiAmountConfig,
+                instruction::{
+                    InitializeInstructionData, ScaledUiAmountMintInstruction,
+                    UpdateMultiplierInstructionData,
+                },
+                PodF64, ScaledUiAmountConfig, UnixTimestamp,
             },
             BaseStateWithExtensionsMut, PodStateWithExtensionsMut,
         },
@@ -15,16 +18,18 @@ use {
     },
     solana_program::{
         account_info::{next_account_info, AccountInfo},
+        clock::Clock,
         entrypoint::ProgramResult,
         msg,
         pubkey::Pubkey,
+        sysvar::Sysvar,
     },
     spl_pod::optional_keys::OptionalNonZeroPubkey,
 };
 
-fn try_validate_scale(scale: &PodF64) -> ProgramResult {
-    let float_scale = f64::from(*scale);
-    if float_scale.is_sign_positive() && float_scale.is_normal() {
+fn try_validate_multiplier(multiplier: &PodF64) -> ProgramResult {
+    let float_multiplier = f64::from(*multiplier);
+    if float_multiplier.is_sign_positive() && float_multiplier.is_normal() {
         Ok(())
     } else {
         Err(TokenError::InvalidScale.into())
@@ -35,7 +40,7 @@ fn process_initialize(
     _program_id: &Pubkey,
     accounts: &[AccountInfo],
     authority: &OptionalNonZeroPubkey,
-    scale: &PodF64,
+    multiplier: &PodF64,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let mint_account_info = next_account_info(account_info_iter)?;
@@ -44,15 +49,18 @@ fn process_initialize(
 
     let extension = mint.init_extension::<ScaledUiAmountConfig>(true)?;
     extension.authority = *authority;
-    try_validate_scale(scale)?;
-    extension.scale = *scale;
+    try_validate_multiplier(multiplier)?;
+    extension.multiplier = *multiplier;
+    extension.new_multiplier_effective_timestamp = 0.into();
+    extension.new_multiplier = *multiplier;
     Ok(())
 }
 
-fn process_update_scale(
+fn process_update_multiplier(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    new_scale: &PodF64,
+    new_multiplier: &PodF64,
+    effective_timestamp: &UnixTimestamp,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let mint_account_info = next_account_info(account_info_iter)?;
@@ -73,8 +81,21 @@ fn process_update_scale(
         account_info_iter.as_slice(),
     )?;
 
-    try_validate_scale(new_scale)?;
-    extension.scale = *new_scale;
+    try_validate_multiplier(new_multiplier)?;
+    let clock = Clock::get()?;
+    extension.new_multiplier = *new_multiplier;
+    let int_effective_timestamp = i64::from(*effective_timestamp);
+    // just floor it to 0
+    if int_effective_timestamp < 0 {
+        extension.new_multiplier_effective_timestamp = 0.into();
+    } else {
+        extension.new_multiplier_effective_timestamp = *effective_timestamp;
+    }
+    // if the new effective timestamp has already passed, also set the old
+    // multiplier, just to be clear
+    if clock.unix_timestamp >= int_effective_timestamp {
+        extension.multiplier = *new_multiplier;
+    }
     Ok(())
 }
 
@@ -87,13 +108,19 @@ pub(crate) fn process_instruction(
     match decode_instruction_type(input)? {
         ScaledUiAmountMintInstruction::Initialize => {
             msg!("ScaledUiAmountMintInstruction::Initialize");
-            let InitializeInstructionData { authority, scale } = decode_instruction_data(input)?;
-            process_initialize(program_id, accounts, authority, scale)
+            let InitializeInstructionData {
+                authority,
+                multiplier,
+            } = decode_instruction_data(input)?;
+            process_initialize(program_id, accounts, authority, multiplier)
         }
-        ScaledUiAmountMintInstruction::UpdateScale => {
+        ScaledUiAmountMintInstruction::UpdateMultiplier => {
             msg!("ScaledUiAmountMintInstruction::UpdateScale");
-            let new_scale = decode_instruction_data(input)?;
-            process_update_scale(program_id, accounts, new_scale)
+            let UpdateMultiplierInstructionData {
+                effective_timestamp,
+                multiplier,
+            } = decode_instruction_data(input)?;
+            process_update_multiplier(program_id, accounts, multiplier, effective_timestamp)
         }
     }
 }

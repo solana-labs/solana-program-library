@@ -191,7 +191,7 @@ pub enum ExtensionInitializationParams {
     },
     ScaledUiAmountConfig {
         authority: Option<Pubkey>,
-        scale: f64,
+        multiplier: f64,
     },
 }
 impl ExtensionInitializationParams {
@@ -322,9 +322,15 @@ impl ExtensionInitializationParams {
                 authority,
                 member_address,
             ),
-            Self::ScaledUiAmountConfig { authority, scale } => {
-                scaled_ui_amount::instruction::initialize(token_program_id, mint, authority, scale)
-            }
+            Self::ScaledUiAmountConfig {
+                authority,
+                multiplier,
+            } => scaled_ui_amount::instruction::initialize(
+                token_program_id,
+                mint,
+                authority,
+                multiplier,
+            ),
         }
     }
 }
@@ -1814,23 +1820,25 @@ where
         .await
     }
 
-    /// Update scale
-    pub async fn update_scale<S: Signers>(
+    /// Update multiplier
+    pub async fn update_multiplier<S: Signers>(
         &self,
         authority: &Pubkey,
-        new_scale: f64,
+        new_multiplier: f64,
+        new_multiplier_effective_timestamp: i64,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let signing_pubkeys = signing_keypairs.pubkeys();
         let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
         self.process_ixs(
-            &[scaled_ui_amount::instruction::update_scale(
+            &[scaled_ui_amount::instruction::update_multiplier(
                 &self.program_id,
                 self.get_address(),
                 authority,
                 &multisig_signers,
-                new_scale,
+                new_multiplier,
+                new_multiplier_effective_timestamp,
             )?],
             signing_keypairs,
         )

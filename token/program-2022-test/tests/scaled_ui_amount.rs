@@ -33,7 +33,7 @@ use {
 
 #[tokio::test]
 async fn success_initialize() {
-    for (scale, authority) in [
+    for (multiplier, authority) in [
         (f64::MIN_POSITIVE, None),
         (f64::MAX, Some(Pubkey::new_unique())),
     ] {
@@ -41,7 +41,7 @@ async fn success_initialize() {
         context
             .init_token_with_mint(vec![ExtensionInitializationParams::ScaledUiAmountConfig {
                 authority,
-                scale,
+                multiplier,
             }])
             .await
             .unwrap();
@@ -50,19 +50,49 @@ async fn success_initialize() {
         let state = token.get_mint_info().await.unwrap();
         let extension = state.get_extension::<ScaledUiAmountConfig>().unwrap();
         assert_eq!(Option::<Pubkey>::from(extension.authority), authority,);
-        assert_eq!(f64::from(extension.scale), scale);
+        assert_eq!(f64::from(extension.multiplier), multiplier);
+        assert_eq!(f64::from(extension.new_multiplier), multiplier);
+        assert_eq!(i64::from(extension.new_multiplier_effective_timestamp), 0);
     }
 }
 
 #[tokio::test]
-async fn update_scale() {
+async fn fail_initialize_with_interest_bearing() {
+    let authority = None;
+    let mut context = TestContext::new().await;
+    let err = context
+        .init_token_with_mint(vec![
+            ExtensionInitializationParams::ScaledUiAmountConfig {
+                authority,
+                multiplier: 1.0,
+            },
+            ExtensionInitializationParams::InterestBearingConfig {
+                rate_authority: None,
+                rate: 0,
+            },
+        ])
+        .await
+        .unwrap_err();
+    assert_eq!(
+        err,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                3,
+                InstructionError::Custom(TokenError::InvalidExtensionCombination as u32)
+            )
+        )))
+    );
+}
+
+#[tokio::test]
+async fn update_multiplier() {
     let authority = Keypair::new();
-    let initial_scale = 5.0;
+    let initial_multiplier = 5.0;
     let mut context = TestContext::new().await;
     context
         .init_token_with_mint(vec![ExtensionInitializationParams::ScaledUiAmountConfig {
             authority: Some(authority.pubkey()),
-            scale: initial_scale,
+            multiplier: initial_multiplier,
         }])
         .await
         .unwrap();
@@ -70,22 +100,45 @@ async fn update_scale() {
 
     let state = token.get_mint_info().await.unwrap();
     let extension = state.get_extension::<ScaledUiAmountConfig>().unwrap();
-    assert_eq!(f64::from(extension.scale), initial_scale);
+    assert_eq!(f64::from(extension.multiplier), initial_multiplier);
+    assert_eq!(f64::from(extension.new_multiplier), initial_multiplier);
 
     // correct
-    let new_scale = 10.0;
+    let new_multiplier = 10.0;
     token
-        .update_scale(&authority.pubkey(), new_scale, &[&authority])
+        .update_multiplier(&authority.pubkey(), new_multiplier, 0, &[&authority])
         .await
         .unwrap();
     let state = token.get_mint_info().await.unwrap();
     let extension = state.get_extension::<ScaledUiAmountConfig>().unwrap();
-    assert_eq!(f64::from(extension.scale), new_scale);
+    assert_eq!(f64::from(extension.multiplier), new_multiplier);
+    assert_eq!(f64::from(extension.new_multiplier), new_multiplier);
+    assert_eq!(i64::from(extension.new_multiplier_effective_timestamp), 0);
+
+    // correct in the future
+    let newest_multiplier = 100.0;
+    token
+        .update_multiplier(
+            &authority.pubkey(),
+            newest_multiplier,
+            i64::MAX,
+            &[&authority],
+        )
+        .await
+        .unwrap();
+    let state = token.get_mint_info().await.unwrap();
+    let extension = state.get_extension::<ScaledUiAmountConfig>().unwrap();
+    assert_eq!(f64::from(extension.multiplier), new_multiplier);
+    assert_eq!(f64::from(extension.new_multiplier), newest_multiplier);
+    assert_eq!(
+        i64::from(extension.new_multiplier_effective_timestamp),
+        i64::MAX
+    );
 
     // wrong signer
     let wrong_signer = Keypair::new();
     let err = token
-        .update_scale(&wrong_signer.pubkey(), 1.0, &[&wrong_signer])
+        .update_multiplier(&wrong_signer.pubkey(), 1.0, 0, &[&wrong_signer])
         .await
         .unwrap_err();
     assert_eq!(
@@ -102,12 +155,12 @@ async fn update_scale() {
 #[tokio::test]
 async fn set_authority() {
     let authority = Keypair::new();
-    let initial_scale = 500.0;
+    let initial_multiplier = 500.0;
     let mut context = TestContext::new().await;
     context
         .init_token_with_mint(vec![ExtensionInitializationParams::ScaledUiAmountConfig {
             authority: Some(authority.pubkey()),
-            scale: initial_scale,
+            multiplier: initial_multiplier,
         }])
         .await
         .unwrap();
@@ -132,11 +185,11 @@ async fn set_authority() {
         Some(new_authority.pubkey()).try_into().unwrap(),
     );
     token
-        .update_scale(&new_authority.pubkey(), 10.0, &[&new_authority])
+        .update_multiplier(&new_authority.pubkey(), 10.0, 0, &[&new_authority])
         .await
         .unwrap();
     let err = token
-        .update_scale(&authority.pubkey(), 100.0, &[&authority])
+        .update_multiplier(&authority.pubkey(), 100.0, 0, &[&authority])
         .await
         .unwrap_err();
     assert_eq!(
@@ -166,7 +219,7 @@ async fn set_authority() {
 
     // now all fail
     let err = token
-        .update_scale(&new_authority.pubkey(), 50.0, &[&new_authority])
+        .update_multiplier(&new_authority.pubkey(), 50.0, 0, &[&new_authority])
         .await
         .unwrap_err();
     assert_eq!(
@@ -179,7 +232,7 @@ async fn set_authority() {
         )))
     );
     let err = token
-        .update_scale(&authority.pubkey(), 5.5, &[&authority])
+        .update_multiplier(&authority.pubkey(), 5.5, 0, &[&authority])
         .await
         .unwrap_err();
     assert_eq!(
@@ -256,11 +309,11 @@ async fn amount_conversions() {
         context,
         token_context: None,
     };
-    let initial_scale = 5.0;
+    let initial_multiplier = 5.0;
     context
         .init_token_with_mint(vec![ExtensionInitializationParams::ScaledUiAmountConfig {
             authority: Some(authority.pubkey()),
-            scale: initial_scale,
+            multiplier: initial_multiplier,
         }])
         .await
         .unwrap();

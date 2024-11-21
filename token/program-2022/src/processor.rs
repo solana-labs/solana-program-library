@@ -1388,8 +1388,9 @@ impl Processor {
                 .amount_to_ui_amount(amount, mint.base.decimals, unix_timestamp)
                 .ok_or(ProgramError::InvalidArgument)?
         } else if let Ok(extension) = mint.get_extension::<ScaledUiAmountConfig>() {
+            let unix_timestamp = Clock::get()?.unix_timestamp;
             extension
-                .amount_to_ui_amount(amount, mint.base.decimals)
+                .amount_to_ui_amount(amount, mint.base.decimals, unix_timestamp)
                 .ok_or(ProgramError::InvalidArgument)?
         } else {
             crate::amount_to_ui_amount_string_trimmed(amount, mint.base.decimals)
@@ -1413,7 +1414,8 @@ impl Processor {
             let unix_timestamp = Clock::get()?.unix_timestamp;
             extension.try_ui_amount_into_amount(ui_amount, mint.base.decimals, unix_timestamp)?
         } else if let Ok(extension) = mint.get_extension::<ScaledUiAmountConfig>() {
-            extension.try_ui_amount_into_amount(ui_amount, mint.base.decimals)?
+            let unix_timestamp = Clock::get()?.unix_timestamp;
+            extension.try_ui_amount_into_amount(ui_amount, mint.base.decimals, unix_timestamp)?
         } else {
             crate::try_ui_amount_into_amount(ui_amount.to_string(), mint.base.decimals)?
         };

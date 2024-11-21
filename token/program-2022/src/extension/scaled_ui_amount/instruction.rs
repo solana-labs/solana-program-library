@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use {
     crate::{
         check_program_account,
-        extension::scaled_ui_amount::PodF64,
+        extension::scaled_ui_amount::{PodF64, UnixTimestamp},
         instruction::{encode_instruction, TokenInstruction},
     },
     bytemuck::{Pod, Zeroable},
@@ -41,23 +41,27 @@ pub enum ScaledUiAmountMintInstruction {
     /// Data expected by this instruction:
     ///   `crate::extension::scaled_ui_amount::instruction::InitializeInstructionData`
     Initialize,
-    /// Update the scale. Only supported for mints that include the
+    /// Update the multiplier. Only supported for mints that include the
     /// `ScaledUiAmount` extension.
+    ///
+    /// The authority provides a new multiplier and a unix timestamp on which
+    /// it should take effect. If the timestamp is before the current time,
+    /// immediately sets the multiplier.
     ///
     /// Accounts expected by this instruction:
     ///
     ///   * Single authority
     ///   0. `[writable]` The mint.
-    ///   1. `[signer]` The mint scale authority.
+    ///   1. `[signer]` The multiplier authority.
     ///
     ///   * Multisignature authority
     ///   0. `[writable]` The mint.
-    ///   1. `[]` The mint's multisignature scale authority.
+    ///   1. `[]` The mint's multisignature multiplier authority.
     ///   2. `..2+M` `[signer]` M signer accounts.
     ///
     /// Data expected by this instruction:
-    ///   `crate::extension::scaled_ui_amount::PodF64`
-    UpdateScale,
+    ///   `crate::extension::scaled_ui_amount::instruction::UpdateMultiplierInstructionData`
+    UpdateMultiplier,
 }
 
 /// Data expected by `ScaledUiAmountMint::Initialize`
@@ -66,10 +70,22 @@ pub enum ScaledUiAmountMintInstruction {
 #[derive(Clone, Copy, Pod, Zeroable)]
 #[repr(C)]
 pub struct InitializeInstructionData {
-    /// The public key for the account that can update the scale
+    /// The public key for the account that can update the multiplier
     pub authority: OptionalNonZeroPubkey,
-    /// The initial scale
-    pub scale: PodF64,
+    /// The initial multiplier
+    pub multiplier: PodF64,
+}
+
+/// Data expected by `ScaledUiAmountMint::UpdateMultiplier`
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
+#[derive(Clone, Copy, Pod, Zeroable)]
+#[repr(C)]
+pub struct UpdateMultiplierInstructionData {
+    /// The new multiplier
+    pub multiplier: PodF64,
+    /// Timestamp at which the new multiplier will take effect
+    pub effective_timestamp: UnixTimestamp,
 }
 
 /// Create an `Initialize` instruction
@@ -77,7 +93,7 @@ pub fn initialize(
     token_program_id: &Pubkey,
     mint: &Pubkey,
     authority: Option<Pubkey>,
-    scale: f64,
+    multiplier: f64,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let accounts = vec![AccountMeta::new(*mint, false)];
@@ -88,18 +104,19 @@ pub fn initialize(
         ScaledUiAmountMintInstruction::Initialize,
         &InitializeInstructionData {
             authority: authority.try_into()?,
-            scale: scale.into(),
+            multiplier: multiplier.into(),
         },
     ))
 }
 
-/// Create an `UpdateScale` instruction
-pub fn update_scale(
+/// Create an `UpdateMultiplier` instruction
+pub fn update_multiplier(
     token_program_id: &Pubkey,
     mint: &Pubkey,
     authority: &Pubkey,
     signers: &[&Pubkey],
-    scale: f64,
+    multiplier: f64,
+    effective_timestamp: i64,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let mut accounts = vec![
@@ -113,7 +130,10 @@ pub fn update_scale(
         token_program_id,
         accounts,
         TokenInstruction::ScaledUiAmountExtension,
-        ScaledUiAmountMintInstruction::UpdateScale,
-        &PodF64::from(scale),
+        ScaledUiAmountMintInstruction::UpdateMultiplier,
+        &UpdateMultiplierInstructionData {
+            effective_timestamp: effective_timestamp.into(),
+            multiplier: multiplier.into(),
+        },
     ))
 }
