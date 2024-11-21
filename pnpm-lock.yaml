@@ -189,8 +189,8 @@ importers:
         version: 6.0.3
     devDependencies:
       '@solana/web3.js':
-        specifier: ^1.95.4
-        version: 1.95.4
+        specifier: ^1.95.5
+        version: 1.95.5
       '@types/chai':
         specifier: ^5.0.1
         version: 5.0.1
@@ -249,8 +249,8 @@ importers:
   name-service/js:
     dependencies:
       '@solana/web3.js':
-        specifier: ^1.95.4
-        version: 1.95.4
+        specifier: ^1.95.5
+        version: 1.95.5
       bn.js:
         specifier: ^5.1.3
         version: 5.2.1
@@ -316,8 +316,8 @@ importers:
         specifier: 1.0.0
         version: link:../modern
       '@solana/web3.js':
-        specifier: ^1.95.4
-        version: 1.95.4
+        specifier: ^1.95.5
+        version: 1.95.5
     devDependencies:
       '@ava/typescript':
         specifier: ^5.0.0
@@ -378,8 +378,8 @@ importers:
         specifier: 0.4.9
         version: link:../../token/js
       '@solana/web3.js':
-        specifier: ^1.95.4
-        version: 1.95.4
+        specifier: ^1.95.5
+        version: 1.95.5
       bn.js:
         specifier: ^5.2.0
         version: 5.2.1
@@ -467,8 +467,8 @@ importers:
         specifier: 0.2.0
         version: link:../../libraries/type-length-value/js
       '@solana/web3.js':
-        specifier: ^1.95.4
-        version: 1.95.4
+        specifier: ^1.95.5
+        version: 1.95.5
       '@types/chai':
         specifier: ^5.0.1
         version: 5.0.1
@@ -543,8 +543,8 @@ importers:
         specifier: 0.4.9
         version: link:../../token/js
       '@solana/web3.js':
-        specifier: ^1.95.4
-        version: 1.95.4
+        specifier: ^1.95.5
+        version: 1.95.5
       '@types/eslint':
         specifier: ^8.56.7
         version: 8.56.7
@@ -589,8 +589,8 @@ importers:
         specifier: 0.2.0
         version: link:../../libraries/type-length-value/js
       '@solana/web3.js':
-        specifier: ^1.95.4
-        version: 1.95.4
+        specifier: ^1.95.5
+        version: 1.95.5
       '@types/chai':
         specifier: ^5.0.1
         version: 5.0.1
@@ -650,8 +650,8 @@ importers:
         specifier: 0.4.9
         version: link:../../token/js
       '@solana/web3.js':
-        specifier: ^1.95.4
-        version: 1.95.4
+        specifier: ^1.95.5
+        version: 1.95.5
       '@types/bn.js':
         specifier: ^5.1.6
         version: 5.1.6
@@ -717,8 +717,8 @@ importers:
         specifier: 0.2.4
         version: link:../../memo/js
       '@solana/web3.js':
-        specifier: ^1.95.4
-        version: 1.95.4
+        specifier: ^1.95.5
+        version: 1.95.5
       '@types/chai':
         specifier: ^5.0.1
         version: 5.0.1
@@ -2070,7 +2070,7 @@ packages:
     resolution: {integrity: sha512-tgyEl6dvtLln8XX81JyBvWjIiEcjTkUwZbrM5dIobTmoqMuGewSyk9CClno8qsMsFdB5T3jC91Rjeqmu/6xk2g==}
     dependencies:
       '@metaplex-foundation/beet': 0.7.2
-      '@solana/web3.js': 1.95.4
+      '@solana/web3.js': 1.95.5
       bs58: 5.0.0
       debug: 4.3.7(supports-color@8.1.1)
     transitivePeerDependencies:
@@ -2564,7 +2564,7 @@ packages:
     engines: {node: '>= 10'}
     dependencies:
       '@solana/buffer-layout': 4.0.1
-      '@solana/web3.js': 1.95.4
+      '@solana/web3.js': 1.95.5
       bigint-buffer: 1.1.5
       bignumber.js: 9.1.2
     transitivePeerDependencies:
@@ -2784,6 +2784,29 @@ packages:
 
   /@solana/web3.js@1.95.4:
     resolution: {integrity: sha512-sdewnNEA42ZSMxqkzdwEWi6fDgzwtJHaQa5ndUGEJYtoOnM6X5cvPmjoTUp7/k7bRrVAxfBgDnvQQHD6yhlLYw==}
+    dependencies:
+      '@babel/runtime': 7.25.0
+      '@noble/curves': 1.4.2
+      '@noble/hashes': 1.4.0
+      '@solana/buffer-layout': 4.0.1
+      agentkeepalive: 4.5.0
+      bigint-buffer: 1.1.5
+      bn.js: 5.2.1
+      borsh: 0.7.0
+      bs58: 4.0.1
+      buffer: 6.0.3
+      fast-stable-stringify: 1.0.0
+      jayson: 4.1.1
+      node-fetch: 2.7.0
+      rpc-websockets: 9.0.2
+      superstruct: 2.0.2
+    transitivePeerDependencies:
+      - bufferutil
+      - encoding
+      - utf-8-validate
+
+  /@solana/web3.js@1.95.5:
+    resolution: {integrity: sha512-hU9cBrbg1z6gEjLH9vwIckGBVB78Ijm0iZFNk4ocm5OD82piPwuk3MeQ1rfiKD9YQtr95krrcaopb49EmQJlRg==}
     dependencies:
       '@babel/runtime': 7.25.0
       '@noble/curves': 1.4.2
@@ -8682,7 +8705,7 @@ packages:
     resolution: {integrity: sha512-TS6vYoO/9YJZng7oiLOVyuz8V7yLow5Hp4SLYWW71XM3702v+z9f1fvUBKudRfa4dfpta4tRNufApSiBIALxJQ==}
     engines: {node: '>= 10'}
     dependencies:
-      '@solana/web3.js': 1.95.4
+      '@solana/web3.js': 1.95.5
       bs58: 4.0.1
     optionalDependencies:
       solana-bankrun-darwin-arm64: 0.2.0

@@ -28,7 +28,7 @@
     "typescript": "^5.6.3"
   },
   "dependencies": {
-    "@solana/web3.js": "^1.95.4",
+    "@solana/web3.js": "^1.95.5",
     "@solana/addresses": "2.0.0",
     "@solana/spl-single-pool": "1.0.0"
   },

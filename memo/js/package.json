@@ -45,13 +45,13 @@
         "deploy:docs": "npm run docs && gh-pages --dest memo/js --dist docs --dotfiles"
     },
     "peerDependencies": {
-        "@solana/web3.js": "^1.95.4"
+        "@solana/web3.js": "^1.95.5"
     },
     "dependencies": {
         "buffer": "^6.0.3"
     },
     "devDependencies": {
-        "@solana/web3.js": "^1.95.4",
+        "@solana/web3.js": "^1.95.5",
         "@types/chai": "^5.0.1",
         "@types/jest": "^29.5.14",
         "@types/node": "^22.9.1",
