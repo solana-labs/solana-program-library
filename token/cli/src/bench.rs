@@ -2,7 +2,7 @@
 use {
     crate::{clap_app::Error, command::CommandResult, config::Config},
     clap::ArgMatches,
-    solana_clap_v3_utils::input_parsers::{pubkey_of_signer, signer::SignerSource, Amount},
+    solana_clap_v3_utils::input_parsers::{signer::SignerSource, Amount},
     solana_client::{
         nonblocking::rpc_client::RpcClient, rpc_client::RpcClient as BlockingRpcClient,
         tpu_client::TpuClient, tpu_client::TpuClientConfig,

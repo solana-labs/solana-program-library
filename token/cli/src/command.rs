@@ -18,9 +18,7 @@ use {
         UiAccountData,
     },
     solana_clap_v3_utils::{
-        input_parsers::{
-            pubkey_of_signer, pubkeys_of_multiple_signers, signer::SignerSource, Amount,
-        },
+        input_parsers::{pubkey_of_signer, signer::SignerSource, Amount},
         keypair::signer_from_path,
     },
     solana_cli_output::{
