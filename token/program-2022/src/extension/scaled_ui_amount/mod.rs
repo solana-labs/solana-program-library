@@ -64,7 +64,7 @@ impl ScaledUiAmountConfig {
     }
 
     /// Convert a raw amount to its UI representation using the given decimals
-    /// field Excess zeroes or unneeded decimal point are trimmed.
+    /// field. Excess zeroes or unneeded decimal point are trimmed.
     pub fn amount_to_ui_amount(
         &self,
         amount: u64,
