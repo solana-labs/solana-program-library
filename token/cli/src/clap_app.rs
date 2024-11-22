@@ -188,38 +188,37 @@ impl fmt::Display for AccountMetaRole {
         write!(f, "{:?}", self)
     }
 }
-pub fn parse_transfer_hook_account<T>(string: T) -> Result<AccountMeta, String>
-where
-    T: AsRef<str> + fmt::Display,
-{
-    match string.as_ref().split(':').collect::<Vec<_>>().as_slice() {
-        [address, role] => {
-            let address = Pubkey::from_str(address).map_err(|e| format!("{e}"))?;
-            let meta = match AccountMetaRole::from_str(role).map_err(|e| format!("{e}"))? {
-                AccountMetaRole::Readonly => AccountMeta::new_readonly(address, false),
-                AccountMetaRole::Writable => AccountMeta::new(address, false),
-                AccountMetaRole::ReadonlySigner => AccountMeta::new_readonly(address, true),
-                AccountMetaRole::WritableSigner => AccountMeta::new(address, true),
-            };
-            Ok(meta)
+
+#[derive(Clone, Copy)]
+pub(crate) struct TransferHookAccount {
+    address: Pubkey,
+    role: AccountMetaRole,
+}
+impl FromStr for TransferHookAccount {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.split(':').collect::<Vec<_>>().as_slice() {
+            [address, role] => {
+                let address = Pubkey::from_str(address).map_err(|e| format!("{e}"))?;
+                let role = AccountMetaRole::from_str(role).map_err(|e| format!("{e}"))?;
+                Ok(Self { address, role })
+            }
+            _ => Err("Transfer hook account must be present as <ADDRESS>:<ROLE>".to_string()),
         }
-        _ => Err("Transfer hook account must be present as <ADDRESS>:<ROLE>".to_string()),
     }
 }
-fn validate_transfer_hook_account<T>(string: T) -> Result<(), String>
-where
-    T: AsRef<str> + fmt::Display,
-{
-    match string.as_ref().split(':').collect::<Vec<_>>().as_slice() {
-        [address, role] => {
-            is_valid_pubkey(address)?;
-            AccountMetaRole::from_str(role)
-                .map(|_| ())
-                .map_err(|e| format!("{e}"))
+impl TransferHookAccount {
+    pub(crate) fn create_account_meta(&self) -> AccountMeta {
+        match self.role {
+            AccountMetaRole::Readonly => AccountMeta::new_readonly(self.address, false),
+            AccountMetaRole::Writable => AccountMeta::new(self.address, false),
+            AccountMetaRole::ReadonlySigner => AccountMeta::new_readonly(self.address, true),
+            AccountMetaRole::WritableSigner => AccountMeta::new(self.address, true),
         }
-        _ => Err("Transfer hook account must be present as <ADDRESS>:<ROLE>".to_string()),
     }
 }
+
 #[derive(Debug, Clone, PartialEq, EnumIter, EnumString, IntoStaticStr)]
 #[strum(serialize_all = "kebab-case")]
 pub enum CliAuthorityType {
@@ -1429,7 +1428,7 @@ pub fn app<'a>(
                 .arg(
                     Arg::with_name("transfer_hook_account")
                         .long("transfer-hook-account")
-                        .validator(|s| validate_transfer_hook_account(s))
+                        .value_parser(clap::value_parser!(TransferHookAccount))
                         .value_name("PUBKEY:ROLE")
                         .takes_value(true)
                         .multiple(true)

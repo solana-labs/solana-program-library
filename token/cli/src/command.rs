@@ -3937,11 +3937,13 @@ pub async fn process_command<'a>(
             let use_unchecked_instruction = arg_matches.is_present("use_unchecked_instruction");
             let expected_fee = arg_matches.get_one::<Amount>("expected_fee").copied();
             let memo = value_t!(arg_matches, "memo", String).ok();
-            let transfer_hook_accounts = arg_matches.values_of("transfer_hook_account").map(|v| {
-                v.into_iter()
-                    .map(|s| parse_transfer_hook_account(s).unwrap())
-                    .collect::<Vec<_>>()
-            });
+            let transfer_hook_accounts = arg_matches
+                .get_many::<TransferHookAccount>("transfer_hook_account")
+                .map(|v| {
+                    v.into_iter()
+                        .map(|account| account.create_account_meta())
+                        .collect::<Vec<_>>()
+                });
 
             command_transfer(
                 config,
