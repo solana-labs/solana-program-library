@@ -278,17 +278,6 @@ pub fn owner_address_arg<'a>() -> Arg<'a> {
         .long(OWNER_ADDRESS_ARG.long)
         .takes_value(true)
         .value_name("OWNER_ADDRESS")
-        .validator(|s| is_valid_pubkey(s))
-        .help(OWNER_ADDRESS_ARG.help)
-}
-
-// Temporary function that uses proper parsing to minimize commit size
-// TODO: use this to replace `owner_address_arg`
-pub fn owner_address_arg_temp<'a>() -> Arg<'a> {
-    Arg::with_name(OWNER_ADDRESS_ARG.name)
-        .long(OWNER_ADDRESS_ARG.long)
-        .takes_value(true)
-        .value_name("OWNER_ADDRESS")
         .value_parser(SignerSourceParserBuilder::default().allow_all().build())
         .help(OWNER_ADDRESS_ARG.help)
 }
@@ -1239,7 +1228,7 @@ pub fn app<'a>(
                             "Lock the owner of this token account from ever being changed"
                         ),
                 )
-                .arg(owner_address_arg_temp())
+                .arg(owner_address_arg())
                 .nonce_args(true)
         )
         .subcommand(
@@ -1798,7 +1787,7 @@ pub fn app<'a>(
                         .help("Specify the token account to close \
                             [default: owner's associated token account]"),
                 )
-                .arg(owner_address_arg_temp())
+                .arg(owner_address_arg())
                 .arg(multisig_signer_arg())
                 .nonce_args(true)
                 .offline_args(),
@@ -1852,7 +1841,7 @@ pub fn app<'a>(
                         .required_unless("address")
                         .help("Token of associated account. To query a specific account, use the `--address` parameter instead"),
                 )
-                .arg(owner_address_arg_temp().conflicts_with("address"))
+                .arg(owner_address_arg().conflicts_with("address"))
                 .arg(
                     Arg::with_name("address")
                         .value_parser(SignerSourceParserBuilder::default().allow_all().build())
@@ -1916,7 +1905,7 @@ pub fn app<'a>(
                             "Print token account addresses only"
                         ),
                 )
-                .arg(owner_address_arg_temp())
+                .arg(owner_address_arg())
         )
         .subcommand(
             SubCommand::with_name(CommandName::Address.into())
@@ -1932,7 +1921,7 @@ pub fn app<'a>(
                                [Default: return the client keypair address]")
                 )
                 .arg(
-                    owner_address_arg_temp()
+                    owner_address_arg()
                         .requires("token")
                         .help("Return the associated token address for the given owner. \
                                [Default: return the associated token address for the client keypair]"),
@@ -2382,7 +2371,7 @@ pub fn app<'a>(
                         .required(true)
                         .help("Specify the address of the account to send lamports to"),
                 )
-                .arg(owner_address_arg_temp())
+                .arg(owner_address_arg())
                 .arg(multisig_signer_arg())
         )
         .subcommand(
