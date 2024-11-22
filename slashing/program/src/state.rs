@@ -63,7 +63,7 @@ pub trait SlashingProofData {
     const PROOF_TYPE: ProofType;
 
     /// Verification logic for this type of proof data
-    fn verify_proof(self, slot: Slot, pubkey: Pubkey) -> Result<(), SlashingError>;
+    fn verify_proof(self, slot: Slot, pubkey: &Pubkey) -> Result<(), SlashingError>;
 }
 
 #[cfg(test)]

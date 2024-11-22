@@ -19,7 +19,7 @@ pub struct DuplicateBlockProofData {
 impl SlashingProofData for DuplicateBlockProofData {
     const PROOF_TYPE: ProofType = ProofType::DuplicateBlockProof;
 
-    fn verify_proof(self, slot: Slot, _node_pubkey: Pubkey) -> Result<(), SlashingError> {
+    fn verify_proof(self, slot: Slot, _node_pubkey: &Pubkey) -> Result<(), SlashingError> {
         // TODO: verify through instruction inspection that the shreds were sigverified
         // earlier in this transaction.
         // Ed25519 Singature verification is performed on the merkle root:
@@ -242,7 +242,7 @@ mod tests {
         for (shred1, shred2) in test_cases.iter().flat_map(|(a, b)| [(a, b), (b, a)]) {
             let proof_data = generate_proof_data(shred1, shred2);
             assert_eq!(
-                proof_data.verify_proof(slot, leader.pubkey()).unwrap_err(),
+                proof_data.verify_proof(slot, &leader.pubkey()).unwrap_err(),
                 SlashingError::LegacyShreds,
             );
         }
@@ -300,7 +300,7 @@ mod tests {
         for (shred1, shred2) in test_cases.iter().flat_map(|(a, b)| [(a, b), (b, a)]) {
             let proof_data = generate_proof_data(shred1, shred2);
             assert_eq!(
-                proof_data.verify_proof(slot, leader.pubkey()).unwrap_err(),
+                proof_data.verify_proof(slot, &leader.pubkey()).unwrap_err(),
                 SlashingError::SlotMismatch
             );
         }
@@ -318,7 +318,7 @@ mod tests {
         let shred2 =
             new_rand_data_shred(&mut rng, next_shred_index, &shredder, &leader, true, true);
         let proof_data = generate_proof_data(&shred1, &shred2);
-        proof_data.verify_proof(slot, leader.pubkey()).unwrap();
+        proof_data.verify_proof(slot, &leader.pubkey()).unwrap();
     }
 
     #[test]
@@ -342,7 +342,7 @@ mod tests {
         for (shred1, shred2) in test_cases.into_iter() {
             let proof_data = generate_proof_data(&shred1, &shred2);
             assert_eq!(
-                proof_data.verify_proof(slot, leader.pubkey()).unwrap_err(),
+                proof_data.verify_proof(slot, &leader.pubkey()).unwrap_err(),
                 SlashingError::InvalidPayloadProof
             );
         }
@@ -386,7 +386,7 @@ mod tests {
 
         for (shred1, shred2) in test_cases.iter().flat_map(|(a, b)| [(a, b), (b, a)]) {
             let proof_data = generate_proof_data(shred1, shred2);
-            proof_data.verify_proof(slot, leader.pubkey()).unwrap();
+            proof_data.verify_proof(slot, &leader.pubkey()).unwrap();
         }
     }
 
@@ -430,7 +430,7 @@ mod tests {
         for (shred1, shred2) in test_cases.iter().flat_map(|(a, b)| [(a, b), (b, a)]) {
             let proof_data = generate_proof_data(shred1, shred2);
             assert_eq!(
-                proof_data.verify_proof(slot, leader.pubkey()).unwrap_err(),
+                proof_data.verify_proof(slot, &leader.pubkey()).unwrap_err(),
                 SlashingError::ShredTypeMismatch
             );
         }
@@ -472,7 +472,7 @@ mod tests {
 
         for (shred1, shred2) in test_cases.iter().flat_map(|(a, b)| [(a, b), (b, a)]) {
             let proof_data = generate_proof_data(shred1, shred2);
-            proof_data.verify_proof(slot, leader.pubkey()).unwrap();
+            proof_data.verify_proof(slot, &leader.pubkey()).unwrap();
         }
     }
 
@@ -533,7 +533,7 @@ mod tests {
         for (shred1, shred2) in test_cases.iter().flat_map(|(a, b)| [(a, b), (b, a)]) {
             let proof_data = generate_proof_data(shred1, shred2);
             assert_eq!(
-                proof_data.verify_proof(slot, leader.pubkey()).unwrap_err(),
+                proof_data.verify_proof(slot, &leader.pubkey()).unwrap_err(),
                 SlashingError::InvalidLastIndexConflict
             );
         }
@@ -560,7 +560,7 @@ mod tests {
         ];
         for (shred1, shred2) in test_cases.iter().flat_map(|(a, b)| [(a, b), (b, a)]) {
             let proof_data = generate_proof_data(shred1, shred2);
-            proof_data.verify_proof(slot, leader.pubkey()).unwrap();
+            proof_data.verify_proof(slot, &leader.pubkey()).unwrap();
         }
     }
 
@@ -616,7 +616,7 @@ mod tests {
         for (shred1, shred2) in test_cases.iter().flat_map(|(a, b)| [(a, b), (b, a)]) {
             let proof_data = generate_proof_data(shred1, shred2);
             assert_eq!(
-                proof_data.verify_proof(slot, leader.pubkey()).unwrap_err(),
+                proof_data.verify_proof(slot, &leader.pubkey()).unwrap_err(),
                 SlashingError::InvalidErasureMetaConflict
             );
         }
@@ -663,7 +663,7 @@ mod tests {
         for (shred1, shred2) in test_cases.iter().flat_map(|(a, b)| [(a, b), (b, a)]) {
             let proof_data = generate_proof_data(shred1, shred2);
             assert_eq!(
-                proof_data.verify_proof(slot, leader.pubkey()).unwrap_err(),
+                proof_data.verify_proof(slot, &leader.pubkey()).unwrap_err(),
                 SlashingError::InvalidShredVersion
             );
         }
@@ -714,7 +714,7 @@ mod tests {
         for (shred1, shred2) in test_cases.iter().flat_map(|(a, b)| [(a, b), (b, a)]) {
             let proof_data = generate_proof_data(shred1, shred2);
             assert_eq!(
-                proof_data.verify_proof(slot, leader.pubkey()).unwrap_err(),
+                proof_data.verify_proof(slot, &leader.pubkey()).unwrap_err(),
                 SlashingError::InvalidPayloadProof
             );
         }
@@ -755,7 +755,7 @@ mod tests {
         ];
         for (shred1, shred2) in test_cases.iter().flat_map(|(a, b)| [(a, b), (b, a)]) {
             let proof_data = generate_proof_data(shred1, shred2);
-            proof_data.verify_proof(slot, leader.pubkey()).unwrap();
+            proof_data.verify_proof(slot, &leader.pubkey()).unwrap();
         }
     }
 
@@ -817,7 +817,7 @@ mod tests {
         {
             let proof_data = generate_proof_data(shred1, shred2);
             assert_eq!(
-                proof_data.verify_proof(slot, leader.pubkey()).unwrap_err(),
+                proof_data.verify_proof(slot, &leader.pubkey()).unwrap_err(),
                 *expected,
             );
         }

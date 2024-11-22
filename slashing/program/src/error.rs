@@ -9,10 +9,6 @@ use {
 /// Errors that may be returned by the program.
 #[derive(Clone, Copy, Debug, Eq, Error, FromPrimitive, PartialEq)]
 pub enum SlashingError {
-    /// Shred deserialization error
-    #[error("Deserialization error")]
-    ShredDeserializationError,
-
     /// Invalid shred variant
     #[error("Invalid shred variant")]
     InvalidShredVariant,
@@ -29,6 +25,10 @@ pub enum SlashingError {
     #[error("Invalid erasure meta conflict")]
     InvalidErasureMetaConflict,
 
+    /// Invalid instruction
+    #[error("Invalid instruction")]
+    InvalidInstruction,
+
     /// Invalid duplicate block last index proof
     #[error("Invalid last index conflict")]
     InvalidLastIndexConflict,
@@ -44,6 +44,10 @@ pub enum SlashingError {
     /// Legacy shreds are not supported
     #[error("Legacy shreds are not eligible for slashing")]
     LegacyShreds,
+
+    /// Shred deserialization error
+    #[error("Deserialization error")]
+    ShredDeserializationError,
 
     /// Invalid shred type on duplicate block proof shreds
     #[error("Shred type mismatch")]
