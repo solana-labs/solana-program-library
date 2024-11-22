@@ -85,6 +85,27 @@ async fn fail_initialize_with_interest_bearing() {
 }
 
 #[tokio::test]
+async fn fail_initialize_with_bad_multiplier() {
+    let mut context = TestContext::new().await;
+    let err = context
+        .init_token_with_mint(vec![ExtensionInitializationParams::ScaledUiAmountConfig {
+            authority: None,
+            multiplier: 0.0,
+        }])
+        .await
+        .unwrap_err();
+    assert_eq!(
+        err,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                1,
+                InstructionError::Custom(TokenError::InvalidScale as u32)
+            )
+        )))
+    );
+}
+
+#[tokio::test]
 async fn update_multiplier() {
     let authority = Keypair::new();
     let initial_multiplier = 5.0;
@@ -114,6 +135,21 @@ async fn update_multiplier() {
     assert_eq!(f64::from(extension.multiplier), new_multiplier);
     assert_eq!(f64::from(extension.new_multiplier), new_multiplier);
     assert_eq!(i64::from(extension.new_multiplier_effective_timestamp), 0);
+
+    // fail, bad number
+    let err = token
+        .update_multiplier(&authority.pubkey(), f64::INFINITY, 0, &[&authority])
+        .await
+        .unwrap_err();
+    assert_eq!(
+        err,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::InvalidScale as u32)
+            )
+        )))
+    );
 
     // correct in the future
     let newest_multiplier = 100.0;

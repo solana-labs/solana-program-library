@@ -28,7 +28,8 @@ pub enum ScaledUiAmountMintInstruction {
     /// Fails if the mint has already been initialized, so must be called before
     /// `InitializeMint`.
     ///
-    /// Fails with any number less than 0.
+    /// Fails if the multiplier is less than or equal to 0 or if it's
+    /// [subnormal](https://en.wikipedia.org/wiki/Subnormal_number).
     ///
     /// The mint must have exactly enough space allocated for the base mint (82
     /// bytes), plus 83 bytes of padding, 1 byte reserved for the account type,
@@ -43,6 +44,9 @@ pub enum ScaledUiAmountMintInstruction {
     Initialize,
     /// Update the multiplier. Only supported for mints that include the
     /// `ScaledUiAmount` extension.
+    ///
+    /// Fails if the multiplier is less than or equal to 0 or if it's
+    /// [subnormal](https://en.wikipedia.org/wiki/Subnormal_number).
     ///
     /// The authority provides a new multiplier and a unix timestamp on which
     /// it should take effect. If the timestamp is before the current time,
