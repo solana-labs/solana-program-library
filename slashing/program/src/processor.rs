@@ -13,11 +13,12 @@ use {
     serde::Deserialize,
     solana_program::{
         account_info::{next_account_info, AccountInfo},
-        clock::Slot,
+        clock::{Slot, DEFAULT_SLOTS_PER_EPOCH},
         entrypoint::ProgramResult,
         msg,
         program_error::ProgramError,
         pubkey::Pubkey,
+        sysvar::{clock::Clock, Sysvar},
     },
 };
 
@@ -25,9 +26,15 @@ fn verify_proof_data<'a, T>(slot: Slot, pubkey: &Pubkey, proof_data: &'a [u8]) -
 where
     T: SlashingProofData + Deserialize<'a>,
 {
-    if proof_data.len() < T::PROOF_TYPE.proof_account_length() {
-        return Err(ProgramError::InvalidAccountData);
+    // Statue of limitations is 1 epoch
+    let clock = Clock::get()?;
+    let Some(elapsed) = clock.slot.checked_sub(slot) else {
+        return Err(ProgramError::ArithmeticOverflow);
+    };
+    if elapsed > DEFAULT_SLOTS_PER_EPOCH {
+        return Err(SlashingError::ExceedsStatueOfLimitations.into());
     }
+
     let proof_data: T =
         bincode::deserialize(proof_data).map_err(|_| SlashingError::ShredDeserializationError)?;
 
@@ -64,5 +71,88 @@ pub fn process_instruction(
             )?;
             Ok(())
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::verify_proof_data,
+        crate::{
+            duplicate_block_proof::DuplicateBlockProofData, error::SlashingError,
+            shred::tests::new_rand_data_shred,
+        },
+        rand::Rng,
+        solana_ledger::{blockstore_meta::DuplicateSlotProof, shred::Shredder},
+        solana_sdk::{
+            clock::{Clock, Slot, DEFAULT_SLOTS_PER_EPOCH},
+            program_error::ProgramError,
+            signature::Keypair,
+            signer::Signer,
+        },
+        std::sync::Arc,
+    };
+
+    const SLOT: Slot = 53084024;
+    static mut CLOCK_SLOT: Slot = SLOT;
+
+    fn generate_proof_data(leader: Arc<Keypair>) -> Vec<u8> {
+        let mut rng = rand::thread_rng();
+        let (slot, parent_slot, reference_tick, version) = (SLOT, 53084023, 0, 0);
+        let shredder = Shredder::new(slot, parent_slot, reference_tick, version).unwrap();
+        let next_shred_index = rng.gen_range(0..32_000);
+        let shred1 =
+            new_rand_data_shred(&mut rng, next_shred_index, &shredder, &leader, true, true);
+        let shred2 =
+            new_rand_data_shred(&mut rng, next_shred_index, &shredder, &leader, true, true);
+        let proof = DuplicateSlotProof {
+            shred1: shred1.payload().clone(),
+            shred2: shred2.payload().clone(),
+        };
+        bincode::serialize(&proof).unwrap()
+    }
+
+    #[test]
+    fn statue_of_limitations() {
+        unsafe {
+            CLOCK_SLOT = SLOT + 5;
+            test_statue_of_limitations().unwrap();
+
+            CLOCK_SLOT = SLOT - 1;
+            assert_eq!(
+                test_statue_of_limitations().unwrap_err(),
+                ProgramError::ArithmeticOverflow
+            );
+
+            CLOCK_SLOT = SLOT + DEFAULT_SLOTS_PER_EPOCH + 1;
+            assert_eq!(
+                test_statue_of_limitations().unwrap_err(),
+                SlashingError::ExceedsStatueOfLimitations.into()
+            );
+        }
+    }
+
+    fn test_statue_of_limitations() -> Result<(), ProgramError> {
+        struct SyscallStubs {}
+        impl solana_sdk::program_stubs::SyscallStubs for SyscallStubs {
+            fn sol_get_clock_sysvar(&self, var_addr: *mut u8) -> u64 {
+                unsafe {
+                    let clock = Clock {
+                        slot: CLOCK_SLOT,
+                        ..Clock::default()
+                    };
+                    *(var_addr as *mut _ as *mut Clock) = clock;
+                }
+                solana_program::entrypoint::SUCCESS
+            }
+        }
+
+        solana_sdk::program_stubs::set_syscall_stubs(Box::new(SyscallStubs {}));
+        let leader = Arc::new(Keypair::new());
+        verify_proof_data::<DuplicateBlockProofData>(
+            SLOT,
+            &leader.pubkey(),
+            &generate_proof_data(leader),
+        )
     }
 }

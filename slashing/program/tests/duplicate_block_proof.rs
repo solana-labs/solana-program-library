@@ -10,6 +10,7 @@ use {
     solana_program::pubkey::Pubkey,
     solana_program_test::*,
     solana_sdk::{
+        clock::{Clock, Slot},
         decode_error::DecodeError,
         hash::Hash,
         instruction::InstructionError,
@@ -26,6 +27,8 @@ use {
     std::sync::Arc,
 };
 
+const SLOT: Slot = 53084024;
+
 fn program_test() -> ProgramTest {
     let mut program_test = ProgramTest::new("spl_slashing", id(), processor!(process_instruction));
     program_test.add_program(
@@ -34,6 +37,13 @@ fn program_test() -> ProgramTest {
         processor!(spl_record::processor::process_instruction),
     );
     program_test
+}
+
+async fn setup_clock(context: &mut ProgramTestContext) {
+    let clock: Clock = context.banks_client.get_sysvar().await.unwrap();
+    let mut new_clock = clock.clone();
+    new_clock.slot = SLOT;
+    context.set_sysvar(&new_clock);
 }
 
 async fn initialize_duplicate_proof_account(
@@ -179,13 +189,14 @@ pub(crate) fn new_rand_shreds<R: Rng>(
 #[tokio::test]
 async fn valid_proof_data() {
     let mut context = program_test().start_with_context().await;
+    setup_clock(&mut context).await;
 
     let authority = Keypair::new();
     let account = Keypair::new();
 
     let mut rng = rand::thread_rng();
     let leader = Arc::new(Keypair::new());
-    let (slot, parent_slot, reference_tick, version) = (53084024, 53084023, 0, 0);
+    let (slot, parent_slot, reference_tick, version) = (SLOT, 53084023, 0, 0);
     let shredder = Shredder::new(slot, parent_slot, reference_tick, version).unwrap();
     let next_shred_index = rng.gen_range(0..32_000);
     let shred1 = new_rand_data_shred(&mut rng, next_shred_index, &shredder, &leader, true);
@@ -227,13 +238,14 @@ async fn valid_proof_data() {
 #[tokio::test]
 async fn valid_proof_coding() {
     let mut context = program_test().start_with_context().await;
+    setup_clock(&mut context).await;
 
     let authority = Keypair::new();
     let account = Keypair::new();
 
     let mut rng = rand::thread_rng();
     let leader = Arc::new(Keypair::new());
-    let (slot, parent_slot, reference_tick, version) = (53084024, 53084023, 0, 0);
+    let (slot, parent_slot, reference_tick, version) = (SLOT, 53084023, 0, 0);
     let shredder = Shredder::new(slot, parent_slot, reference_tick, version).unwrap();
     let next_shred_index = rng.gen_range(0..32_000);
     let shred1 =
@@ -276,13 +288,14 @@ async fn valid_proof_coding() {
 #[tokio::test]
 async fn invalid_proof_data() {
     let mut context = program_test().start_with_context().await;
+    setup_clock(&mut context).await;
 
     let authority = Keypair::new();
     let account = Keypair::new();
 
     let mut rng = rand::thread_rng();
     let leader = Arc::new(Keypair::new());
-    let (slot, parent_slot, reference_tick, version) = (53084024, 53084023, 0, 0);
+    let (slot, parent_slot, reference_tick, version) = (SLOT, 53084023, 0, 0);
     let shredder = Shredder::new(slot, parent_slot, reference_tick, version).unwrap();
     let next_shred_index = rng.gen_range(0..32_000);
     let shred1 = new_rand_data_shred(&mut rng, next_shred_index, &shredder, &leader, true);
@@ -324,13 +337,14 @@ async fn invalid_proof_data() {
 #[tokio::test]
 async fn invalid_proof_coding() {
     let mut context = program_test().start_with_context().await;
+    setup_clock(&mut context).await;
 
     let authority = Keypair::new();
     let account = Keypair::new();
 
     let mut rng = rand::thread_rng();
     let leader = Arc::new(Keypair::new());
-    let (slot, parent_slot, reference_tick, version) = (53084024, 53084023, 0, 0);
+    let (slot, parent_slot, reference_tick, version) = (SLOT, 53084023, 0, 0);
     let shredder = Shredder::new(slot, parent_slot, reference_tick, version).unwrap();
     let next_shred_index = rng.gen_range(0..32_000);
     let coding_shreds = new_rand_coding_shreds(&mut rng, next_shred_index, 10, &shredder, &leader);

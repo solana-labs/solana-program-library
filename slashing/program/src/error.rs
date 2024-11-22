@@ -9,6 +9,10 @@ use {
 /// Errors that may be returned by the program.
 #[derive(Clone, Copy, Debug, Eq, Error, FromPrimitive, PartialEq)]
 pub enum SlashingError {
+    /// Violation is too old for statue of limitations
+    #[error("Exceeds statue of limitations")]
+    ExceedsStatueOfLimitations,
+
     /// Invalid shred variant
     #[error("Invalid shred variant")]
     InvalidShredVariant,
