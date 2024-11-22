@@ -2,6 +2,7 @@
 use {
     crate::error::SlashingError,
     bitflags::bitflags,
+    bytemuck::Pod,
     generic_array::{typenum::U64, GenericArray},
     num_enum::{IntoPrimitive, TryFromPrimitive},
     serde_derive::Deserialize,
@@ -9,6 +10,7 @@ use {
         clock::Slot,
         hash::{hashv, Hash},
     },
+    spl_pod::primitives::{PodU16, PodU32, PodU64},
 };
 
 pub(crate) const SIZE_OF_SIGNATURE: usize = 64;
@@ -88,23 +90,23 @@ pub(crate) struct ErasureMeta {
 }
 
 #[derive(Clone, PartialEq, Eq)]
-pub(crate) struct Shred {
+pub(crate) struct Shred<'a> {
     shred_type: ShredType,
     proof_size: u8,
     chained: bool,
     resigned: bool,
-    payload: Vec<u8>,
+    payload: &'a [u8],
 }
 
-impl Shred {
+impl<'a> Shred<'a> {
     const SIZE_OF_CODING_PAYLOAD: usize = 1228;
     const SIZE_OF_DATA_PAYLOAD: usize =
         Self::SIZE_OF_CODING_PAYLOAD - Self::SIZE_OF_CODING_HEADERS + SIZE_OF_SIGNATURE;
     const SIZE_OF_CODING_HEADERS: usize = 89;
     const SIZE_OF_DATA_HEADERS: usize = 88;
 
-    pub(crate) fn new_from_payload(payload: Vec<u8>) -> Result<Self, SlashingError> {
-        match Self::get_shred_variant(&payload)? {
+    pub(crate) fn new_from_payload(payload: &'a [u8]) -> Result<Self, SlashingError> {
+        match Self::get_shred_variant(payload)? {
             ShredVariant::LegacyCode | ShredVariant::LegacyData => Err(SlashingError::LegacyShreds),
             ShredVariant::MerkleCode {
                 proof_size,
@@ -131,13 +133,13 @@ impl Shred {
         }
     }
 
-    fn get_bytes<const OFFSET: usize, const SIZE: usize>(
+    fn pod_from_bytes<const OFFSET: usize, const SIZE: usize, T: Pod>(
         &self,
-    ) -> Result<[u8; SIZE], SlashingError> {
+    ) -> Result<&T, SlashingError> {
         let end_index: usize = OFFSET
             .checked_add(SIZE)
             .ok_or(SlashingError::ShredDeserializationError)?;
-        <[u8; SIZE]>::try_from(
+        bytemuck::try_from_bytes(
             self.payload
                 .get(OFFSET..end_index)
                 .ok_or(SlashingError::ShredDeserializationError)?,
@@ -145,7 +147,7 @@ impl Shred {
         .map_err(|_| SlashingError::ShredDeserializationError)
     }
 
-    fn get_shred_variant(payload: &[u8]) -> Result<ShredVariant, SlashingError> {
+    fn get_shred_variant(payload: &'a [u8]) -> Result<ShredVariant, SlashingError> {
         let Some(&shred_variant) = payload.get(OFFSET_OF_SHRED_VARIANT) else {
             return Err(SlashingError::ShredDeserializationError);
         };
@@ -153,23 +155,23 @@ impl Shred {
     }
 
     pub(crate) fn slot(&self) -> Result<Slot, SlashingError> {
-        self.get_bytes::<OFFSET_OF_SLOT, SIZE_OF_SLOT>()
-            .map(Slot::from_le_bytes)
+        self.pod_from_bytes::<OFFSET_OF_SLOT, SIZE_OF_SLOT, PodU64>()
+            .map(|x| u64::from(*x))
     }
 
     pub(crate) fn index(&self) -> Result<u32, SlashingError> {
-        self.get_bytes::<OFFSET_OF_INDEX, SIZE_OF_INDEX>()
-            .map(u32::from_le_bytes)
+        self.pod_from_bytes::<OFFSET_OF_INDEX, SIZE_OF_INDEX, PodU32>()
+            .map(|x| u32::from(*x))
     }
 
     pub(crate) fn version(&self) -> Result<u16, SlashingError> {
-        self.get_bytes::<OFFSET_OF_VERSION, SIZE_OF_VERSION>()
-            .map(u16::from_le_bytes)
+        self.pod_from_bytes::<OFFSET_OF_VERSION, SIZE_OF_VERSION, PodU16>()
+            .map(|x| u16::from(*x))
     }
 
     pub(crate) fn fec_set_index(&self) -> Result<u32, SlashingError> {
-        self.get_bytes::<OFFSET_OF_FEC_SET_INDEX, SIZE_OF_FEC_SET_INDEX>()
-            .map(u32::from_le_bytes)
+        self.pod_from_bytes::<OFFSET_OF_FEC_SET_INDEX, SIZE_OF_FEC_SET_INDEX, PodU32>()
+            .map(|x| u32::from(*x))
     }
 
     pub(crate) fn shred_type(&self) -> ShredType {
@@ -189,23 +191,20 @@ impl Shred {
 
     fn num_data_shreds(&self) -> Result<usize, SlashingError> {
         debug_assert!(self.shred_type == ShredType::Code);
-        self.get_bytes::<OFFSET_OF_CODING_NUM_DATA_SHREDS, SIZE_OF_NUM_DATA_SHREDS>()
-            .map(u16::from_le_bytes)
-            .map(usize::from)
+        self.pod_from_bytes::<OFFSET_OF_CODING_NUM_DATA_SHREDS, SIZE_OF_NUM_DATA_SHREDS, PodU16>()
+            .map(|x| u16::from(*x) as usize)
     }
 
     fn num_coding_shreds(&self) -> Result<usize, SlashingError> {
         debug_assert!(self.shred_type == ShredType::Code);
-        self.get_bytes::<OFFSET_OF_CODING_NUM_CODING_SHREDS, SIZE_OF_NUM_CODING_SHREDS>()
-            .map(u16::from_le_bytes)
-            .map(usize::from)
+        self.pod_from_bytes::<OFFSET_OF_CODING_NUM_CODING_SHREDS, SIZE_OF_NUM_CODING_SHREDS, PodU16>()
+            .map(|x| u16::from(*x) as usize)
     }
 
     fn position(&self) -> Result<usize, SlashingError> {
         debug_assert!(self.shred_type == ShredType::Code);
-        self.get_bytes::<OFFSET_OF_CODING_POSITION, SIZE_OF_POSITION>()
-            .map(u16::from_le_bytes)
-            .map(usize::from)
+        self.pod_from_bytes::<OFFSET_OF_CODING_POSITION, SIZE_OF_POSITION, PodU16>()
+            .map(|x| u16::from(*x) as usize)
     }
 
     pub(crate) fn next_fec_set_index(&self) -> Result<u32, SlashingError> {
@@ -305,9 +304,9 @@ impl Shred {
 
     // Recovers root of the merkle tree from a leaf node
     // at the given index and the respective proof.
-    fn get_merkle_root<'a, I>(index: usize, node: Hash, proof: I) -> Result<Hash, SlashingError>
+    fn get_merkle_root<'b, I>(index: usize, node: Hash, proof: I) -> Result<Hash, SlashingError>
     where
-        I: IntoIterator<Item = &'a MerkleProofEntry>,
+        I: IntoIterator<Item = &'b MerkleProofEntry>,
     {
         let (index, root) = proof
             .into_iter()
@@ -333,20 +332,17 @@ impl Shred {
         {
             return false;
         }
-        fn get_payload(shred: &Shred) -> &[u8] {
+        fn get_payload<'a>(shred: &'a Shred<'a>) -> &'a [u8] {
             let Ok((proof_offset, proof_size)) = shred.get_proof_offset_and_size() else {
-                return &shred.payload;
+                return shred.payload;
             };
             if !shred.resigned {
-                return &shred.payload;
+                return shred.payload;
             }
             let Some(offset) = proof_offset.checked_add(proof_size) else {
-                return &shred.payload;
+                return shred.payload;
             };
-            shred
-                .payload
-                .get(..offset)
-                .unwrap_or_else(|| &shred.payload)
+            shred.payload.get(..offset).unwrap_or(shred.payload)
         }
         get_payload(self) != get_payload(other)
     }
@@ -532,7 +528,7 @@ pub(crate) mod tests {
                 .into_iter()
                 .chain(coding_solana_shreds.into_iter())
             {
-                let payload = solana_shred.payload().clone();
+                let payload = solana_shred.payload().as_slice();
                 let shred = Shred::new_from_payload(payload).unwrap();
 
                 assert_eq!(shred.slot().unwrap(), solana_shred.slot());

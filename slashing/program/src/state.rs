@@ -58,9 +58,14 @@ impl From<u8> for ProofType {
 
 /// Trait that proof accounts must satisfy in order to verify via the slashing
 /// program
-pub trait SlashingProofData {
+pub trait SlashingProofData<'a> {
     /// The type of proof this data represents
     const PROOF_TYPE: ProofType;
+
+    /// Zero copy from raw data buffer
+    fn unpack(data: &'a [u8]) -> Result<Self, SlashingError>
+    where
+        Self: Sized;
 
     /// Verification logic for this type of proof data
     fn verify_proof(self, slot: Slot, pubkey: &Pubkey) -> Result<(), SlashingError>;

@@ -49,6 +49,14 @@ pub enum SlashingError {
     #[error("Legacy shreds are not eligible for slashing")]
     LegacyShreds,
 
+    /// Unable to deserialize proof buffer
+    #[error("Proof buffer deserialization error")]
+    ProofBufferDeserializationError,
+
+    /// Proof buffer is too small
+    #[error("Proof buffer too small")]
+    ProofBufferTooSmall,
+
     /// Shred deserialization error
     #[error("Deserialization error")]
     ShredDeserializationError,

@@ -10,7 +10,6 @@ use {
         },
         state::SlashingProofData,
     },
-    serde::Deserialize,
     solana_program::{
         account_info::{next_account_info, AccountInfo},
         clock::{Slot, DEFAULT_SLOTS_PER_EPOCH},
@@ -24,7 +23,7 @@ use {
 
 fn verify_proof_data<'a, T>(slot: Slot, pubkey: &Pubkey, proof_data: &'a [u8]) -> ProgramResult
 where
-    T: SlashingProofData + Deserialize<'a>,
+    T: SlashingProofData<'a>,
 {
     // Statue of limitations is 1 epoch
     let clock = Clock::get()?;
@@ -36,7 +35,7 @@ where
     }
 
     let proof_data: T =
-        bincode::deserialize(proof_data).map_err(|_| SlashingError::ShredDeserializationError)?;
+        T::unpack(proof_data).map_err(|_| SlashingError::ShredDeserializationError)?;
 
     SlashingProofData::verify_proof(proof_data, slot, pubkey)?;
 
@@ -83,7 +82,7 @@ mod tests {
             shred::tests::new_rand_data_shred,
         },
         rand::Rng,
-        solana_ledger::{blockstore_meta::DuplicateSlotProof, shred::Shredder},
+        solana_ledger::shred::Shredder,
         solana_sdk::{
             clock::{Clock, Slot, DEFAULT_SLOTS_PER_EPOCH},
             program_error::ProgramError,
@@ -105,34 +104,34 @@ mod tests {
             new_rand_data_shred(&mut rng, next_shred_index, &shredder, &leader, true, true);
         let shred2 =
             new_rand_data_shred(&mut rng, next_shred_index, &shredder, &leader, true, true);
-        let proof = DuplicateSlotProof {
-            shred1: shred1.payload().clone(),
-            shred2: shred2.payload().clone(),
+        let proof = DuplicateBlockProofData {
+            shred1: shred1.payload().as_slice(),
+            shred2: shred2.payload().as_slice(),
         };
-        bincode::serialize(&proof).unwrap()
+        proof.pack()
     }
 
     #[test]
-    fn statue_of_limitations() {
+    fn test_statue_of_limitations() {
         unsafe {
             CLOCK_SLOT = SLOT + 5;
-            test_statue_of_limitations().unwrap();
+            verify_with_clock().unwrap();
 
             CLOCK_SLOT = SLOT - 1;
             assert_eq!(
-                test_statue_of_limitations().unwrap_err(),
+                verify_with_clock().unwrap_err(),
                 ProgramError::ArithmeticOverflow
             );
 
             CLOCK_SLOT = SLOT + DEFAULT_SLOTS_PER_EPOCH + 1;
             assert_eq!(
-                test_statue_of_limitations().unwrap_err(),
+                verify_with_clock().unwrap_err(),
                 SlashingError::ExceedsStatueOfLimitations.into()
             );
         }
     }
 
-    fn test_statue_of_limitations() -> Result<(), ProgramError> {
+    fn verify_with_clock() -> Result<(), ProgramError> {
         struct SyscallStubs {}
         impl solana_sdk::program_stubs::SyscallStubs for SyscallStubs {
             fn sol_get_clock_sysvar(&self, var_addr: *mut u8) -> u64 {

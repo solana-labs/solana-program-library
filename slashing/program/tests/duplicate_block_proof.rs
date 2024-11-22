@@ -4,7 +4,7 @@ use {
     rand::Rng,
     solana_entry::entry::Entry,
     solana_ledger::{
-        blockstore_meta::{DuplicateSlotProof, ErasureMeta},
+        blockstore_meta::ErasureMeta,
         shred::{ProcessShredsStats, ReedSolomonCache, Shred, Shredder},
     },
     solana_program::pubkey::Pubkey,
@@ -22,7 +22,8 @@ use {
     spl_pod::bytemuck::pod_get_packed_len,
     spl_record::{instruction as record, state::RecordData},
     spl_slashing::{
-        error::SlashingError, id, instruction, processor::process_instruction, state::ProofType,
+        duplicate_block_proof::DuplicateBlockProofData, error::SlashingError, id, instruction,
+        processor::process_instruction, state::ProofType,
     },
     std::sync::Arc,
 };
@@ -208,11 +209,11 @@ async fn valid_proof_data() {
         "Expecting merkle root conflict",
     );
 
-    let duplicate_proof = DuplicateSlotProof {
-        shred1: shred1.into_payload(),
-        shred2: shred2.into_payload(),
+    let duplicate_proof = DuplicateBlockProofData {
+        shred1: shred1.payload().as_slice(),
+        shred2: shred2.payload().as_slice(),
     };
-    let data = bincode::serialize(&duplicate_proof).unwrap();
+    let data = duplicate_proof.pack();
 
     initialize_duplicate_proof_account(&mut context, &authority, &account).await;
     write_proof(&mut context, &authority, &account, &data).await;
@@ -258,11 +259,11 @@ async fn valid_proof_coding() {
         "Expected erasure consistency failure",
     );
 
-    let duplicate_proof = DuplicateSlotProof {
-        shred1: shred1.into_payload(),
-        shred2: shred2.into_payload(),
+    let duplicate_proof = DuplicateBlockProofData {
+        shred1: shred1.payload().as_slice(),
+        shred2: shred2.payload().as_slice(),
     };
-    let data = bincode::serialize(&duplicate_proof).unwrap();
+    let data = duplicate_proof.pack();
 
     initialize_duplicate_proof_account(&mut context, &authority, &account).await;
     write_proof(&mut context, &authority, &account, &data).await;
@@ -301,11 +302,11 @@ async fn invalid_proof_data() {
     let shred1 = new_rand_data_shred(&mut rng, next_shred_index, &shredder, &leader, true);
     let shred2 = shred1.clone();
 
-    let duplicate_proof = DuplicateSlotProof {
-        shred1: shred1.into_payload(),
-        shred2: shred2.into_payload(),
+    let duplicate_proof = DuplicateBlockProofData {
+        shred1: shred1.payload().as_slice(),
+        shred2: shred2.payload().as_slice(),
     };
-    let data = bincode::serialize(&duplicate_proof).unwrap();
+    let data = duplicate_proof.pack();
 
     initialize_duplicate_proof_account(&mut context, &authority, &account).await;
     write_proof(&mut context, &authority, &account, &data).await;
@@ -355,11 +356,11 @@ async fn invalid_proof_coding() {
         ErasureMeta::check_erasure_consistency(&shred1, &shred2),
         "Expecting no erasure conflict"
     );
-    let duplicate_proof = DuplicateSlotProof {
-        shred1: shred1.into_payload(),
-        shred2: shred2.into_payload(),
+    let duplicate_proof = DuplicateBlockProofData {
+        shred1: shred1.payload().as_slice(),
+        shred2: shred2.payload().as_slice(),
     };
-    let data = bincode::serialize(&duplicate_proof).unwrap();
+    let data = duplicate_proof.pack();
 
     initialize_duplicate_proof_account(&mut context, &authority, &account).await;
     write_proof(&mut context, &authority, &account, &data).await;

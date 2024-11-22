@@ -1,22 +1,40 @@
+//! Duplicate block proof data and verification
 use {
     crate::{
         error::SlashingError,
         shred::{Shred, ShredType},
         state::{ProofType, SlashingProofData},
     },
-    serde_derive::{Deserialize, Serialize},
+    bytemuck::try_from_bytes,
     solana_program::{clock::Slot, msg, pubkey::Pubkey},
+    spl_pod::primitives::PodU32,
 };
 
-#[derive(Deserialize, Serialize)]
-pub struct DuplicateBlockProofData {
-    #[serde(with = "serde_bytes")]
-    pub shred1: Vec<u8>,
-    #[serde(with = "serde_bytes")]
-    pub shred2: Vec<u8>,
+const LENGTH_SIZE: usize = std::mem::size_of::<PodU32>();
+
+/// Proof of a duplicate block violation
+pub struct DuplicateBlockProofData<'a> {
+    /// Shred signed by a leader
+    pub shred1: &'a [u8],
+    /// Conflicting shred signed by the same leader
+    pub shred2: &'a [u8],
 }
 
-impl SlashingProofData for DuplicateBlockProofData {
+impl<'a> DuplicateBlockProofData<'a> {
+    #[allow(dead_code)]
+    /// Packs proof data to write in account for
+    /// `SlashingInstruction::DuplicateBlockProof`
+    pub fn pack(self) -> Vec<u8> {
+        let mut buf = vec![];
+        buf.extend_from_slice(&(self.shred1.len() as u32).to_le_bytes());
+        buf.extend_from_slice(self.shred1);
+        buf.extend_from_slice(&(self.shred2.len() as u32).to_le_bytes());
+        buf.extend_from_slice(self.shred2);
+        buf
+    }
+}
+
+impl<'a> SlashingProofData<'a> for DuplicateBlockProofData<'a> {
     const PROOF_TYPE: ProofType = ProofType::DuplicateBlockProof;
 
     fn verify_proof(self, slot: Slot, _node_pubkey: &Pubkey) -> Result<(), SlashingError> {
@@ -29,6 +47,32 @@ impl SlashingProofData for DuplicateBlockProofData {
         let shred1 = Shred::new_from_payload(self.shred1)?;
         let shred2 = Shred::new_from_payload(self.shred2)?;
         check_shreds(slot, &shred1, &shred2)
+    }
+
+    fn unpack(data: &'a [u8]) -> Result<Self, SlashingError>
+    where
+        Self: Sized,
+    {
+        if data.len() < LENGTH_SIZE {
+            return Err(SlashingError::ProofBufferTooSmall);
+        }
+        let (length1, data) = data.split_at(LENGTH_SIZE);
+        let shred1_length = try_from_bytes::<PodU32>(length1)
+            .map_err(|_| SlashingError::ProofBufferDeserializationError)?;
+        let (shred1, data) = data.split_at(u32::from(*shred1_length) as usize);
+
+        if data.len() < LENGTH_SIZE {
+            return Err(SlashingError::ProofBufferTooSmall);
+        }
+        let (length2, shred2) = data.split_at(LENGTH_SIZE);
+        let shred2_length = try_from_bytes::<PodU32>(length2)
+            .map_err(|_| SlashingError::ProofBufferDeserializationError)?;
+
+        if shred2.len() < u32::from(*shred2_length) as usize {
+            return Err(SlashingError::ProofBufferTooSmall);
+        }
+
+        Ok(Self { shred1, shred2 })
     }
 }
 
@@ -194,21 +238,19 @@ mod tests {
             SIZE_OF_SIGNATURE,
         },
         rand::Rng,
-        solana_ledger::{
-            blockstore_meta::DuplicateSlotProof as SolanaDuplicateSlotProof,
-            shred::{Shred as SolanaShred, Shredder},
-        },
+        solana_ledger::shred::{Shred as SolanaShred, Shredder},
         solana_sdk::signature::{Keypair, Signature, Signer},
         std::sync::Arc,
     };
 
-    fn generate_proof_data(shred1: &SolanaShred, shred2: &SolanaShred) -> DuplicateBlockProofData {
-        let duplicate_proof = SolanaDuplicateSlotProof {
-            shred1: shred1.payload().clone(),
-            shred2: shred2.payload().clone(),
-        };
-        let data = bincode::serialize(&duplicate_proof).unwrap();
-        bincode::deserialize(&data).unwrap()
+    fn generate_proof_data<'a>(
+        shred1: &'a SolanaShred,
+        shred2: &'a SolanaShred,
+    ) -> DuplicateBlockProofData<'a> {
+        DuplicateBlockProofData {
+            shred1: shred1.payload().as_slice(),
+            shred2: shred2.payload().as_slice(),
+        }
     }
 
     #[test]
