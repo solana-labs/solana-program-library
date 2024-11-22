@@ -281,19 +281,17 @@ impl<'a> Config<'a> {
             .try_contains_id(DUMP_TRANSACTION_MESSAGE.name)
             .unwrap_or(false);
 
-        let pubkey_from_matches = |name| {
-            matches
-                .try_get_one::<String>(name)
+        let mut pubkey_from_matches = |name| {
+            SignerSource::try_get_pubkey(matches, name, wallet_manager)
                 .ok()
                 .flatten()
-                .and_then(|pubkey| Pubkey::from_str(pubkey).ok())
         };
 
         let default_program_id = spl_token::id();
         let (program_id, restrict_to_program_id) = if matches.is_present("program_2022") {
             (spl_token_2022::id(), true)
-        } else if let Some(program_id) = pubkey_from_matches("program_id") {
-            (program_id, true)
+        } else if let Some(program_id) = matches.get_one::<Pubkey>("program_id") {
+            (*program_id, true)
         } else if !sign_only {
             if let Some(address) = pubkey_from_matches("token")
                 .or_else(|| pubkey_from_matches("account"))
@@ -424,8 +422,9 @@ impl<'a> Config<'a> {
         wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
         token: Option<Pubkey>,
     ) -> Result<Pubkey, Error> {
-        if let Some(address) = pubkey_of_signer(arg_matches, override_name, wallet_manager)
-            .map_err(|e| -> Error { e.to_string().into() })?
+        if let Some(address) =
+            SignerSource::try_get_pubkey(arg_matches, override_name, wallet_manager)
+                .map_err(|e| -> Error { e.to_string().into() })?
         {
             return Ok(address);
         }
