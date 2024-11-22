@@ -186,17 +186,15 @@ impl<'a> Config<'a> {
             allow_null_signer: !multisigner_pubkeys.is_empty(),
         };
 
-        let default_keypair = cli_config.keypair_path.clone();
-        let default_keypair_source =
-            SignerSource::parse(&default_keypair).unwrap_or_else(print_error_and_exit);
         let default_signer: Option<Arc<dyn Signer>> = {
             if let Some(source) = matches.try_get_one::<SignerSource>("owner").ok().flatten() {
                 signer_from_source_with_config(matches, source, "owner", wallet_manager, &config)
                     .ok()
             } else {
-                signer_from_source_with_config(
+                let default_keypair = cli_config.keypair_path.clone();
+                signer_from_path_with_config(
                     matches,
-                    &default_keypair_source,
+                    &default_keypair,
                     "default",
                     wallet_manager,
                     &config,
