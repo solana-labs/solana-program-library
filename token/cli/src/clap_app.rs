@@ -298,7 +298,7 @@ pub fn owner_keypair_arg_with_value_name<'a>(value_name: &'static str) -> Arg<'a
         .long(OWNER_KEYPAIR_ARG.long)
         .takes_value(true)
         .value_name(value_name)
-        .validator(|s| is_valid_signer(s))
+        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
         .help(OWNER_KEYPAIR_ARG.help)
 }
 
@@ -1798,7 +1798,7 @@ pub fn app<'a>(
                         .help("Specify the token account to close \
                             [default: owner's associated token account]"),
                 )
-                .arg(owner_address_arg())
+                .arg(owner_address_arg_temp())
                 .arg(multisig_signer_arg())
                 .nonce_args(true)
                 .offline_args(),
@@ -2382,7 +2382,7 @@ pub fn app<'a>(
                         .required(true)
                         .help("Specify the address of the account to send lamports to"),
                 )
-                .arg(owner_address_arg())
+                .arg(owner_address_arg_temp())
                 .arg(multisig_signer_arg())
         )
         .subcommand(

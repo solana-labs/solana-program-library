@@ -1,8 +1,14 @@
 use {
-    crate::clap_app::{Error, COMPUTE_UNIT_LIMIT_ARG, COMPUTE_UNIT_PRICE_ARG, MULTISIG_SIGNER_ARG},
+    crate::{
+        clap_app::{Error, COMPUTE_UNIT_LIMIT_ARG, COMPUTE_UNIT_PRICE_ARG, MULTISIG_SIGNER_ARG},
+        print_error_and_exit,
+    },
     clap::ArgMatches,
     solana_clap_v3_utils::{
-        input_parsers::{pubkey_of_signer, signer::SignerSource},
+        input_parsers::{
+            pubkey_of_signer,
+            signer::{SignerSource, SignerSourceKind},
+        },
         input_validators::normalize_to_url_if_moniker,
         keypair::SignerFromPathConfig,
         nonce::{NONCE_ARG, NONCE_AUTHORITY_ARG},
@@ -181,23 +187,23 @@ impl<'a> Config<'a> {
         };
 
         let default_keypair = cli_config.keypair_path.clone();
-
+        let default_keypair_source =
+            SignerSource::parse(&default_keypair).unwrap_or_else(print_error_and_exit);
         let default_signer: Option<Arc<dyn Signer>> = {
-            if let Some(owner_path) = matches.try_get_one::<String>("owner").ok().flatten() {
-                signer_from_path_with_config(matches, owner_path, "owner", wallet_manager, &config)
+            if let Some(source) = matches.try_get_one::<SignerSource>("owner").ok().flatten() {
+                signer_from_source_with_config(matches, source, "owner", wallet_manager, &config)
                     .ok()
             } else {
-                signer_from_path_with_config(
+                signer_from_source_with_config(
                     matches,
-                    &default_keypair,
+                    &default_keypair_source,
                     "default",
                     wallet_manager,
                     &config,
                 )
                 .map_err(|e| {
                     if std::fs::metadata(&default_keypair).is_ok() {
-                        eprintln!("error: {}", e);
-                        exit(1);
+                        print_error_and_exit(e)
                     } else {
                         e
                     }
@@ -611,6 +617,33 @@ fn signer_from_path_with_config(
     solana_clap_v3_utils::keypair::signer_from_path_with_config(
         matches,
         path,
+        keypair_name,
+        wallet_manager,
+        config,
+    )
+}
+
+/// A wrapper function around the `solana_clap_v3_utils` `signer_from_source
+/// with_config` function. If the signer source is a pubkey, then it checks for
+/// signing-only or if null signer is allowed and creates a null signer.
+/// Otherwise, it invokes the `solana_clap_v3_utils` version of the function.
+fn signer_from_source_with_config(
+    matches: &ArgMatches,
+    source: &SignerSource,
+    keypair_name: &str,
+    wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
+    config: &SignerFromPathConfig,
+) -> Result<Box<dyn Signer>, Box<dyn std::error::Error>> {
+    if let SignerSourceKind::Pubkey(pubkey) = source.kind {
+        if matches.try_contains_id(SIGNER_ARG.name).is_err()
+            && (config.allow_null_signer || matches.try_contains_id(SIGN_ONLY_ARG.name)?)
+        {
+            return Ok(Box::new(NullSigner::new(&pubkey)));
+        }
+    }
+    solana_clap_v3_utils::keypair::signer_from_source_with_config(
+        matches,
+        source,
         keypair_name,
         wallet_manager,
         config,

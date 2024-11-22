@@ -6,6 +6,7 @@ use {
         config::{Config, MintInfo},
         encryption_keypair::*,
         output::*,
+        print_error_and_exit,
         sort::{sort_and_parse_token_accounts, AccountFilter},
     },
     clap::{value_t, value_t_or_exit, ArgMatches},
@@ -78,11 +79,6 @@ use {
     spl_token_metadata_interface::state::{Field, TokenMetadata},
     std::{collections::HashMap, fmt::Display, process::exit, rc::Rc, str::FromStr, sync::Arc},
 };
-
-fn print_error_and_exit<T, E: Display>(e: E) -> T {
-    eprintln!("error: {}", e);
-    exit(1)
-}
 
 fn amount_to_raw_amount(amount: Amount, decimals: u8, all_amount: Option<u64>, name: &str) -> u64 {
     match amount {
