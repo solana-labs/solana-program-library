@@ -368,7 +368,7 @@ class WithdrawStakeParams(NamedTuple):
     validator_stake: Pubkey
     """`[w]` Validator or reserve stake account to split"""
     destination_stake: Pubkey
-    """`[w]` Unitialized stake account to receive withdrawal"""
+    """`[w]` Uninitialized stake account to receive withdrawal"""
     destination_stake_authority: Pubkey
     """`[]` User account to set as a new withdraw authority"""
     source_transfer_authority: Pubkey
