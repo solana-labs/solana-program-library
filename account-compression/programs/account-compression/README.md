@@ -41,7 +41,7 @@ The SPL Account Compression Rust SDK provides tools and interfaces for implement
 Add this to your `Cargo.toml`:
 ```toml
 [dependencies]
-spl-account-compression = { version = "0.3.1", features = ["cpi"] }
+spl-account-compression = { version = "0.4.2", features = ["cpi"] }
 ```
 
 ## Documentation
