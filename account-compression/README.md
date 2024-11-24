@@ -1,36 +1,66 @@
-# Account Compression (Beta)
+# SPL Account Compression (Beta)
 
-This on-chain program provides an interface for composing smart-contracts to create and use
-SPL ConcurrentMerkleTrees. The primary application of using SPL ConcurrentMerkleTrees is
-to make edits to off-chain data with on-chain verification. 
+## Overview
 
-This program is targeted towards supporting [Metaplex Compressed NFTs](https://github.com/metaplex-foundation/mpl-bubblegum) and may be subject to change.
+SPL Account Compression is an on-chain program that enables smart contracts to work with SPL ConcurrentMerkleTrees. This technology allows for efficient on-chain verification of off-chain data modifications, primarily designed to support compressed NFTs on Solana.
 
-Note: Using this program requires an indexer to parse transaction information and write relevant information to an off-chain database.
+The main benefits include:
+- Reduced storage costs for NFT collections
+- Efficient on-chain verification of off-chain data
+- Optimal for large-scale NFT operations
 
-A _**rough draft**_ of the whitepaper for SPL ConcurrentMerkleTree's can be found [here](https://drive.google.com/file/d/1BOpa5OFmara50fTvL0VIVYjtg-qzHCVc/view).
+> **Important**: Implementation requires an indexer service to monitor transactions and maintain an off-chain database of relevant data.
 
-## Rust Packages
+## Primary Use Case
 
-* `spl-account-compression`: SDK for interacting with account compression program
-* `spl-noop`: SDK for interacting with no op program, primarily for circumventing log truncation
-* `spl-concurrent-merkle-tree`: SDK for creating SPL ConcurrentMerkleTrees
+The program's main application is supporting [Metaplex Compressed NFTs](https://github.com/metaplex-foundation/mpl-bubblegum), allowing creators to mint and manage NFTs at a fraction of the usual cost. The implementation may evolve as the technology matures.
 
-## Typescript SDK
+## Technical Documentation
 
-`@solana/spl-account-compression` is generated using Metaplex Foundation's [Solita](https://github.com/metaplex-foundation/solita/). 
+A preliminary whitepaper detailing SPL ConcurrentMerkleTrees can be found [here](https://drive.google.com/file/d/1BOpa5OFmara50fTvL0VIVYjtg-qzHCVc/view).
 
-## Testing and Development
+## Available Packages
 
-Testing contracts locally requires the SDK to be built. 
+### Rust SDKs
 
-With a built local SDK, the test suite can be ran with:
+The program provides three main Rust packages:
 
-1. `pnpm link @solana/spl-account-compression`
-2. `pnpm i`
-3. `pnpm test`
+1. `spl-account-compression`
+   - Core SDK for interacting with the account compression program
+   - Handles primary compression functionality
 
-## Audit
+2. `spl-noop`
+   - Utility SDK for the no-op program
+   - Primarily used to handle log truncation issues
 
-The repository [README](https://github.com/solana-labs/solana-program-library#audits)
-contains information about program audits.
+3. `spl-concurrent-merkle-tree`
+   - SDK for creating and managing SPL ConcurrentMerkleTrees
+   - Provides core merkle tree functionality
+
+### TypeScript Support
+
+The `@solana/spl-account-compression` package provides TypeScript bindings, generated using [Solita](https://github.com/metaplex-foundation/solita/) by the Metaplex Foundation.
+
+## Development Guide
+
+### Setting Up the Test Environment
+
+To run the test suite locally, follow these steps:
+
+1. Build the local SDK
+2. Link the account compression package:
+   ```bash
+   pnpm link @solana/spl-account-compression
+   ```
+3. Install dependencies:
+   ```bash
+   pnpm i
+   ```
+4. Run the test suite:
+   ```bash
+   pnpm test
+   ```
+
+## Security
+
+The program has undergone security audits. For detailed information about the audit status and findings, please refer to the main [Solana Program Library README](https://github.com/solana-labs/solana-program-library#audits).
