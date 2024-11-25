@@ -23,8 +23,8 @@ impl ProofType {
         match self {
             Self::InvalidType => panic!("Cannot determine size of invalid proof type"),
             Self::DuplicateBlockProof => {
-                // Duplicate block proof consists of 2 shreds that can be `PACKET_DATA_SIZE`
-                std::mem::size_of::<DuplicateBlockProofData>().saturating_add(2 * PACKET_DATA_SIZE)
+                // Duplicate block proof consists of 2 shreds that can be `PACKET_DATA_SIZE`.
+                DuplicateBlockProofData::size_of(PACKET_DATA_SIZE)
             }
         }
     }

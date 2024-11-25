@@ -10,8 +10,6 @@ use {
     spl_pod::primitives::PodU32,
 };
 
-const LENGTH_SIZE: usize = std::mem::size_of::<PodU32>();
-
 /// Proof of a duplicate block violation
 pub struct DuplicateBlockProofData<'a> {
     /// Shred signed by a leader
@@ -21,6 +19,8 @@ pub struct DuplicateBlockProofData<'a> {
 }
 
 impl<'a> DuplicateBlockProofData<'a> {
+    const LENGTH_SIZE: usize = std::mem::size_of::<PodU32>();
+
     #[allow(dead_code)]
     /// Packs proof data to write in account for
     /// `SlashingInstruction::DuplicateBlockProof`
@@ -31,6 +31,15 @@ impl<'a> DuplicateBlockProofData<'a> {
         buf.extend_from_slice(&(self.shred2.len() as u32).to_le_bytes());
         buf.extend_from_slice(self.shred2);
         buf
+    }
+
+    /// Given the maximum size of a shred as `shred_size` this returns
+    /// the maximum size of the account needed to store a
+    /// `DuplicateBlockProofData`
+    pub const fn size_of(shred_size: usize) -> usize {
+        2usize
+            .wrapping_mul(shred_size)
+            .saturating_add(2 * Self::LENGTH_SIZE)
     }
 }
 
@@ -53,18 +62,18 @@ impl<'a> SlashingProofData<'a> for DuplicateBlockProofData<'a> {
     where
         Self: Sized,
     {
-        if data.len() < LENGTH_SIZE {
+        if data.len() < Self::LENGTH_SIZE {
             return Err(SlashingError::ProofBufferTooSmall);
         }
-        let (length1, data) = data.split_at(LENGTH_SIZE);
+        let (length1, data) = data.split_at(Self::LENGTH_SIZE);
         let shred1_length = try_from_bytes::<PodU32>(length1)
             .map_err(|_| SlashingError::ProofBufferDeserializationError)?;
         let (shred1, data) = data.split_at(u32::from(*shred1_length) as usize);
 
-        if data.len() < LENGTH_SIZE {
+        if data.len() < Self::LENGTH_SIZE {
             return Err(SlashingError::ProofBufferTooSmall);
         }
-        let (length2, shred2) = data.split_at(LENGTH_SIZE);
+        let (length2, shred2) = data.split_at(Self::LENGTH_SIZE);
         let shred2_length = try_from_bytes::<PodU32>(length2)
             .map_err(|_| SlashingError::ProofBufferDeserializationError)?;
 
