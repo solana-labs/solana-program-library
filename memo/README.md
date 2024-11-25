@@ -1,3 +1,6 @@
+NOTE: The memo program and clients are now maintained at
+[solana-program/memo](https://github.com/solana-program/memo).
+
 # Memo Program
 
 A simple program that validates a string of UTF-8 encoded characters and logs it

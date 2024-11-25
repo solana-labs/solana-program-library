@@ -26,7 +26,7 @@ solana-program = "2.1.0"
 solana-security-txt = "1.1.1"
 solana-zk-sdk = "2.1.0"
 spl-elgamal-registry = { version = "0.1.0", path = "../confidential-transfer/elgamal-registry", features = ["no-entrypoint"] }
-spl-memo = { version = "6.0", path = "../../memo/program", features = [ "no-entrypoint" ] }
+spl-memo = { version = "6.0", features = ["no-entrypoint"] }
 spl-token = { version = "7.0",  path = "../program", features = ["no-entrypoint"] }
 spl-token-confidential-transfer-ciphertext-arithmetic = { version = "0.2.0", path = "../confidential-transfer/ciphertext-arithmetic" }
 spl-token-confidential-transfer-proof-extraction = { version = "0.2.0", path = "../confidential-transfer/proof-extraction" }
