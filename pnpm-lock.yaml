@@ -744,8 +744,8 @@ importers:
         specifier: ^5.1.2
         version: 5.1.2
       chai-as-promised:
-        specifier: ^8.0.0
-        version: 8.0.0(chai@5.1.2)
+        specifier: ^8.0.1
+        version: 8.0.1(chai@5.1.2)
       eslint:
         specifier: ^8.57.0
         version: 8.57.0
@@ -4247,8 +4247,8 @@ packages:
       nofilter: 3.1.0
     dev: true
 
-  /chai-as-promised@8.0.0(chai@5.1.2):
-    resolution: {integrity: sha512-sMsGXTrS3FunP/wbqh/KxM8Kj/aLPXQGkNtvE5wPfSToq8wkkvBpTZo1LIiEVmC4BwkKpag+l5h/20lBMk6nUg==}
+  /chai-as-promised@8.0.1(chai@5.1.2):
+    resolution: {integrity: sha512-OIEJtOL8xxJSH8JJWbIoRjybbzR52iFuDHuF8eb+nTPD6tgXLjRqsgnUGqQfFODxYvq5QdirT0pN9dZ0+Gz6rA==}
     peerDependencies:
       chai: '>= 2.1.2 < 6'
     dependencies:
