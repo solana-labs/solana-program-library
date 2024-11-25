@@ -21,7 +21,9 @@ use {
             mint_close_authority::MintCloseAuthority,
             non_transferable::{NonTransferable, NonTransferableAccount},
             permanent_delegate::{get_permanent_delegate, PermanentDelegate},
-            reallocate, token_group, token_metadata,
+            reallocate,
+            scaled_ui_amount::{self, ScaledUiAmountConfig},
+            token_group, token_metadata,
             transfer_fee::{self, TransferFeeAmount, TransferFeeConfig},
             transfer_hook::{self, TransferHook, TransferHookAccount},
             AccountType, BaseStateWithExtensions, BaseStateWithExtensionsMut, ExtensionType,
@@ -906,6 +908,19 @@ impl Processor {
                     )?;
                     extension.authority = new_authority.try_into()?;
                 }
+                AuthorityType::ScaledUiAmount => {
+                    let extension = mint.get_extension_mut::<ScaledUiAmountConfig>()?;
+                    let maybe_authority: Option<Pubkey> = extension.authority.into();
+                    let authority = maybe_authority.ok_or(TokenError::AuthorityTypeNotSupported)?;
+                    Self::validate_owner(
+                        program_id,
+                        &authority,
+                        authority_info,
+                        authority_info_data_len,
+                        account_info_iter.as_slice(),
+                    )?;
+                    extension.authority = new_authority.try_into()?;
+                }
                 _ => {
                     return Err(TokenError::AuthorityTypeNotSupported.into());
                 }
@@ -1372,6 +1387,11 @@ impl Processor {
             extension
                 .amount_to_ui_amount(amount, mint.base.decimals, unix_timestamp)
                 .ok_or(ProgramError::InvalidArgument)?
+        } else if let Ok(extension) = mint.get_extension::<ScaledUiAmountConfig>() {
+            let unix_timestamp = Clock::get()?.unix_timestamp;
+            extension
+                .amount_to_ui_amount(amount, mint.base.decimals, unix_timestamp)
+                .ok_or(ProgramError::InvalidArgument)?
         } else {
             crate::amount_to_ui_amount_string_trimmed(amount, mint.base.decimals)
         };
@@ -1391,6 +1411,9 @@ impl Processor {
         let mint = PodStateWithExtensions::<PodMint>::unpack(&mint_data)
             .map_err(|_| Into::<ProgramError>::into(TokenError::InvalidMint))?;
         let amount = if let Ok(extension) = mint.get_extension::<InterestBearingConfig>() {
+            let unix_timestamp = Clock::get()?.unix_timestamp;
+            extension.try_ui_amount_into_amount(ui_amount, mint.base.decimals, unix_timestamp)?
+        } else if let Ok(extension) = mint.get_extension::<ScaledUiAmountConfig>() {
             let unix_timestamp = Clock::get()?.unix_timestamp;
             extension.try_ui_amount_into_amount(ui_amount, mint.base.decimals, unix_timestamp)?
         } else {
@@ -1808,6 +1831,14 @@ impl Processor {
                 PodTokenInstruction::ConfidentialMintBurnExtension => {
                     msg!("Instruction: ConfidentialMintBurnExtension");
                     confidential_mint_burn::processor::process_instruction(
+                        program_id,
+                        accounts,
+                        &input[1..],
+                    )
+                }
+                PodTokenInstruction::ScaledUiAmountExtension => {
+                    msg!("Instruction: ScaledUiAmountExtension");
+                    scaled_ui_amount::processor::process_instruction(
                         program_id,
                         accounts,
                         &input[1..],

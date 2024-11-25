@@ -22,6 +22,7 @@ use {
             mint_close_authority::MintCloseAuthority,
             non_transferable::{NonTransferable, NonTransferableAccount},
             permanent_delegate::PermanentDelegate,
+            scaled_ui_amount::ScaledUiAmountConfig,
             transfer_fee::{TransferFeeAmount, TransferFeeConfig},
             transfer_hook::{TransferHook, TransferHookAccount},
         },
@@ -76,6 +77,8 @@ pub mod non_transferable;
 pub mod permanent_delegate;
 /// Utility to reallocate token accounts
 pub mod reallocate;
+/// Scaled UI Amount extension
+pub mod scaled_ui_amount;
 /// Token-group extension
 pub mod token_group;
 /// Token-metadata extension
@@ -1109,6 +1112,8 @@ pub enum ExtensionType {
     TokenGroupMember,
     /// Mint allowing the minting and burning of confidential tokens
     ConfidentialMintBurn,
+    /// Tokens whose UI amount is scaled by a given amount
+    ScaledUiAmount,
 
     /// Test variable-length mint extension
     #[cfg(test)]
@@ -1191,6 +1196,7 @@ impl ExtensionType {
             ExtensionType::GroupMemberPointer => pod_get_packed_len::<GroupMemberPointer>(),
             ExtensionType::TokenGroupMember => pod_get_packed_len::<TokenGroupMember>(),
             ExtensionType::ConfidentialMintBurn => pod_get_packed_len::<ConfidentialMintBurn>(),
+            ExtensionType::ScaledUiAmount => pod_get_packed_len::<ScaledUiAmountConfig>(),
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => pod_get_packed_len::<AccountPaddingTest>(),
             #[cfg(test)]
@@ -1255,7 +1261,8 @@ impl ExtensionType {
             | ExtensionType::TokenGroup
             | ExtensionType::GroupMemberPointer
             | ExtensionType::ConfidentialMintBurn
-            | ExtensionType::TokenGroupMember => AccountType::Mint,
+            | ExtensionType::TokenGroupMember
+            | ExtensionType::ScaledUiAmount => AccountType::Mint,
             ExtensionType::ImmutableOwner
             | ExtensionType::TransferFeeAmount
             | ExtensionType::ConfidentialTransferAccount
@@ -1307,6 +1314,8 @@ impl ExtensionType {
         let mut confidential_transfer_mint = false;
         let mut confidential_transfer_fee_config = false;
         let mut confidential_mint_burn = false;
+        let mut interest_bearing = false;
+        let mut scaled_ui_amount = false;
 
         for extension_type in mint_extension_types {
             match extension_type {
@@ -1316,6 +1325,8 @@ impl ExtensionType {
                     confidential_transfer_fee_config = true
                 }
                 ExtensionType::ConfidentialMintBurn => confidential_mint_burn = true,
+                ExtensionType::InterestBearingConfig => interest_bearing = true,
+                ExtensionType::ScaledUiAmount => scaled_ui_amount = true,
                 _ => (),
             }
         }
@@ -1330,6 +1341,10 @@ impl ExtensionType {
         }
 
         if confidential_mint_burn && !confidential_transfer_mint {
+            return Err(TokenError::InvalidExtensionCombination);
+        }
+
+        if scaled_ui_amount && interest_bearing {
             return Err(TokenError::InvalidExtensionCombination);
         }
 

@@ -263,6 +263,9 @@ pub enum TokenError {
     /// Withdraw / Deposit not allowed for confidential-mint-burn
     #[error("Withdraw / Deposit not allowed for confidential-mint-burn")]
     IllegalMintBurnConversion,
+    /// Invalid scale for scaled ui amount
+    #[error("Invalid scale for scaled ui amount")]
+    InvalidScale,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {
@@ -452,6 +455,9 @@ impl PrintProgramError for TokenError {
             }
             TokenError::IllegalMintBurnConversion => {
                 msg!("Conversions from normal to confidential token balance and vice versa are illegal if the confidential-mint-burn extension is enabled")
+            }
+            TokenError::InvalidScale => {
+                msg!("Invalid scale for scaled ui amount")
             }
         }
     }
