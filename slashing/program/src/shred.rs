@@ -332,7 +332,7 @@ impl<'a> Shred<'a> {
         {
             return false;
         }
-        fn get_payload<'a>(shred: &'a Shred<'a>) -> &'a [u8] {
+        fn get_payload<'a>(shred: &Shred<'a>) -> &'a [u8] {
             let Ok((proof_offset, proof_size)) = shred.get_proof_offset_and_size() else {
                 return shred.payload;
             };
