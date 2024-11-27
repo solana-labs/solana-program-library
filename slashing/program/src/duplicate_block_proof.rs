@@ -67,7 +67,12 @@ impl<'a> SlashingProofData<'a> for DuplicateBlockProofData<'a> {
         let (length1, data) = data.split_at(Self::LENGTH_SIZE);
         let shred1_length = try_from_bytes::<PodU32>(length1)
             .map_err(|_| SlashingError::ProofBufferDeserializationError)?;
-        let (shred1, data) = data.split_at(u32::from(*shred1_length) as usize);
+        let shred1_length = u32::from(*shred1_length) as usize;
+
+        if data.len() < shred1_length {
+            return Err(SlashingError::ProofBufferTooSmall);
+        }
+        let (shred1, data) = data.split_at(shred1_length);
 
         if data.len() < Self::LENGTH_SIZE {
             return Err(SlashingError::ProofBufferTooSmall);
@@ -75,8 +80,9 @@ impl<'a> SlashingProofData<'a> for DuplicateBlockProofData<'a> {
         let (length2, shred2) = data.split_at(Self::LENGTH_SIZE);
         let shred2_length = try_from_bytes::<PodU32>(length2)
             .map_err(|_| SlashingError::ProofBufferDeserializationError)?;
+        let shred2_length = u32::from(*shred2_length) as usize;
 
-        if shred2.len() < u32::from(*shred2_length) as usize {
+        if shred2.len() < shred2_length {
             return Err(SlashingError::ProofBufferTooSmall);
         }
 
