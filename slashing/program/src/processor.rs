@@ -89,11 +89,13 @@ mod tests {
             signature::Keypair,
             signer::Signer,
         },
-        std::sync::Arc,
+        std::sync::{Arc, RwLock},
     };
 
     const SLOT: Slot = 53084024;
-    static mut CLOCK_SLOT: Slot = SLOT;
+    lazy_static::lazy_static! {
+        static ref CLOCK_SLOT: Arc<RwLock<Slot>> = Arc::new(RwLock::new(SLOT));
+    }
 
     fn generate_proof_data(leader: Arc<Keypair>) -> Vec<u8> {
         let mut rng = rand::thread_rng();
@@ -113,22 +115,20 @@ mod tests {
 
     #[test]
     fn test_statue_of_limitations() {
-        unsafe {
-            CLOCK_SLOT = SLOT + 5;
-            verify_with_clock().unwrap();
+        *CLOCK_SLOT.write().unwrap() = SLOT + 5;
+        verify_with_clock().unwrap();
 
-            CLOCK_SLOT = SLOT - 1;
-            assert_eq!(
-                verify_with_clock().unwrap_err(),
-                ProgramError::ArithmeticOverflow
-            );
+        *CLOCK_SLOT.write().unwrap() = SLOT - 1;
+        assert_eq!(
+            verify_with_clock().unwrap_err(),
+            ProgramError::ArithmeticOverflow
+        );
 
-            CLOCK_SLOT = SLOT + DEFAULT_SLOTS_PER_EPOCH + 1;
-            assert_eq!(
-                verify_with_clock().unwrap_err(),
-                SlashingError::ExceedsStatueOfLimitations.into()
-            );
-        }
+        *CLOCK_SLOT.write().unwrap() = SLOT + DEFAULT_SLOTS_PER_EPOCH + 1;
+        assert_eq!(
+            verify_with_clock().unwrap_err(),
+            SlashingError::ExceedsStatueOfLimitations.into()
+        );
     }
 
     fn verify_with_clock() -> Result<(), ProgramError> {
@@ -137,7 +137,7 @@ mod tests {
             fn sol_get_clock_sysvar(&self, var_addr: *mut u8) -> u64 {
                 unsafe {
                     let clock = Clock {
-                        slot: CLOCK_SLOT,
+                        slot: *CLOCK_SLOT.read().unwrap(),
                         ..Clock::default()
                     };
                     *(var_addr as *mut _ as *mut Clock) = clock;
