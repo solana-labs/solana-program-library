@@ -62,12 +62,17 @@ pub fn amount_to_ui_amount_string(amount: u64, decimals: u8) -> String {
 /// Convert a raw amount to its UI representation using the given decimals field
 /// Excess zeroes or unneeded decimal point are trimmed.
 pub fn amount_to_ui_amount_string_trimmed(amount: u64, decimals: u8) -> String {
-    let mut s = amount_to_ui_amount_string(amount, decimals);
+    let s = amount_to_ui_amount_string(amount, decimals);
+    trim_ui_amount_string(s, decimals)
+}
+
+/// Trims a string number by removing excess zeroes or unneeded decimal point
+fn trim_ui_amount_string(mut ui_amount: String, decimals: u8) -> String {
     if decimals > 0 {
-        let zeros_trimmed = s.trim_end_matches('0');
-        s = zeros_trimmed.trim_end_matches('.').to_string();
+        let zeros_trimmed = ui_amount.trim_end_matches('0');
+        ui_amount = zeros_trimmed.trim_end_matches('.').to_string();
     }
-    s
+    ui_amount
 }
 
 /// Try to convert a UI representation of a token amount to its raw amount using
