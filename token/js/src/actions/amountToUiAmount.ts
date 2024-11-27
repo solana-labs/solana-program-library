@@ -38,6 +38,18 @@ const SECONDS_PER_YEAR = 60 * 60 * 24 * 365.24;
 /**
  * Convert amount to UiAmount for a mint with interest bearing extension without simulating a transaction
  * This implements the same logic as the CPI instruction available in /token/program-2022/src/extension/interest_bearing_mint/mod.rs
+ * In general to calculate compounding interest over a period of time, the formula is:
+ * A = P * e^(r * t) where
+ * A = final amount after interest
+ * P = principal amount (initial investment)
+ * r = annual interest rate (as a decimal, e.g., 5% = 0.05)
+ * t = time in years
+ * e = mathematical constant (~2.718)
+ * 
+ * In this case, we are calculating the total scale factor for the interest bearing extension which is the product of two exponential functions:    
+ * totalScale = e^(r1 * t1) * e^(r2 * t2)
+ * where r1 and r2 are the interest rates before and after the last update, and t1 and t2 are the times in years between
+ * the initialization timestamp and the last update timestamp, and between the last update timestamp and the current timestamp.
  * 
  * @param amount                   Amount of tokens to be converted
  * @param decimals                 Number of decimals of the mint
@@ -62,12 +74,14 @@ export function amountToUiAmountWithoutSimulation(
     Decimal.set({ toExpPos: 24, toExpNeg: -24 })
 
     // Calculate pre-update exponent
+    // e^(preUpdateAverageRate * (lastUpdateTimestamp - initializationTimestamp) / (SECONDS_PER_YEAR * ONE_IN_BASIS_POINTS))
     const preUpdateTimespan = new Decimal(lastUpdateTimestamp).minus(initializationTimestamp);
     const preUpdateNumerator = new Decimal(preUpdateAverageRate).times(preUpdateTimespan);
     const preUpdateExponent = preUpdateNumerator.div(new Decimal(SECONDS_PER_YEAR).times(ONE_IN_BASIS_POINTS));
     const preUpdateExp = preUpdateExponent.exp();
 
     // Calculate post-update exponent
+    // e^(currentRate * (currentTimestamp - lastUpdateTimestamp) / (SECONDS_PER_YEAR * ONE_IN_BASIS_POINTS))
     const postUpdateTimespan = new Decimal(currentTimestamp).minus(lastUpdateTimestamp);
     const postUpdateNumerator = new Decimal(currentRate).times(postUpdateTimespan);
     const postUpdateExponent = postUpdateNumerator.div(new Decimal(SECONDS_PER_YEAR).times(ONE_IN_BASIS_POINTS));
@@ -88,7 +102,7 @@ export function amountToUiAmountWithoutSimulation(
  * This implements the same logic as the CPI instruction available in /token/program-2022/src/extension/interest_bearing_mint/mod.rs
  *
  * @param connection     Connection to use
- * @param mint           Mint for the account
+ * @param mint           Mint to use for calculations
  * @param amount         Amount of tokens to be converted to Ui Amount
  * @param programId      SPL Token program account (default: TOKEN_PROGRAM_ID)
  *
@@ -139,6 +153,20 @@ export async function amountToUiAmountForMintWithoutSimulation(
  * @param preUpdateAverageRate      Interest rate in basis points (hundredths of a percent) before the last update
  * @param currentRate              Current interest rate in basis points
  * 
+ * In general to calculate the principle from the UI amount, the formula is:
+ * P = A / (e^(r * t)) where    
+ * P = principle
+ * A = UI amount
+ * r = annual interest rate (as a decimal, e.g., 5% = 0.05)
+ * t = time in years
+ * 
+ * In this case, we are calculating the principle by dividing the UI amount by the total scale factor which is the product of two exponential functions:
+ * totalScale = e^(r1 * t1) * e^(r2 * t2)
+ * where r1 is the pre-update average rate, r2 is the current rate, t1 is the time in years between the initialization timestamp and the last update timestamp,
+ * and t2 is the time in years between the last update timestamp and the current timestamp.
+ * then to calculate the principle, we divide the UI amount by the total scale factor:
+ * P = A / totalScale
+ * 
  * @return Original amount (principle) without interest
  */
 
@@ -180,9 +208,10 @@ export function uiAmountToAmountWithoutSimulation(
  * Convert a UI amount with interest back to the original UI amount without interest
  * 
  * @param connection     Connection to use
- * @param mint           Mint to get decimals from
+ * @param mint           Mint to use for calculations
  * @param uiAmount       UI Amount (principle plus continuously compounding interest) to be converted back to original principle
  * @param programId      SPL Token program account (default: TOKEN_PROGRAM_ID)
+ * 
  * 
  * @return Original UI Amount (principle) without interest
  */
