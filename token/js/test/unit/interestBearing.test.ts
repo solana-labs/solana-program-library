@@ -1,11 +1,11 @@
+import { expect } from 'chai';
+import sinon from 'sinon';
 import { Connection, PublicKey } from '@solana/web3.js';
 import { amountToUiAmountForMintWithoutSimulation, uiAmountToAmountForMintWithoutSimulation } from '../../src/actions/amountToUiAmount';
 import { AccountLayout, InterestBearingMintConfigStateLayout, TOKEN_2022_PROGRAM_ID } from '../../src';
-import { expect } from 'chai';
 import { MintLayout } from '../../src/state/mint';
 import { ExtensionType } from '../../src/extensions/extensionType';
 import { AccountType } from '../../src/extensions/accountType';
-import sinon from 'sinon';
 
 const ONE_YEAR_IN_SECONDS = 31556736;
 
