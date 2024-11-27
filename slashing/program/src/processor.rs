@@ -12,12 +12,12 @@ use {
     },
     solana_program::{
         account_info::{next_account_info, AccountInfo},
-        clock::{Slot, DEFAULT_SLOTS_PER_EPOCH},
+        clock::Slot,
         entrypoint::ProgramResult,
         msg,
         program_error::ProgramError,
         pubkey::Pubkey,
-        sysvar::{clock::Clock, Sysvar},
+        sysvar::{clock::Clock, epoch_schedule::EpochSchedule, Sysvar},
     },
 };
 
@@ -30,7 +30,8 @@ where
     let Some(elapsed) = clock.slot.checked_sub(slot) else {
         return Err(ProgramError::ArithmeticOverflow);
     };
-    if elapsed > DEFAULT_SLOTS_PER_EPOCH {
+    let epoch_schedule = EpochSchedule::get()?;
+    if elapsed > epoch_schedule.slots_per_epoch {
         return Err(SlashingError::ExceedsStatueOfLimitations.into());
     }
 
@@ -85,6 +86,7 @@ mod tests {
         solana_ledger::shred::Shredder,
         solana_sdk::{
             clock::{Clock, Slot, DEFAULT_SLOTS_PER_EPOCH},
+            epoch_schedule::EpochSchedule,
             program_error::ProgramError,
             signature::Keypair,
             signer::Signer,
@@ -141,6 +143,13 @@ mod tests {
                         ..Clock::default()
                     };
                     *(var_addr as *mut _ as *mut Clock) = clock;
+                }
+                solana_program::entrypoint::SUCCESS
+            }
+
+            fn sol_get_epoch_schedule_sysvar(&self, var_addr: *mut u8) -> u64 {
+                unsafe {
+                    *(var_addr as *mut _ as *mut EpochSchedule) = EpochSchedule::default();
                 }
                 solana_program::entrypoint::SUCCESS
             }
