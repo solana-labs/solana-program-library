@@ -124,8 +124,8 @@ importers:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@22.10.0)(typescript@5.7.2)
       typedoc:
-        specifier: ^0.26.10
-        version: 0.26.11(typescript@5.7.2)
+        specifier: ^0.27.0
+        version: 0.27.0(typescript@5.7.2)
       typescript:
         specifier: 5.7.2
         version: 5.7.2
@@ -176,8 +176,8 @@ importers:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@22.10.0)(typescript@5.7.2)
       typedoc:
-        specifier: ^0.26.11
-        version: 0.26.11(typescript@5.7.2)
+        specifier: ^0.27.0
+        version: 0.27.0(typescript@5.7.2)
       typescript:
         specifier: ^5.7.2
         version: 5.7.2
@@ -240,8 +240,8 @@ importers:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@22.10.0)(typescript@5.7.2)
       typedoc:
-        specifier: ^0.26.11
-        version: 0.26.11(typescript@5.7.2)
+        specifier: ^0.27.0
+        version: 0.27.0(typescript@5.7.2)
       typescript:
         specifier: ^5.7.2
         version: 5.7.2
@@ -301,8 +301,8 @@ importers:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@22.10.0)(typescript@5.7.2)
       typedoc:
-        specifier: ^0.26.11
-        version: 0.26.11(typescript@5.7.2)
+        specifier: ^0.27.0
+        version: 0.27.0(typescript@5.7.2)
       typescript:
         specifier: ^5.7.2
         version: 5.7.2
@@ -509,8 +509,8 @@ importers:
         specifier: ^2.8.1
         version: 2.8.1
       typedoc:
-        specifier: ^0.26.11
-        version: 0.26.11(typescript@5.7.2)
+        specifier: ^0.27.0
+        version: 0.27.0(typescript@5.7.2)
       typescript:
         specifier: ^5.7.2
         version: 5.7.2
@@ -573,8 +573,8 @@ importers:
         specifier: ^2.8.1
         version: 2.8.1
       typedoc:
-        specifier: ^0.26.11
-        version: 0.26.11(typescript@5.7.2)
+        specifier: ^0.27.0
+        version: 0.27.0(typescript@5.7.2)
       typescript:
         specifier: ^5.7.2
         version: 5.7.2
@@ -631,8 +631,8 @@ importers:
         specifier: ^2.8.1
         version: 2.8.1
       typedoc:
-        specifier: ^0.26.11
-        version: 0.26.11(typescript@5.7.2)
+        specifier: ^0.27.0
+        version: 0.27.0(typescript@5.7.2)
       typescript:
         specifier: ^5.7.2
         version: 5.7.2
@@ -771,8 +771,8 @@ importers:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@22.10.0)(typescript@5.7.2)
       typedoc:
-        specifier: ^0.26.11
-        version: 0.26.11(typescript@5.7.2)
+        specifier: ^0.27.0
+        version: 0.27.0(typescript@5.7.2)
       typescript:
         specifier: ^5.7.2
         version: 5.7.2
@@ -1456,6 +1456,14 @@ packages:
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
     dependencies:
       levn: 0.4.1
+    dev: true
+
+  /@gerrit0/mini-shiki@1.23.2:
+    resolution: {integrity: sha512-6e/41ZAilc2iE4n0bxxMSvzrt1dy2MSa9lSdd2M5lcTDlrzcau+FucIEDrG+xF1dPou/a093tm1t4HPTSI4g1w==}
+    dependencies:
+      '@shikijs/engine-oniguruma': 1.23.1
+      '@shikijs/types': 1.23.1
+      '@shikijs/vscode-textmate': 9.3.0
     dev: true
 
   /@hapi/hoek@9.3.0:
@@ -2472,15 +2480,22 @@ packages:
     resolution: {integrity: sha512-zt6OdqaDoOnJ1ZYsCYGt9YmWzDXl4vQdKTyJev62gFhRGKdx7mcT54V9KIjg+d2wi9EXsPvAPKe7i7WjfVWB8g==}
     dev: true
 
-  /@shikijs/core@1.16.2:
-    resolution: {integrity: sha512-XSVH5OZCvE4WLMgdoBqfPMYmGHGmCC3OgZhw0S7KcSi2XKZ+5oHGe71GFnTljgdOxvxx5WrRks6QoTLKrl1eAA==}
+  /@shikijs/engine-oniguruma@1.23.1:
+    resolution: {integrity: sha512-KQ+lgeJJ5m2ISbUZudLR1qHeH3MnSs2mjFg7bnencgs5jDVPeJ2NVDJ3N5ZHbcTsOIh0qIueyAJnwg7lg7kwXQ==}
     dependencies:
-      '@shikijs/vscode-textmate': 9.2.0
+      '@shikijs/types': 1.23.1
+      '@shikijs/vscode-textmate': 9.3.0
+    dev: true
+
+  /@shikijs/types@1.23.1:
+    resolution: {integrity: sha512-98A5hGyEhzzAgQh2dAeHKrWW4HfCMeoFER2z16p5eJ+vmPeF6lZ/elEne6/UCU551F/WqkopqRsr1l2Yu6+A0g==}
+    dependencies:
+      '@shikijs/vscode-textmate': 9.3.0
       '@types/hast': 3.0.4
     dev: true
 
-  /@shikijs/vscode-textmate@9.2.0:
-    resolution: {integrity: sha512-5FinaOp6Vdh/dl4/yaOTh0ZeKch+rYS8DUb38V3GMKYVkdqzxw53lViRKUYkVILRiVQT7dcPC7VvAKOR73zVtQ==}
+  /@shikijs/vscode-textmate@9.3.0:
+    resolution: {integrity: sha512-jn7/7ky30idSkd/O5yDBfAnVt+JJpepofP/POZ1iMOxK59cOfqIgg/Dj0eFsjOTMw+4ycJN0uhZH/Eb0bs/EUA==}
     dev: true
 
   /@sideway/address@4.1.5:
@@ -8590,14 +8605,6 @@ packages:
       rechoir: 0.6.2
     dev: true
 
-  /shiki@1.16.2:
-    resolution: {integrity: sha512-gSym0hZf5a1U0iDPsdoOAZbvoi+e0c6c3NKAi03FoSLTm7oG20tum29+gk0wzzivOasn3loxfGUPT+jZXIUbWg==}
-    dependencies:
-      '@shikijs/core': 1.16.2
-      '@shikijs/vscode-textmate': 9.2.0
-      '@types/hast': 3.0.4
-    dev: true
-
   /shx@0.3.4:
     resolution: {integrity: sha512-N6A9MLVqjxZYcVn8hLmtneQWIJtp8IKzMP4eMnx+nqkvXoqinUPCbUFLp2UcWTEIUONhlk0ewxr/jaVGlc+J+g==}
     engines: {node: '>=6'}
@@ -9283,19 +9290,19 @@ packages:
       possible-typed-array-names: 1.0.0
     dev: true
 
-  /typedoc@0.26.11(typescript@5.7.2):
-    resolution: {integrity: sha512-sFEgRRtrcDl2FxVP58Ze++ZK2UQAEvtvvH8rRlig1Ja3o7dDaMHmaBfvJmdGnNEFaLTpQsN8dpvZaTqJSu/Ugw==}
+  /typedoc@0.27.0(typescript@5.7.2):
+    resolution: {integrity: sha512-7AkTJhFdhsihthaBFHNpj5iFdLyR7FpQqXM+IABJmE1/qTjWypirCLrheToUP3fjpWHN1Drn3K7PWH1t37KvNQ==}
     engines: {node: '>= 18'}
     hasBin: true
     peerDependencies:
-      typescript: 4.6.x || 4.7.x || 4.8.x || 4.9.x || 5.0.x || 5.1.x || 5.2.x || 5.3.x || 5.4.x || 5.5.x || 5.6.x
+      typescript: 5.0.x || 5.1.x || 5.2.x || 5.3.x || 5.4.x || 5.5.x || 5.6.x || 5.7.x
     dependencies:
+      '@gerrit0/mini-shiki': 1.23.2
       lunr: 2.3.9
       markdown-it: 14.1.0
       minimatch: 9.0.5
-      shiki: 1.16.2
       typescript: 5.7.2
-      yaml: 2.5.1
+      yaml: 2.6.1
     dev: true
 
   /typescript-collections@1.3.3:
@@ -9563,8 +9570,8 @@ packages:
     resolution: {integrity: sha512-3wdGidZyq5PB084XLES5TpOSRA3wjXAlIWMhum2kRcv/41Sn2emQ0dycQW4uZXLejwKvg6EsvbdlVL+FYEct7A==}
     dev: true
 
-  /yaml@2.5.1:
-    resolution: {integrity: sha512-bLQOjaX/ADgQ20isPJRvF0iRUHIxVhYvr53Of7wGcWlO2jvtUlH5m87DsmulFVxRpNLOnI4tB6p/oh8D7kpn9Q==}
+  /yaml@2.6.1:
+    resolution: {integrity: sha512-7r0XPzioN/Q9kXBro/XPnA6kznR73DHq+GXh5ON7ZozRO6aMjbmiBuKste2wslTFkC5d1dw0GooOCepZXJ2SAg==}
     engines: {node: '>= 14'}
     hasBin: true
     dev: true
