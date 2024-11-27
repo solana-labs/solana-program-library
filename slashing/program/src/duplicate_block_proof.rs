@@ -21,7 +21,6 @@ pub struct DuplicateBlockProofData<'a> {
 impl<'a> DuplicateBlockProofData<'a> {
     const LENGTH_SIZE: usize = std::mem::size_of::<PodU32>();
 
-    #[allow(dead_code)]
     /// Packs proof data to write in account for
     /// `SlashingInstruction::DuplicateBlockProof`
     pub fn pack(self) -> Vec<u8> {
