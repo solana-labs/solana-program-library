@@ -251,6 +251,11 @@ mod tests {
         std::sync::Arc,
     };
 
+    const SLOT: Slot = 53084024;
+    const PARENT_SLOT: Slot = SLOT - 1;
+    const REFERENCE_TICK: u8 = 0;
+    const VERSION: u16 = 0;
+
     fn generate_proof_data<'a>(
         shred1: &'a SolanaShred,
         shred2: &'a SolanaShred,
@@ -265,8 +270,7 @@ mod tests {
     fn test_legacy_shreds_invalid() {
         let mut rng = rand::thread_rng();
         let leader = Arc::new(Keypair::new());
-        let (slot, parent_slot, reference_tick, version) = (53084024, 53084023, 0, 0);
-        let shredder = Shredder::new(slot, parent_slot, reference_tick, version).unwrap();
+        let shredder = Shredder::new(SLOT, PARENT_SLOT, REFERENCE_TICK, VERSION).unwrap();
         let next_shred_index = rng.gen_range(0..32_000);
         let legacy_data_shred =
             new_rand_data_shred(&mut rng, next_shred_index, &shredder, &leader, false, false);
@@ -292,7 +296,7 @@ mod tests {
         for (shred1, shred2) in test_cases.iter().flat_map(|(a, b)| [(a, b), (b, a)]) {
             let proof_data = generate_proof_data(shred1, shred2);
             assert_eq!(
-                proof_data.verify_proof(slot, &leader.pubkey()).unwrap_err(),
+                proof_data.verify_proof(SLOT, &leader.pubkey()).unwrap_err(),
                 SlashingError::LegacyShreds,
             );
         }
@@ -302,10 +306,9 @@ mod tests {
     fn test_slot_invalid() {
         let mut rng = rand::thread_rng();
         let leader = Arc::new(Keypair::new());
-        let (slot, parent_slot, reference_tick, version) = (53084024, 53084023, 0, 0);
-        let shredder_slot = Shredder::new(slot, parent_slot, reference_tick, version).unwrap();
+        let shredder_slot = Shredder::new(SLOT, PARENT_SLOT, REFERENCE_TICK, VERSION).unwrap();
         let shredder_bad_slot =
-            Shredder::new(slot + 1, parent_slot, reference_tick, version).unwrap();
+            Shredder::new(SLOT + 1, PARENT_SLOT, REFERENCE_TICK, VERSION).unwrap();
         let next_shred_index = rng.gen_range(0..32_000);
         let data_shred = new_rand_data_shred(
             &mut rng,
@@ -350,7 +353,7 @@ mod tests {
         for (shred1, shred2) in test_cases.iter().flat_map(|(a, b)| [(a, b), (b, a)]) {
             let proof_data = generate_proof_data(shred1, shred2);
             assert_eq!(
-                proof_data.verify_proof(slot, &leader.pubkey()).unwrap_err(),
+                proof_data.verify_proof(SLOT, &leader.pubkey()).unwrap_err(),
                 SlashingError::SlotMismatch
             );
         }
@@ -360,23 +363,21 @@ mod tests {
     fn test_payload_proof_valid() {
         let mut rng = rand::thread_rng();
         let leader = Arc::new(Keypair::new());
-        let (slot, parent_slot, reference_tick, version) = (53084024, 53084023, 0, 0);
-        let shredder = Shredder::new(slot, parent_slot, reference_tick, version).unwrap();
+        let shredder = Shredder::new(SLOT, PARENT_SLOT, REFERENCE_TICK, VERSION).unwrap();
         let next_shred_index = rng.gen_range(0..32_000);
         let shred1 =
             new_rand_data_shred(&mut rng, next_shred_index, &shredder, &leader, true, true);
         let shred2 =
             new_rand_data_shred(&mut rng, next_shred_index, &shredder, &leader, true, true);
         let proof_data = generate_proof_data(&shred1, &shred2);
-        proof_data.verify_proof(slot, &leader.pubkey()).unwrap();
+        proof_data.verify_proof(SLOT, &leader.pubkey()).unwrap();
     }
 
     #[test]
     fn test_payload_proof_invalid() {
         let mut rng = rand::thread_rng();
         let leader = Arc::new(Keypair::new());
-        let (slot, parent_slot, reference_tick, version) = (53084024, 53084023, 0, 0);
-        let shredder = Shredder::new(slot, parent_slot, reference_tick, version).unwrap();
+        let shredder = Shredder::new(SLOT, PARENT_SLOT, REFERENCE_TICK, VERSION).unwrap();
         let next_shred_index = rng.gen_range(0..32_000);
         let data_shred =
             new_rand_data_shred(&mut rng, next_shred_index, &shredder, &leader, true, true);
@@ -392,7 +393,7 @@ mod tests {
         for (shred1, shred2) in test_cases.into_iter() {
             let proof_data = generate_proof_data(&shred1, &shred2);
             assert_eq!(
-                proof_data.verify_proof(slot, &leader.pubkey()).unwrap_err(),
+                proof_data.verify_proof(SLOT, &leader.pubkey()).unwrap_err(),
                 SlashingError::InvalidPayloadProof
             );
         }
@@ -402,8 +403,7 @@ mod tests {
     fn test_merkle_root_proof_valid() {
         let mut rng = rand::thread_rng();
         let leader = Arc::new(Keypair::new());
-        let (slot, parent_slot, reference_tick, version) = (53084024, 53084023, 0, 0);
-        let shredder = Shredder::new(slot, parent_slot, reference_tick, version).unwrap();
+        let shredder = Shredder::new(SLOT, PARENT_SLOT, REFERENCE_TICK, VERSION).unwrap();
         let next_shred_index = rng.gen_range(0..32_000);
         let (data_shreds, coding_shreds) = new_rand_shreds(
             &mut rng,
@@ -436,7 +436,7 @@ mod tests {
 
         for (shred1, shred2) in test_cases.iter().flat_map(|(a, b)| [(a, b), (b, a)]) {
             let proof_data = generate_proof_data(shred1, shred2);
-            proof_data.verify_proof(slot, &leader.pubkey()).unwrap();
+            proof_data.verify_proof(SLOT, &leader.pubkey()).unwrap();
         }
     }
 
@@ -444,8 +444,7 @@ mod tests {
     fn test_merkle_root_proof_invalid() {
         let mut rng = rand::thread_rng();
         let leader = Arc::new(Keypair::new());
-        let (slot, parent_slot, reference_tick, version) = (53084024, 53084023, 0, 0);
-        let shredder = Shredder::new(slot, parent_slot, reference_tick, version).unwrap();
+        let shredder = Shredder::new(SLOT, PARENT_SLOT, REFERENCE_TICK, VERSION).unwrap();
         let next_shred_index = rng.gen_range(0..32_000);
         let (data_shreds, coding_shreds) = new_rand_shreds(
             &mut rng,
@@ -480,7 +479,7 @@ mod tests {
         for (shred1, shred2) in test_cases.iter().flat_map(|(a, b)| [(a, b), (b, a)]) {
             let proof_data = generate_proof_data(shred1, shred2);
             assert_eq!(
-                proof_data.verify_proof(slot, &leader.pubkey()).unwrap_err(),
+                proof_data.verify_proof(SLOT, &leader.pubkey()).unwrap_err(),
                 SlashingError::ShredTypeMismatch
             );
         }
@@ -490,8 +489,7 @@ mod tests {
     fn test_last_index_conflict_valid() {
         let mut rng = rand::thread_rng();
         let leader = Arc::new(Keypair::new());
-        let (slot, parent_slot, reference_tick, version) = (53084024, 53084023, 0, 0);
-        let shredder = Shredder::new(slot, parent_slot, reference_tick, version).unwrap();
+        let shredder = Shredder::new(SLOT, PARENT_SLOT, REFERENCE_TICK, VERSION).unwrap();
         let next_shred_index = rng.gen_range(0..32_000);
         let test_cases = vec![
             (
@@ -522,7 +520,7 @@ mod tests {
 
         for (shred1, shred2) in test_cases.iter().flat_map(|(a, b)| [(a, b), (b, a)]) {
             let proof_data = generate_proof_data(shred1, shred2);
-            proof_data.verify_proof(slot, &leader.pubkey()).unwrap();
+            proof_data.verify_proof(SLOT, &leader.pubkey()).unwrap();
         }
     }
 
@@ -530,8 +528,7 @@ mod tests {
     fn test_last_index_conflict_invalid() {
         let mut rng = rand::thread_rng();
         let leader = Arc::new(Keypair::new());
-        let (slot, parent_slot, reference_tick, version) = (53084024, 53084023, 0, 0);
-        let shredder = Shredder::new(slot, parent_slot, reference_tick, version).unwrap();
+        let shredder = Shredder::new(SLOT, PARENT_SLOT, REFERENCE_TICK, VERSION).unwrap();
         let next_shred_index = rng.gen_range(0..32_000);
         let test_cases = vec![
             (
@@ -583,7 +580,7 @@ mod tests {
         for (shred1, shred2) in test_cases.iter().flat_map(|(a, b)| [(a, b), (b, a)]) {
             let proof_data = generate_proof_data(shred1, shred2);
             assert_eq!(
-                proof_data.verify_proof(slot, &leader.pubkey()).unwrap_err(),
+                proof_data.verify_proof(SLOT, &leader.pubkey()).unwrap_err(),
                 SlashingError::InvalidLastIndexConflict
             );
         }
@@ -593,8 +590,7 @@ mod tests {
     fn test_erasure_meta_conflict_valid() {
         let mut rng = rand::thread_rng();
         let leader = Arc::new(Keypair::new());
-        let (slot, parent_slot, reference_tick, version) = (53084024, 53084023, 0, 0);
-        let shredder = Shredder::new(slot, parent_slot, reference_tick, version).unwrap();
+        let shredder = Shredder::new(SLOT, PARENT_SLOT, REFERENCE_TICK, VERSION).unwrap();
         let next_shred_index = rng.gen_range(0..32_000);
         let coding_shreds =
             new_rand_coding_shreds(&mut rng, next_shred_index, 10, &shredder, &leader, true);
@@ -610,7 +606,7 @@ mod tests {
         ];
         for (shred1, shred2) in test_cases.iter().flat_map(|(a, b)| [(a, b), (b, a)]) {
             let proof_data = generate_proof_data(shred1, shred2);
-            proof_data.verify_proof(slot, &leader.pubkey()).unwrap();
+            proof_data.verify_proof(SLOT, &leader.pubkey()).unwrap();
         }
     }
 
@@ -618,8 +614,7 @@ mod tests {
     fn test_erasure_meta_conflict_invalid() {
         let mut rng = rand::thread_rng();
         let leader = Arc::new(Keypair::new());
-        let (slot, parent_slot, reference_tick, version) = (53084024, 53084023, 0, 0);
-        let shredder = Shredder::new(slot, parent_slot, reference_tick, version).unwrap();
+        let shredder = Shredder::new(SLOT, PARENT_SLOT, REFERENCE_TICK, VERSION).unwrap();
         let next_shred_index = rng.gen_range(0..32_000);
         let coding_shreds =
             new_rand_coding_shreds(&mut rng, next_shred_index, 10, &shredder, &leader, true);
@@ -666,7 +661,7 @@ mod tests {
         for (shred1, shred2) in test_cases.iter().flat_map(|(a, b)| [(a, b), (b, a)]) {
             let proof_data = generate_proof_data(shred1, shred2);
             assert_eq!(
-                proof_data.verify_proof(slot, &leader.pubkey()).unwrap_err(),
+                proof_data.verify_proof(SLOT, &leader.pubkey()).unwrap_err(),
                 SlashingError::InvalidErasureMetaConflict
             );
         }
@@ -676,8 +671,7 @@ mod tests {
     fn test_shred_version_invalid() {
         let mut rng = rand::thread_rng();
         let leader = Arc::new(Keypair::new());
-        let (slot, parent_slot, reference_tick, version) = (53084024, 53084023, 0, 0);
-        let shredder = Shredder::new(slot, parent_slot, reference_tick, version).unwrap();
+        let shredder = Shredder::new(SLOT, PARENT_SLOT, REFERENCE_TICK, VERSION).unwrap();
         let next_shred_index = rng.gen_range(0..32_000);
         let (data_shreds, coding_shreds) = new_rand_shreds(
             &mut rng,
@@ -690,8 +684,8 @@ mod tests {
             true,
         );
 
-        // Wrong shred version
-        let shredder = Shredder::new(slot, parent_slot, reference_tick, version + 1).unwrap();
+        // Wrong shred VERSION
+        let shredder = Shredder::new(SLOT, PARENT_SLOT, REFERENCE_TICK, VERSION + 1).unwrap();
         let (wrong_data_shreds, wrong_coding_shreds) = new_rand_shreds(
             &mut rng,
             next_shred_index,
@@ -703,7 +697,7 @@ mod tests {
             true,
         );
         let test_cases = vec![
-            // One correct shred version, one wrong
+            // One correct shred VERSION, one wrong
             (coding_shreds[0].clone(), wrong_coding_shreds[0].clone()),
             (coding_shreds[0].clone(), wrong_data_shreds[0].clone()),
             (data_shreds[0].clone(), wrong_coding_shreds[0].clone()),
@@ -713,7 +707,7 @@ mod tests {
         for (shred1, shred2) in test_cases.iter().flat_map(|(a, b)| [(a, b), (b, a)]) {
             let proof_data = generate_proof_data(shred1, shred2);
             assert_eq!(
-                proof_data.verify_proof(slot, &leader.pubkey()).unwrap_err(),
+                proof_data.verify_proof(SLOT, &leader.pubkey()).unwrap_err(),
                 SlashingError::InvalidShredVersion
             );
         }
@@ -728,8 +722,7 @@ mod tests {
 
         let mut rng = rand::thread_rng();
         let leader = Arc::new(Keypair::new());
-        let (slot, parent_slot, reference_tick, version) = (53084024, 53084023, 0, 0);
-        let shredder = Shredder::new(slot, parent_slot, reference_tick, version).unwrap();
+        let shredder = Shredder::new(SLOT, PARENT_SLOT, REFERENCE_TICK, VERSION).unwrap();
         let next_shred_index = rng.gen_range(0..32_000);
         let data_shred =
             new_rand_data_shred(&mut rng, next_shred_index, &shredder, &leader, true, true);
@@ -764,7 +757,7 @@ mod tests {
         for (shred1, shred2) in test_cases.iter().flat_map(|(a, b)| [(a, b), (b, a)]) {
             let proof_data = generate_proof_data(shred1, shred2);
             assert_eq!(
-                proof_data.verify_proof(slot, &leader.pubkey()).unwrap_err(),
+                proof_data.verify_proof(SLOT, &leader.pubkey()).unwrap_err(),
                 SlashingError::InvalidPayloadProof
             );
         }
@@ -774,8 +767,7 @@ mod tests {
     fn test_overlapping_erasure_meta_proof_valid() {
         let mut rng = rand::thread_rng();
         let leader = Arc::new(Keypair::new());
-        let (slot, parent_slot, reference_tick, version) = (53084024, 53084023, 0, 0);
-        let shredder = Shredder::new(slot, parent_slot, reference_tick, version).unwrap();
+        let shredder = Shredder::new(SLOT, PARENT_SLOT, REFERENCE_TICK, VERSION).unwrap();
         let next_shred_index = rng.gen_range(0..32_000);
         let coding_shreds =
             new_rand_coding_shreds(&mut rng, next_shred_index, 10, &shredder, &leader, true);
@@ -805,7 +797,7 @@ mod tests {
         ];
         for (shred1, shred2) in test_cases.iter().flat_map(|(a, b)| [(a, b), (b, a)]) {
             let proof_data = generate_proof_data(shred1, shred2);
-            proof_data.verify_proof(slot, &leader.pubkey()).unwrap();
+            proof_data.verify_proof(SLOT, &leader.pubkey()).unwrap();
         }
     }
 
@@ -813,8 +805,7 @@ mod tests {
     fn test_overlapping_erasure_meta_proof_invalid() {
         let mut rng = rand::thread_rng();
         let leader = Arc::new(Keypair::new());
-        let (slot, parent_slot, reference_tick, version) = (53084024, 53084023, 0, 0);
-        let shredder = Shredder::new(slot, parent_slot, reference_tick, version).unwrap();
+        let shredder = Shredder::new(SLOT, PARENT_SLOT, REFERENCE_TICK, VERSION).unwrap();
         let next_shred_index = rng.gen_range(0..32_000);
         let (data_shred, coding_shred) = new_rand_shreds(
             &mut rng,
@@ -867,7 +858,7 @@ mod tests {
         {
             let proof_data = generate_proof_data(shred1, shred2);
             assert_eq!(
-                proof_data.verify_proof(slot, &leader.pubkey()).unwrap_err(),
+                proof_data.verify_proof(SLOT, &leader.pubkey()).unwrap_err(),
                 *expected,
             );
         }
