@@ -8372,6 +8372,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-slashing"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "bitflags 2.6.0",
+ "bytemuck",
+ "generic-array 0.14.7",
+ "lazy_static",
+ "num-derive",
+ "num-traits",
+ "num_enum",
+ "rand 0.8.5",
+ "serde",
+ "serde_bytes",
+ "serde_derive",
+ "serde_with",
+ "solana-client",
+ "solana-entry",
+ "solana-ledger",
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+ "spl-pod 0.5.0",
+ "spl-record",
+ "thiserror 1.0.68",
+]
+
+[[package]]
 name = "spl-stake-pool"
 version = "2.0.1"
 dependencies = [
