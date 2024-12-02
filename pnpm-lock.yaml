@@ -124,8 +124,8 @@ importers:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@22.10.1)(typescript@5.7.2)
       typedoc:
-        specifier: ^0.27.1
-        version: 0.27.1(typescript@5.7.2)
+        specifier: ^0.27.2
+        version: 0.27.2(typescript@5.7.2)
       typescript:
         specifier: 5.7.2
         version: 5.7.2
@@ -176,8 +176,8 @@ importers:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@22.10.1)(typescript@5.7.2)
       typedoc:
-        specifier: ^0.27.1
-        version: 0.27.1(typescript@5.7.2)
+        specifier: ^0.27.2
+        version: 0.27.2(typescript@5.7.2)
       typescript:
         specifier: ^5.7.2
         version: 5.7.2
@@ -240,8 +240,8 @@ importers:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@22.10.1)(typescript@5.7.2)
       typedoc:
-        specifier: ^0.27.1
-        version: 0.27.1(typescript@5.7.2)
+        specifier: ^0.27.2
+        version: 0.27.2(typescript@5.7.2)
       typescript:
         specifier: ^5.7.2
         version: 5.7.2
@@ -301,8 +301,8 @@ importers:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@22.10.1)(typescript@5.7.2)
       typedoc:
-        specifier: ^0.27.1
-        version: 0.27.1(typescript@5.7.2)
+        specifier: ^0.27.2
+        version: 0.27.2(typescript@5.7.2)
       typescript:
         specifier: ^5.7.2
         version: 5.7.2
@@ -509,8 +509,8 @@ importers:
         specifier: ^2.8.1
         version: 2.8.1
       typedoc:
-        specifier: ^0.27.1
-        version: 0.27.1(typescript@5.7.2)
+        specifier: ^0.27.2
+        version: 0.27.2(typescript@5.7.2)
       typescript:
         specifier: ^5.7.2
         version: 5.7.2
@@ -573,8 +573,8 @@ importers:
         specifier: ^2.8.1
         version: 2.8.1
       typedoc:
-        specifier: ^0.27.1
-        version: 0.27.1(typescript@5.7.2)
+        specifier: ^0.27.2
+        version: 0.27.2(typescript@5.7.2)
       typescript:
         specifier: ^5.7.2
         version: 5.7.2
@@ -631,8 +631,8 @@ importers:
         specifier: ^2.8.1
         version: 2.8.1
       typedoc:
-        specifier: ^0.27.1
-        version: 0.27.1(typescript@5.7.2)
+        specifier: ^0.27.2
+        version: 0.27.2(typescript@5.7.2)
       typescript:
         specifier: ^5.7.2
         version: 5.7.2
@@ -771,8 +771,8 @@ importers:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@22.10.1)(typescript@5.7.2)
       typedoc:
-        specifier: ^0.27.1
-        version: 0.27.1(typescript@5.7.2)
+        specifier: ^0.27.2
+        version: 0.27.2(typescript@5.7.2)
       typescript:
         specifier: ^5.7.2
         version: 5.7.2
@@ -1458,11 +1458,11 @@ packages:
       levn: 0.4.1
     dev: true
 
-  /@gerrit0/mini-shiki@1.23.2:
-    resolution: {integrity: sha512-6e/41ZAilc2iE4n0bxxMSvzrt1dy2MSa9lSdd2M5lcTDlrzcau+FucIEDrG+xF1dPou/a093tm1t4HPTSI4g1w==}
+  /@gerrit0/mini-shiki@1.24.1:
+    resolution: {integrity: sha512-PNP/Gjv3VqU7z7DjRgO3F9Ok5frTKqtpV+LJW1RzMcr2zpRk0ulhEWnbcNGXzPC7BZyWMIHrkfQX2GZRfxrn6Q==}
     dependencies:
-      '@shikijs/engine-oniguruma': 1.23.1
-      '@shikijs/types': 1.23.1
+      '@shikijs/engine-oniguruma': 1.24.0
+      '@shikijs/types': 1.24.0
       '@shikijs/vscode-textmate': 9.3.0
     dev: true
 
@@ -2480,15 +2480,15 @@ packages:
     resolution: {integrity: sha512-zt6OdqaDoOnJ1ZYsCYGt9YmWzDXl4vQdKTyJev62gFhRGKdx7mcT54V9KIjg+d2wi9EXsPvAPKe7i7WjfVWB8g==}
     dev: true
 
-  /@shikijs/engine-oniguruma@1.23.1:
-    resolution: {integrity: sha512-KQ+lgeJJ5m2ISbUZudLR1qHeH3MnSs2mjFg7bnencgs5jDVPeJ2NVDJ3N5ZHbcTsOIh0qIueyAJnwg7lg7kwXQ==}
+  /@shikijs/engine-oniguruma@1.24.0:
+    resolution: {integrity: sha512-Eua0qNOL73Y82lGA4GF5P+G2+VXX9XnuUxkiUuwcxQPH4wom+tE39kZpBFXfUuwNYxHSkrSxpB1p4kyRW0moSg==}
     dependencies:
-      '@shikijs/types': 1.23.1
+      '@shikijs/types': 1.24.0
       '@shikijs/vscode-textmate': 9.3.0
     dev: true
 
-  /@shikijs/types@1.23.1:
-    resolution: {integrity: sha512-98A5hGyEhzzAgQh2dAeHKrWW4HfCMeoFER2z16p5eJ+vmPeF6lZ/elEne6/UCU551F/WqkopqRsr1l2Yu6+A0g==}
+  /@shikijs/types@1.24.0:
+    resolution: {integrity: sha512-aptbEuq1Pk88DMlCe+FzXNnBZ17LCiLIGWAeCWhoFDzia5Q5Krx3DgnULLiouSdd6+LUM39XwXGppqYE0Ghtug==}
     dependencies:
       '@shikijs/vscode-textmate': 9.3.0
       '@types/hast': 3.0.4
@@ -9290,14 +9290,14 @@ packages:
       possible-typed-array-names: 1.0.0
     dev: true
 
-  /typedoc@0.27.1(typescript@5.7.2):
-    resolution: {integrity: sha512-cbFtNFpkCtHAHRvMnCDdtM2+xhO2uiJAcw4ooLmVMuaY9yLJswKvi6wOwPZgTnKKnm/HKpO/Ub6DVk4KRf/vRg==}
+  /typedoc@0.27.2(typescript@5.7.2):
+    resolution: {integrity: sha512-C2ima5TZJHU3ecnRIz50lKd1BsYck5LhYQIy7MRPmjuSEJreUEAt+uAVcZgY7wZsSORzEI7xW8miZIdxv/cbmw==}
     engines: {node: '>= 18'}
     hasBin: true
     peerDependencies:
       typescript: 5.0.x || 5.1.x || 5.2.x || 5.3.x || 5.4.x || 5.5.x || 5.6.x || 5.7.x
     dependencies:
-      '@gerrit0/mini-shiki': 1.23.2
+      '@gerrit0/mini-shiki': 1.24.1
       lunr: 2.3.9
       markdown-it: 14.1.0
       minimatch: 9.0.5
