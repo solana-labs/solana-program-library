@@ -39,9 +39,7 @@ spl-token-client = { version = "0.13.0", path = "../client" }
 spl-token-confidential-transfer-proof-generation = { version = "0.2.0", path = "../confidential-transfer/proof-generation" }
 spl-token-metadata-interface = { version = "0.6.0", path = "../../token-metadata/interface" }
 spl-token-group-interface = { version = "0.5.0", path = "../../token-group/interface" }
-spl-memo = { version = "6.0", path = "../../memo/program", features = [
-  "no-entrypoint",
-] }
+spl-memo = { version = "6.0", features = ["no-entrypoint"] }
 strum = "0.26"
 strum_macros = "0.26"
 tokio = "1.41"

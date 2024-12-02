@@ -26,7 +26,7 @@ the Solana Mainnet Beta. Currently, this includes:
 | [shared-memory](https://github.com/solana-labs/solana-program-library/tree/master/shared-memory/program) | [1.0.0](https://github.com/solana-labs/solana-program-library/commit/b40e0dd3fd6c0e509dc1e8dd3da0a6d609035bbd) |
 | [feature-proposal](https://github.com/solana-labs/solana-program-library/tree/master/feature-proposal/program) | [1.0.0](https://github.com/solana-labs/solana-program-library/releases/tag/feature-proposal-v1.0.0) |
 | [name-service](https://github.com/solana-labs/solana-program-library/tree/master/name-service/program) | [0.3.0](https://github.com/solana-labs/solana-program-library/releases/tag/name-service-v0.3.0) |
-| [memo](https://github.com/solana-labs/solana-program-library/tree/master/memo/program) | [3.0.0](https://github.com/solana-labs/solana-program-library/releases/tag/memo-v3.0.0) |
+| [memo](https://github.com/solana-program/memo/tree/master/program) | [3.0.0](https://github.com/solana-labs/solana-program-library/releases/tag/memo-v3.0.0) |
 
 In addition, one program is planned for deployment to Solana Mainnet Beta:
 
@@ -57,7 +57,6 @@ unaudited programs:
 * [feature-proposal](https://github.com/solana-labs/solana-program-library/tree/master/feature-proposal/program)
 * [instruction-padding](https://github.com/solana-labs/solana-program-library/tree/master/instruction-padding/program)
 * [managed-token](https://github.com/solana-labs/solana-program-library/tree/master/managed-token/program)
-* [memo](https://github.com/solana-labs/solana-program-library/tree/master/memo/program)
 * [name-service](https://github.com/solana-labs/solana-program-library/tree/master/name-service/program)
 * [record](https://github.com/solana-labs/solana-program-library/tree/master/record/program)
 * [stateless-asks](https://github.com/solana-labs/solana-program-library/tree/master/stateless-asks/program)
@@ -71,6 +70,13 @@ More information about the repository's security policy at
 The [security-audits repo](https://github.com/solana-labs/security-audits) contains
 all past and present program audits.
 
+## Migrated Packages
+
+The Solana Program Library repository is being broken up into separate repos for
+each program and set of clients. The following programs have been moved:
+
+* [Memo](https://github.com/solana-program/memo)
+
 ## Program Packages
 
 | Package | Description | Version | Docs |
@@ -82,7 +88,6 @@ all past and present program audits.
 | `spl-account-compression` | Program for managing compressed accounts stored in an off-chain merkle tree | [![Crates.io](https://img.shields.io/crates/v/spl-account-compression)](https://crates.io/crates/spl-account-compression) | [![Docs.rs](https://docs.rs/spl-account-compression/badge.svg)](https://docs.rs/spl-account-compression) |
 | `spl-feature-proposal` | Program using tokens to vote on enabling Solana network features | [![Crates.io](https://img.shields.io/crates/v/spl-feature-proposal)](https://crates.io/crates/spl-feature-proposal) | [![Docs.rs](https://docs.rs/spl-feature-proposal/badge.svg)](https://docs.rs/spl-feature-proposal) |
 | `spl-noop` | Program that does nothing, used for logging instruction data | [![Crates.io](https://img.shields.io/crates/v/spl-noop)](https://crates.io/crates/spl-noop) | [![Docs.rs](https://docs.rs/spl-noop/badge.svg)](https://docs.rs/spl-noop) |
-| `spl-memo` | Program for logging signed memos on-chain | [![Crates.io](https://img.shields.io/crates/v/spl-memo)](https://crates.io/crates/spl-memo) | [![Docs.rs](https://docs.rs/spl-memo/badge.svg)](https://docs.rs/spl-memo) |
 | `spl-name-service` | Program for managing ownership of data on-chain | [![Crates.io](https://img.shields.io/crates/v/spl-name-service)](https://crates.io/crates/spl-name-service) | [![Docs.rs](https://docs.rs/spl-name-service/badge.svg)](https://docs.rs/spl-name-service) |
 | `spl-shared-memory` | Program for sharing data between programs | [![Crates.io](https://img.shields.io/crates/v/spl-shared-memory)](https://crates.io/crates/spl-shared-memory) | [![Docs.rs](https://docs.rs/spl-shared-memory/badge.svg)](https://docs.rs/spl-shared-memory) |
 | `spl-stake-pool` | Program for pooling stake accounts, managed by another entity | [![Crates.io](https://img.shields.io/crates/v/spl-stake-pool)](https://crates.io/crates/spl-stake-pool) | [![Docs.rs](https://docs.rs/spl-stake-pool/badge.svg)](https://docs.rs/spl-stake-pool) |
@@ -110,7 +115,6 @@ all past and present program audits.
 | `@solana/spl-token` | Bindings for the token, token-2022, and associated-token-account programs | [![npm](https://img.shields.io/npm/v/@solana/spl-token.svg)](https://www.npmjs.com/package/@solana/spl-token) | [![Docs](https://img.shields.io/badge/docs-typedoc-blue)](https://solana-labs.github.io/solana-program-library/token/js) |
 | `@solana/spl-governance` | Bindings for the governance program | [![npm](https://img.shields.io/npm/v/@solana/spl-governance.svg)](https://www.npmjs.com/package/@solana/spl-governance) | N/A |
 | `@solana/spl-account-compression` | Bindings for the account-compression program | [![npm](https://img.shields.io/npm/v/@solana/spl-account-compression.svg)](https://www.npmjs.com/package/@solana/spl-account-compression) | [![Docs](https://img.shields.io/badge/docs-typedoc-blue)](https://solana-labs.github.io/solana-program-library/account-compression/sdk/docs) |
-| `@solana/spl-memo` | Bindings for the memo program | [![npm](https://img.shields.io/npm/v/@solana/spl-memo.svg)](https://www.npmjs.com/package/@solana/spl-memo) | N/A |
 | `@solana/spl-name-service` | Bindings for the name-service program | [![npm](https://img.shields.io/npm/v/@solana/spl-name-service.svg)](https://www.npmjs.com/package/@solana/spl-name-service) | N/A |
 | `@solana/spl-stake-pool` | Bindings for the stake-pool program | [![npm](https://img.shields.io/npm/v/@solana/spl-stake-pool.svg)](https://www.npmjs.com/package/@solana/spl-stake-pool) | N/A |
 | `@solana/spl-token-lending` | Bindings for the token-lending program | [![npm](https://img.shields.io/npm/v/@solana/spl-token-lending.svg)](https://www.npmjs.com/package/@solana/spl-token-lending) | N/A |

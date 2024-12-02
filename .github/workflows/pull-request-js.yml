@@ -5,7 +5,6 @@ on:
     paths:
       - 'account-compression/sdk/**'
       - 'libraries/type-length-value/js/**'
-      - 'memo/js/**'
       - 'name-service/js/**'
       - 'single-pool/js/**'
       - 'stake-pool/js/**'
@@ -21,7 +20,6 @@ on:
     paths:
       - 'account-compression/sdk/**'
       - 'libraries/type-length-value/js/**'
-      - 'memo/js/**'
       - 'single-pool/js/**'
       - 'stake-pool/js/**'
       - 'token/js/**'
@@ -43,7 +41,6 @@ jobs:
         node-version: [16.x, 18.x, 20.x]
         package:
           [
-            memo,
             name-service,
             stake-pool,
             token,
