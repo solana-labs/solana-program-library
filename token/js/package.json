@@ -61,7 +61,9 @@
     },
     "devDependencies": {
         "@solana/codecs-strings": "2.0.0",
+        "@solana/rpc-types": "^2.0.0",
         "@solana/spl-memo": "0.2.4",
+        "@solana/sysvars": "^2.0.0",
         "@solana/web3.js": "^1.95.5",
         "@types/chai": "^5.0.1",
         "@types/chai-as-promised": "^8.0.1",

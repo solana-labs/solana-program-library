@@ -1,9 +1,9 @@
 import Decimal from 'decimal.js';
-import type { Connection, PublicKey, Signer, TransactionError } from '@solana/web3.js';
-import { Transaction } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID } from '../constants.js';
+import type { Connection, Signer, TransactionError } from '@solana/web3.js';
+import { PublicKey, Transaction } from '@solana/web3.js';
+import { TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from '../constants.js';
 import { createAmountToUiAmountInstruction } from '../instructions/amountToUiAmount.js';
-import { getMint } from '../state/mint.js';
+import { getMint, unpackMint } from '../state/mint.js';
 import { getInterestBearingMintConfigState } from '../extensions/interestBearingMint/state.js';
 
 /**
@@ -32,8 +32,14 @@ export async function amountToUiAmount(
     return err;
 }
 
-const ONE_IN_BASIS_POINTS = 10000;
-const SECONDS_PER_YEAR = 60 * 60 * 24 * 365.24;
+const calculateExponentForTimesAndRate = (t1: number, t2: number, r: number) => {
+    const ONE_IN_BASIS_POINTS = 10000;
+    const SECONDS_PER_YEAR = 60 * 60 * 24 * 365.24;
+    const timespan = new Decimal(t2).minus(t1);
+    const numerator = new Decimal(r).times(timespan);
+    const exponent = numerator.div(new Decimal(SECONDS_PER_YEAR).times(ONE_IN_BASIS_POINTS));
+    return exponent.exp();
+}
 
 /**
  * Convert amount to UiAmount for a mint with interest bearing extension without simulating a transaction
@@ -61,9 +67,8 @@ const SECONDS_PER_YEAR = 60 * 60 * 24 * 365.24;
  * 
  * @return Amount scaled by accrued interest as a string with appropriate decimal places
  */
-
 export function amountToUiAmountWithoutSimulation(
-    amount: string,
+    amount: bigint,
     decimals: number,
     currentTimestamp: number, // in seconds
     lastUpdateTimestamp: number,
@@ -75,31 +80,38 @@ export function amountToUiAmountWithoutSimulation(
 
     // Calculate pre-update exponent
     // e^(preUpdateAverageRate * (lastUpdateTimestamp - initializationTimestamp) / (SECONDS_PER_YEAR * ONE_IN_BASIS_POINTS))
-    const preUpdateTimespan = new Decimal(lastUpdateTimestamp).minus(initializationTimestamp);
-    const preUpdateNumerator = new Decimal(preUpdateAverageRate).times(preUpdateTimespan);
-    const preUpdateExponent = preUpdateNumerator.div(new Decimal(SECONDS_PER_YEAR).times(ONE_IN_BASIS_POINTS));
-    const preUpdateExp = preUpdateExponent.exp();
+    const preUpdateExp = calculateExponentForTimesAndRate(initializationTimestamp, lastUpdateTimestamp, preUpdateAverageRate)
 
     // Calculate post-update exponent
     // e^(currentRate * (currentTimestamp - lastUpdateTimestamp) / (SECONDS_PER_YEAR * ONE_IN_BASIS_POINTS))
-    const postUpdateTimespan = new Decimal(currentTimestamp).minus(lastUpdateTimestamp);
-    const postUpdateNumerator = new Decimal(currentRate).times(postUpdateTimespan);
-    const postUpdateExponent = postUpdateNumerator.div(new Decimal(SECONDS_PER_YEAR).times(ONE_IN_BASIS_POINTS));
-    const postUpdateExp = postUpdateExponent.exp();
+    const postUpdateExp = calculateExponentForTimesAndRate(lastUpdateTimestamp, Number(currentTimestamp), currentRate)
 
     // Calculate total scale
     const totalScale = preUpdateExp.times(postUpdateExp);
 
     // Calculate scaled amount with interest rounded down to the nearest unit
     const decimalsFactor = new Decimal(10).pow(decimals);
-    const scaledAmountWithInterest = new Decimal(amount).times(totalScale).div(decimalsFactor).toDecimalPlaces(decimals, Decimal.ROUND_DOWN);
+    const scaledAmountWithInterest = new Decimal(amount.toString()).times(totalScale).div(decimalsFactor).toDecimalPlaces(decimals, Decimal.ROUND_DOWN);
 
     return scaledAmountWithInterest.toString();
 }
 
+const getSysvarClockTimestamp = async (connection: Connection): Promise<number> => {
+    const info = await connection.getParsedAccountInfo(new PublicKey('SysvarC1ock11111111111111111111111111111111'));
+    if (!info) {
+        throw new Error('Failed to fetch sysvar clock');
+    }
+    if (typeof info.value === 'object' && info.value && 'data' in info.value && 'parsed' in info.value.data) {
+        return info.value.data.parsed.info.unixTimestamp;
+    }
+    throw new Error('Failed to parse sysvar clock');
+}
+
+
 /**
- * Convert amount to UiAmount for a mint with interest bearing extension without simulating a transaction
- * This implements the same logic as the CPI instruction available in /token/program-2022/src/extension/interest_bearing_mint/mod.rs
+ * Convert amount to UiAmount for a mint without simulating a transaction
+ * This implements the same logic as `process_amount_to_ui_amount` in /token/program-2022/src/processor.rs
+ * and `process_amount_to_ui_amount` in /token/program/src/processor.rs
  *
  * @param connection     Connection to use
  * @param mint           Mint to use for calculations
@@ -111,29 +123,30 @@ export function amountToUiAmountWithoutSimulation(
 export async function amountToUiAmountForMintWithoutSimulation(
     connection: Connection,
     mint: PublicKey,
-    amount: string,
-    programId = TOKEN_PROGRAM_ID,
+    amount: bigint,
 ): Promise<string> {
     Decimal.set({ toExpPos: 24, toExpNeg: -24 })
-    const mintInfo = await getMint(connection, mint, 'confirmed', programId);
-    const amountDecimal = new Decimal(amount.toString());
-    const decimalsFactor = new Decimal(10).pow(mintInfo.decimals);
-
-    if (programId.equals(TOKEN_PROGRAM_ID)) {
-        console.log('amountDecimal', amountDecimal.toString(), 'mintInfo', mintInfo);
-        return amountDecimal.div(decimalsFactor).toString();
+    const accountInfo = await connection.getAccountInfo(mint);
+    const programId = accountInfo?.owner;
+    if (programId !== TOKEN_PROGRAM_ID && programId !== TOKEN_2022_PROGRAM_ID) {
+        throw new Error('Invalid program ID');
     }
+
+    const mintInfo = unpackMint(mint, accountInfo, programId);
 
     const interestBearingMintConfigState = getInterestBearingMintConfigState(mintInfo);
     if (!interestBearingMintConfigState) {
+        const amountDecimal = new Decimal(amount.toString());
+        const decimalsFactor = new Decimal(10).pow(mintInfo.decimals);
         return amountDecimal.div(decimalsFactor).toString();
     }
 
-    const currentTime = Math.floor(Date.now() / 1000); // Convert to seconds
+    const timestamp = await getSysvarClockTimestamp(connection);
+
     return amountToUiAmountWithoutSimulation(
         amount,
         mintInfo.decimals,
-        currentTime,
+        timestamp,
         interestBearingMintConfigState.lastUpdateTimestamp,
         interestBearingMintConfigState.initializationTimestamp,
         interestBearingMintConfigState.preUpdateAverageRate,
@@ -169,7 +182,6 @@ export async function amountToUiAmountForMintWithoutSimulation(
  * 
  * @return Original amount (principle) without interest
  */
-
 export function uiAmountToAmountWithoutSimulation(
     uiAmount: string,
     decimals: number,
@@ -185,16 +197,10 @@ export function uiAmountToAmountWithoutSimulation(
     const uiAmountScaled = uiAmountDecimal.mul(decimalsFactor);
    
     // Calculate pre-update exponent
-    const preUpdateTimespan = new Decimal(lastUpdateTimestamp).minus(initializationTimestamp);
-    const preUpdateNumerator = new Decimal(preUpdateAverageRate).times(preUpdateTimespan);
-    const preUpdateExponent = preUpdateNumerator.div(new Decimal(SECONDS_PER_YEAR).times(ONE_IN_BASIS_POINTS));
-    const preUpdateExp = preUpdateExponent.exp();
+    const preUpdateExp = calculateExponentForTimesAndRate(initializationTimestamp, lastUpdateTimestamp, preUpdateAverageRate);
 
     // Calculate post-update exponent
-    const postUpdateTimespan = new Decimal(currentTimestamp).minus(lastUpdateTimestamp);
-    const postUpdateNumerator = new Decimal(currentRate).times(postUpdateTimespan);
-    const postUpdateExponent = postUpdateNumerator.div(new Decimal(SECONDS_PER_YEAR).times(ONE_IN_BASIS_POINTS));
-    const postUpdateExp = postUpdateExponent.exp();
+    const postUpdateExp = calculateExponentForTimesAndRate(lastUpdateTimestamp, currentTimestamp, currentRate);
 
     // Calculate total scale
     const totalScale = preUpdateExp.times(postUpdateExp);
@@ -205,40 +211,42 @@ export function uiAmountToAmountWithoutSimulation(
 }
 
 /**
- * Convert a UI amount with interest back to the original UI amount without interest
+ * Convert a UI amount back to the raw amount
  * 
  * @param connection     Connection to use
  * @param mint           Mint to use for calculations
- * @param uiAmount       UI Amount (principle plus continuously compounding interest) to be converted back to original principle
+ * @param uiAmount       UI Amount to be converted back to raw amount
  * @param programId      SPL Token program account (default: TOKEN_PROGRAM_ID)
  * 
  * 
- * @return Original UI Amount (principle) without interest
+ * @return Raw amount
  */
 export async function uiAmountToAmountForMintWithoutSimulation(
     connection: Connection,
     mint: PublicKey,
     uiAmount: string,
-    programId = TOKEN_PROGRAM_ID,
 ): Promise<bigint> {
     Decimal.set({ toExpPos: 24, toExpNeg: -24 })
-    const mintInfo = await getMint(connection, mint, 'confirmed', programId);
-    const uiAmountScaled = new Decimal(uiAmount).mul(new Decimal(10).pow(mintInfo.decimals));
-
-    if (programId.equals(TOKEN_PROGRAM_ID)) {
-        return BigInt(uiAmountScaled.trunc().toString());
+    const accountInfo = await connection.getAccountInfo(mint);
+    const programId = accountInfo?.owner;
+    if (programId !== TOKEN_PROGRAM_ID && programId !== TOKEN_2022_PROGRAM_ID) {
+        throw new Error('Invalid program ID');
     }
+
+    const mintInfo = await getMint(connection, mint, 'confirmed', programId);
 
     const interestBearingMintConfigState = getInterestBearingMintConfigState(mintInfo);
     if (!interestBearingMintConfigState) {
+        const uiAmountScaled = new Decimal(uiAmount).mul(new Decimal(10).pow(mintInfo.decimals));
         return BigInt(uiAmountScaled.trunc().toString());
     }
 
-    const currentTime = Math.floor(Date.now() / 1000); // Convert to seconds
+    const timestamp = await getSysvarClockTimestamp(connection);
+
     return uiAmountToAmountWithoutSimulation(
         uiAmount,
         mintInfo.decimals,
-        currentTime,
+        timestamp,
         interestBearingMintConfigState.lastUpdateTimestamp,
         interestBearingMintConfigState.initializationTimestamp,
         interestBearingMintConfigState.preUpdateAverageRate,
