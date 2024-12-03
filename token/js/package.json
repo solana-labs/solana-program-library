@@ -82,7 +82,6 @@
         "mocha": "^10.8.2",
         "process": "^0.11.10",
         "shx": "^0.3.4",
-        "sinon": "^19.0.2",
         "start-server-and-test": "^2.0.8",
         "ts-node": "^10.9.2",
         "typedoc": "^0.27.0",
