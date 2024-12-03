@@ -60,7 +60,7 @@
     "eslint": "^8.57.0",
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-require-extensions": "^0.1.1",
-    "mocha": "^10.8.2",
+    "mocha": "^11.0.1",
     "start-server-and-test": "^2.0.8",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.2"
