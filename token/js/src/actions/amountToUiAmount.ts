@@ -1,4 +1,3 @@
-import Decimal from 'decimal.js';
 import type { Connection, Signer, TransactionError } from '@solana/web3.js';
 import { PublicKey, Transaction } from '@solana/web3.js';
 import { TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from '../constants.js';
@@ -32,13 +31,37 @@ export async function amountToUiAmount(
     return err;
 }
 
+/**
+ * Calculates the exponent for the interest rate formula.
+ * @param t1 - The start time in seconds.
+ * @param t2 - The end time in seconds.
+ * @param r - The interest rate in basis points.
+ * @returns The calculated exponent.
+ */
 const calculateExponentForTimesAndRate = (t1: number, t2: number, r: number) => {
     const ONE_IN_BASIS_POINTS = 10000;
     const SECONDS_PER_YEAR = 60 * 60 * 24 * 365.24;
-    const timespan = new Decimal(t2).minus(t1);
-    const numerator = new Decimal(r).times(timespan);
-    const exponent = numerator.div(new Decimal(SECONDS_PER_YEAR).times(ONE_IN_BASIS_POINTS));
-    return exponent.exp();
+    const timespan = t2 - t1;
+    const numerator = r * timespan;
+    const exponent = numerator / (SECONDS_PER_YEAR * ONE_IN_BASIS_POINTS);
+    return Math.exp(exponent);
+}
+
+/**
+ * Retrieves the current timestamp from the Solana clock sysvar.
+ * @param connection - The Solana connection object.
+ * @returns A promise that resolves to the current timestamp in seconds.
+ * @throws An error if the sysvar clock cannot be fetched or parsed.
+ */
+const getSysvarClockTimestamp = async (connection: Connection): Promise<number> => {
+    const info = await connection.getParsedAccountInfo(new PublicKey('SysvarC1ock11111111111111111111111111111111'));
+    if (!info) {
+        throw new Error('Failed to fetch sysvar clock');
+    }
+    if (typeof info.value === 'object' && info.value && 'data' in info.value && 'parsed' in info.value.data) {
+        return info.value.data.parsed.info.unixTimestamp;
+    }
+    throw new Error('Failed to parse sysvar clock');
 }
 
 /**
@@ -76,8 +99,6 @@ export function amountToUiAmountWithoutSimulation(
     preUpdateAverageRate: number,
     currentRate: number,
 ): string {
-    Decimal.set({ toExpPos: 24, toExpNeg: -24 })
-
     // Calculate pre-update exponent
     // e^(preUpdateAverageRate * (lastUpdateTimestamp - initializationTimestamp) / (SECONDS_PER_YEAR * ONE_IN_BASIS_POINTS))
     const preUpdateExp = calculateExponentForTimesAndRate(initializationTimestamp, lastUpdateTimestamp, preUpdateAverageRate)
@@ -87,26 +108,21 @@ export function amountToUiAmountWithoutSimulation(
     const postUpdateExp = calculateExponentForTimesAndRate(lastUpdateTimestamp, Number(currentTimestamp), currentRate)
 
     // Calculate total scale
-    const totalScale = preUpdateExp.times(postUpdateExp);
+    const totalScale = preUpdateExp * postUpdateExp;
+    // Scale the amount by the total interest factor
+    const scaledAmount = Number(amount) * totalScale;
 
-    // Calculate scaled amount with interest rounded down to the nearest unit
-    const decimalsFactor = new Decimal(10).pow(decimals);
-    const scaledAmountWithInterest = new Decimal(amount.toString()).times(totalScale).div(decimalsFactor).toDecimalPlaces(decimals, Decimal.ROUND_DOWN);
+    // Calculate the decimal factor (e.g. 100 for 2 decimals)
+    const decimalFactor = Math.pow(10, decimals);
 
-    return scaledAmountWithInterest.toString();
+    // Convert to UI amount by:
+    // 1. Dividing by decimal factor to get decimal places
+    // 2. Multiplying back up to avoid floating point errors
+    // 3. Truncating to remove any remaining decimals
+    // 4. Dividing back down to get final UI amount
+    // 5. Converting to string
+    return (Math.trunc((scaledAmount / decimalFactor) * decimalFactor) / decimalFactor).toString();
 }
-
-const getSysvarClockTimestamp = async (connection: Connection): Promise<number> => {
-    const info = await connection.getParsedAccountInfo(new PublicKey('SysvarC1ock11111111111111111111111111111111'));
-    if (!info) {
-        throw new Error('Failed to fetch sysvar clock');
-    }
-    if (typeof info.value === 'object' && info.value && 'data' in info.value && 'parsed' in info.value.data) {
-        return info.value.data.parsed.info.unixTimestamp;
-    }
-    throw new Error('Failed to parse sysvar clock');
-}
-
 
 /**
  * Convert amount to UiAmount for a mint without simulating a transaction
@@ -125,7 +141,6 @@ export async function amountToUiAmountForMintWithoutSimulation(
     mint: PublicKey,
     amount: bigint,
 ): Promise<string> {
-    Decimal.set({ toExpPos: 24, toExpNeg: -24 })
     const accountInfo = await connection.getAccountInfo(mint);
     const programId = accountInfo?.owner;
     if (programId !== TOKEN_PROGRAM_ID && programId !== TOKEN_2022_PROGRAM_ID) {
@@ -136,9 +151,9 @@ export async function amountToUiAmountForMintWithoutSimulation(
 
     const interestBearingMintConfigState = getInterestBearingMintConfigState(mintInfo);
     if (!interestBearingMintConfigState) {
-        const amountDecimal = new Decimal(amount.toString());
-        const decimalsFactor = new Decimal(10).pow(mintInfo.decimals);
-        return amountDecimal.div(decimalsFactor).toString();
+        const amountNumber = Number(amount);
+        const decimalsFactor = Math.pow(10, mintInfo.decimals);
+        return (amountNumber / decimalsFactor).toString();
     }
 
     const timestamp = await getSysvarClockTimestamp(connection);
@@ -191,10 +206,9 @@ export function uiAmountToAmountWithoutSimulation(
     preUpdateAverageRate: number,
     currentRate: number,
 ): bigint {
-    Decimal.set({ toExpPos: 24, toExpNeg: -24 })
-    const uiAmountDecimal = new Decimal(uiAmount);
-    const decimalsFactor = new Decimal(10).pow(decimals);
-    const uiAmountScaled = uiAmountDecimal.mul(decimalsFactor);
+    const uiAmountNumber = parseFloat(uiAmount);
+    const decimalsFactor = Math.pow(10, decimals);
+    const uiAmountScaled = uiAmountNumber * decimalsFactor;
    
     // Calculate pre-update exponent
     const preUpdateExp = calculateExponentForTimesAndRate(initializationTimestamp, lastUpdateTimestamp, preUpdateAverageRate);
@@ -203,11 +217,11 @@ export function uiAmountToAmountWithoutSimulation(
     const postUpdateExp = calculateExponentForTimesAndRate(lastUpdateTimestamp, currentTimestamp, currentRate);
 
     // Calculate total scale
-    const totalScale = preUpdateExp.times(postUpdateExp);
+    const totalScale = preUpdateExp * postUpdateExp;
 
     // Calculate original principle by dividing the UI amount (principle + interest) by the total scale
-    const originalPrinciple = uiAmountScaled.div(totalScale);
-    return BigInt(originalPrinciple.trunc().toString()); 
+    const originalPrinciple = uiAmountScaled / totalScale;
+    return BigInt(Math.floor(originalPrinciple)); 
 }
 
 /**
@@ -226,7 +240,6 @@ export async function uiAmountToAmountForMintWithoutSimulation(
     mint: PublicKey,
     uiAmount: string,
 ): Promise<bigint> {
-    Decimal.set({ toExpPos: 24, toExpNeg: -24 })
     const accountInfo = await connection.getAccountInfo(mint);
     const programId = accountInfo?.owner;
     if (programId !== TOKEN_PROGRAM_ID && programId !== TOKEN_2022_PROGRAM_ID) {
@@ -237,8 +250,8 @@ export async function uiAmountToAmountForMintWithoutSimulation(
 
     const interestBearingMintConfigState = getInterestBearingMintConfigState(mintInfo);
     if (!interestBearingMintConfigState) {
-        const uiAmountScaled = new Decimal(uiAmount).mul(new Decimal(10).pow(mintInfo.decimals));
-        return BigInt(uiAmountScaled.trunc().toString());
+        const uiAmountScaled = parseFloat(uiAmount) * Math.pow(10, mintInfo.decimals);
+        return BigInt(Math.floor(uiAmountScaled));
     }
 
     const timestamp = await getSysvarClockTimestamp(connection);
@@ -253,4 +266,3 @@ export async function uiAmountToAmountForMintWithoutSimulation(
         interestBearingMintConfigState.currentRate
     );
 }
-

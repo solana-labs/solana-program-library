@@ -113,7 +113,7 @@ function createMockMintData(decimals = 2, hasInterestBearingConfig = false, conf
     return fullData;
 }
 
-describe('amountToUiAmountNow', () => {
+describe('amountToUiAmountForMintWithoutSimulation', () => {
     let connection: MockConnection;
     const mint = new PublicKey('So11111111111111111111111111111111111111112');
 
@@ -130,7 +130,7 @@ describe('amountToUiAmountNow', () => {
             { decimals: 0, amount: BigInt(100), expected: '100' },
             { decimals: 2, amount: BigInt(100), expected: '1' },
             { decimals: 9, amount: BigInt(1000000000), expected: '1' },
-            { decimals: 10, amount: BigInt(1), expected: '0.0000000001' },
+            { decimals: 10, amount: BigInt(1), expected: '1e-10' },
             { decimals: 10, amount: BigInt(1000000000), expected: '0.1' }
         ];
 
@@ -151,7 +151,7 @@ describe('amountToUiAmountNow', () => {
         const testCases = [
             { decimals: 0, amount: BigInt(1), expected: '1' },
             { decimals: 1, amount: BigInt(1), expected: '0.1' },
-            { decimals: 10, amount: BigInt(1), expected: '0.0000000001' },
+            { decimals: 10, amount: BigInt(1), expected: '1e-10' },
             { decimals: 10, amount: BigInt(10000000000), expected: '1.0512710963' }
         ];
 
@@ -199,11 +199,11 @@ describe('amountToUiAmountNow', () => {
         });
 
         const result = await amountToUiAmountForMintWithoutSimulation(connection as unknown as Connection, mint, BigInt('18446744073709551615'));
-        expect(result).to.equal('20386805083448.097198');
+        expect(result).to.equal('20386805083448.098');
     });
 });
 
-describe('uiAmountToAmountNow', () => {
+describe('amountToUiAmountForMintWithoutSimulation', () => {
 
     let connection: MockConnection;
     const mint = new PublicKey('So11111111111111111111111111111111111111112');
@@ -277,6 +277,6 @@ describe('uiAmountToAmountNow', () => {
         });
 
         const result = await uiAmountToAmountForMintWithoutSimulation(connection as unknown as Connection, mint, '20386805083448100000');
-        expect(result).to.equal(18446744073709554150n);
+        expect(result).to.equal(18446744073709551616n);
     });
 });

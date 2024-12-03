@@ -61,21 +61,17 @@
     },
     "devDependencies": {
         "@solana/codecs-strings": "2.0.0",
-        "@solana/rpc-types": "^2.0.0",
         "@solana/spl-memo": "0.2.4",
-        "@solana/sysvars": "^2.0.0",
         "@solana/web3.js": "^1.95.5",
-        "@types/chai": "^5.0.1",
         "@types/chai-as-promised": "^8.0.1",
+        "@types/chai": "^5.0.1",
         "@types/mocha": "^10.0.10",
         "@types/node": "^22.10.0",
         "@types/node-fetch": "^2.6.12",
-        "@types/sinon": "^17.0.3",
         "@typescript-eslint/eslint-plugin": "^8.4.0",
         "@typescript-eslint/parser": "^8.4.0",
         "chai": "^5.1.2",
         "chai-as-promised": "^8.0.1",
-        "decimal.js": "^10.4.3",
         "eslint": "^8.57.0",
         "eslint-plugin-require-extensions": "^0.1.1",
         "gh-pages": "^6.2.0",
@@ -84,7 +80,7 @@
         "shx": "^0.3.4",
         "start-server-and-test": "^2.0.8",
         "ts-node": "^10.9.2",
-        "typedoc": "^0.27.0",
+        "typedoc": "^0.26.11",
         "typescript": "^5.7.2"
     }
 }
