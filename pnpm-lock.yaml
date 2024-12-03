@@ -650,8 +650,8 @@ importers:
         specifier: 2.0.0
         version: 2.0.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.7.2)
       '@solana/spl-memo':
-        specifier: 0.2.4
-        version: 0.2.4(@solana/web3.js@1.95.5)
+        specifier: 0.2.5
+        version: 0.2.5(@solana/web3.js@1.95.5)
       '@solana/web3.js':
         specifier: ^1.95.5
         version: 1.95.5
@@ -2714,10 +2714,9 @@ packages:
       - fastestsmallesttextencoderdecoder
     dev: false
 
-  /@solana/spl-memo@0.2.4(@solana/web3.js@1.95.5):
-    resolution: {integrity: sha512-x6MpxcUXpzRkBaqPHda/nWHqv3JOh+BsvptX4CUk5lcAB6ksr2VXLuxaAzWlLtIzU6VSU7cg2N7xGlkt28B+UQ==}
+  /@solana/spl-memo@0.2.5(@solana/web3.js@1.95.5):
+    resolution: {integrity: sha512-0Zx5t3gAdcHlRTt2O3RgGlni1x7vV7Xq7j4z9q8kKOMgU03PyoTbFQ/BSYCcICHzkaqD7ZxAiaJ6dlXolg01oA==}
     engines: {node: '>=16'}
-    deprecated: CommonJS exports were broken in this release
     peerDependencies:
       '@solana/web3.js': ^1.91.6
     dependencies:
