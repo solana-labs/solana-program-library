@@ -3,7 +3,6 @@
     "workspaces": [
         "account-compression/sdk",
         "libraries/type-length-value/js",
-        "memo/js",
         "single-pool/js",
         "stake-pool/js",
         "token/js",
