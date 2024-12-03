@@ -116,12 +116,10 @@ export function amountToUiAmountWithoutSimulation(
     const decimalFactor = Math.pow(10, decimals);
 
     // Convert to UI amount by:
-    // 1. Dividing by decimal factor to get decimal places
-    // 2. Multiplying back up to avoid floating point errors
-    // 3. Truncating to remove any remaining decimals
-    // 4. Dividing back down to get final UI amount
-    // 5. Converting to string
-    return (Math.trunc((scaledAmount / decimalFactor) * decimalFactor) / decimalFactor).toString();
+    // 1. Truncating to remove any remaining decimals
+    // 2. Dividing by decimal factor to get final UI amount
+    // 3. Converting to string
+    return (Math.trunc(scaledAmount) / decimalFactor).toString();
 }
 
 /**
