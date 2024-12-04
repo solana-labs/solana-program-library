@@ -42,7 +42,7 @@ spl-token-group-interface = { version = "0.5.0", path = "../../token-group/inter
 spl-memo = { version = "6.0", features = ["no-entrypoint"] }
 strum = "0.26"
 strum_macros = "0.26"
-tokio = "1.41"
+tokio = "1.42"
 
 [dev-dependencies]
 solana-test-validator = "2.1.0"
