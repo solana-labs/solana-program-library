@@ -45,7 +45,7 @@ const calculateExponentForTimesAndRate = (t1: number, t2: number, r: number) => 
     const numerator = r * timespan;
     const exponent = numerator / (SECONDS_PER_YEAR * ONE_IN_BASIS_POINTS);
     return Math.exp(exponent);
-}
+};
 
 /**
  * Retrieves the current timestamp from the Solana clock sysvar.
@@ -62,7 +62,7 @@ const getSysvarClockTimestamp = async (connection: Connection): Promise<number> 
         return info.value.data.parsed.info.unixTimestamp;
     }
     throw new Error('Failed to parse sysvar clock');
-}
+};
 
 /**
  * Convert amount to UiAmount for a mint with interest bearing extension without simulating a transaction
@@ -74,12 +74,12 @@ const getSysvarClockTimestamp = async (connection: Connection): Promise<number> 
  * r = annual interest rate (as a decimal, e.g., 5% = 0.05)
  * t = time in years
  * e = mathematical constant (~2.718)
- * 
- * In this case, we are calculating the total scale factor for the interest bearing extension which is the product of two exponential functions:    
+ *
+ * In this case, we are calculating the total scale factor for the interest bearing extension which is the product of two exponential functions:
  * totalScale = e^(r1 * t1) * e^(r2 * t2)
  * where r1 and r2 are the interest rates before and after the last update, and t1 and t2 are the times in years between
  * the initialization timestamp and the last update timestamp, and between the last update timestamp and the current timestamp.
- * 
+ *
  * @param amount                   Amount of tokens to be converted
  * @param decimals                 Number of decimals of the mint
  * @param currentTimestamp         Current timestamp in seconds
@@ -87,7 +87,7 @@ const getSysvarClockTimestamp = async (connection: Connection): Promise<number> 
  * @param initializationTimestamp  Time the interest bearing extension was initialized in seconds
  * @param preUpdateAverageRate     Interest rate in basis points (1 basis point = 0.01%) before last update
  * @param currentRate              Current interest rate in basis points
- * 
+ *
  * @return Amount scaled by accrued interest as a string with appropriate decimal places
  */
 export function amountToUiAmountWithoutSimulation(
@@ -101,11 +101,15 @@ export function amountToUiAmountWithoutSimulation(
 ): string {
     // Calculate pre-update exponent
     // e^(preUpdateAverageRate * (lastUpdateTimestamp - initializationTimestamp) / (SECONDS_PER_YEAR * ONE_IN_BASIS_POINTS))
-    const preUpdateExp = calculateExponentForTimesAndRate(initializationTimestamp, lastUpdateTimestamp, preUpdateAverageRate)
+    const preUpdateExp = calculateExponentForTimesAndRate(
+        initializationTimestamp,
+        lastUpdateTimestamp,
+        preUpdateAverageRate,
+    );
 
     // Calculate post-update exponent
     // e^(currentRate * (currentTimestamp - lastUpdateTimestamp) / (SECONDS_PER_YEAR * ONE_IN_BASIS_POINTS))
-    const postUpdateExp = calculateExponentForTimesAndRate(lastUpdateTimestamp, Number(currentTimestamp), currentRate)
+    const postUpdateExp = calculateExponentForTimesAndRate(lastUpdateTimestamp, Number(currentTimestamp), currentRate);
 
     // Calculate total scale
     const totalScale = preUpdateExp * postUpdateExp;
@@ -163,14 +167,14 @@ export async function amountToUiAmountForMintWithoutSimulation(
         interestBearingMintConfigState.lastUpdateTimestamp,
         interestBearingMintConfigState.initializationTimestamp,
         interestBearingMintConfigState.preUpdateAverageRate,
-        interestBearingMintConfigState.currentRate
+        interestBearingMintConfigState.currentRate,
     );
 }
 
 /**
  * Convert an amount with interest back to the original amount without interest
  * This implements the same logic as the CPI instruction available in /token/program-2022/src/extension/interest_bearing_mint/mod.rs
- * 
+ *
  * @param uiAmount                  UI Amount (principle plus continuously compounding interest) to be converted back to original principle
  * @param decimals                  Number of decimals for the mint
  * @param currentTimestamp          Current timestamp in seconds
@@ -178,21 +182,21 @@ export async function amountToUiAmountForMintWithoutSimulation(
  * @param initializationTimestamp   Time the interest bearing extension was initialized in seconds
  * @param preUpdateAverageRate      Interest rate in basis points (hundredths of a percent) before the last update
  * @param currentRate              Current interest rate in basis points
- * 
+ *
  * In general to calculate the principle from the UI amount, the formula is:
- * P = A / (e^(r * t)) where    
+ * P = A / (e^(r * t)) where
  * P = principle
  * A = UI amount
  * r = annual interest rate (as a decimal, e.g., 5% = 0.05)
  * t = time in years
- * 
+ *
  * In this case, we are calculating the principle by dividing the UI amount by the total scale factor which is the product of two exponential functions:
  * totalScale = e^(r1 * t1) * e^(r2 * t2)
  * where r1 is the pre-update average rate, r2 is the current rate, t1 is the time in years between the initialization timestamp and the last update timestamp,
  * and t2 is the time in years between the last update timestamp and the current timestamp.
  * then to calculate the principle, we divide the UI amount by the total scale factor:
  * P = A / totalScale
- * 
+ *
  * @return Original amount (principle) without interest
  */
 export function uiAmountToAmountWithoutSimulation(
@@ -207,9 +211,13 @@ export function uiAmountToAmountWithoutSimulation(
     const uiAmountNumber = parseFloat(uiAmount);
     const decimalsFactor = Math.pow(10, decimals);
     const uiAmountScaled = uiAmountNumber * decimalsFactor;
-   
+
     // Calculate pre-update exponent
-    const preUpdateExp = calculateExponentForTimesAndRate(initializationTimestamp, lastUpdateTimestamp, preUpdateAverageRate);
+    const preUpdateExp = calculateExponentForTimesAndRate(
+        initializationTimestamp,
+        lastUpdateTimestamp,
+        preUpdateAverageRate,
+    );
 
     // Calculate post-update exponent
     const postUpdateExp = calculateExponentForTimesAndRate(lastUpdateTimestamp, currentTimestamp, currentRate);
@@ -219,18 +227,18 @@ export function uiAmountToAmountWithoutSimulation(
 
     // Calculate original principle by dividing the UI amount (principle + interest) by the total scale
     const originalPrinciple = uiAmountScaled / totalScale;
-    return BigInt(Math.floor(originalPrinciple)); 
+    return BigInt(Math.floor(originalPrinciple));
 }
 
 /**
  * Convert a UI amount back to the raw amount
- * 
+ *
  * @param connection     Connection to use
  * @param mint           Mint to use for calculations
  * @param uiAmount       UI Amount to be converted back to raw amount
  * @param programId      SPL Token program account (default: TOKEN_PROGRAM_ID)
- * 
- * 
+ *
+ *
  * @return Raw amount
  */
 export async function uiAmountToAmountForMintWithoutSimulation(
@@ -261,6 +269,6 @@ export async function uiAmountToAmountForMintWithoutSimulation(
         interestBearingMintConfigState.lastUpdateTimestamp,
         interestBearingMintConfigState.initializationTimestamp,
         interestBearingMintConfigState.preUpdateAverageRate,
-        interestBearingMintConfigState.currentRate
+        interestBearingMintConfigState.currentRate,
     );
 }

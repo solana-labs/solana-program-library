@@ -1,6 +1,9 @@
 import { expect } from 'chai';
 import { Connection, PublicKey } from '@solana/web3.js';
-import { amountToUiAmountForMintWithoutSimulation, uiAmountToAmountForMintWithoutSimulation } from '../../src/actions/amountToUiAmount';
+import {
+    amountToUiAmountForMintWithoutSimulation,
+    uiAmountToAmountForMintWithoutSimulation,
+} from '../../src/actions/amountToUiAmount';
 import { AccountLayout, InterestBearingMintConfigStateLayout, TOKEN_2022_PROGRAM_ID } from '../../src';
 import { MintLayout } from '../../src/state/mint';
 import { ExtensionType } from '../../src/extensions/extensionType';
@@ -32,36 +35,35 @@ class MockConnection {
 
     getAccountInfo = async (address: PublicKey) => {
         return this.getParsedAccountInfo(address);
-    }
+    };
 
     // used to get the clock timestamp
     getParsedAccountInfo = async (address: PublicKey) => {
         if (address.toString() === 'SysvarC1ock11111111111111111111111111111111') {
-
             return {
                 value: {
                     data: {
                         parsed: {
-                            info: this.mockClock
-                        }
-                    }
-                }
+                            info: this.mockClock,
+                        },
+                    },
+                },
             };
         }
         return this.mockAccountInfo;
-    }
+    };
 
     setClockTimestamp(timestamp: number) {
         this.mockClock = {
             ...this.mockClock,
-            unixTimestamp: timestamp
+            unixTimestamp: timestamp,
         };
     }
 
     resetClock() {
         this.mockClock = {
             ...this.mockClock,
-            unixTimestamp: ONE_YEAR_IN_SECONDS
+            unixTimestamp: ONE_YEAR_IN_SECONDS,
         };
     }
 
@@ -70,17 +72,24 @@ class MockConnection {
     }
 }
 
-function createMockMintData(decimals = 2, hasInterestBearingConfig = false, config: { preUpdateAverageRate?: number, currentRate?: number } = {}) {
+function createMockMintData(
+    decimals = 2,
+    hasInterestBearingConfig = false,
+    config: { preUpdateAverageRate?: number; currentRate?: number } = {},
+) {
     const mintData = Buffer.alloc(MintLayout.span);
-    MintLayout.encode({
-        mintAuthorityOption: 1,
-        mintAuthority: new PublicKey(new Uint8Array(32).fill(1)),
-        supply: BigInt(1000000),
-        decimals: decimals,
-        isInitialized: true,
-        freezeAuthorityOption: 1,
-        freezeAuthority: new PublicKey(new Uint8Array(32).fill(1))
-    }, mintData);
+    MintLayout.encode(
+        {
+            mintAuthorityOption: 1,
+            mintAuthority: new PublicKey(new Uint8Array(32).fill(1)),
+            supply: BigInt(1000000),
+            decimals: decimals,
+            isInitialized: true,
+            freezeAuthorityOption: 1,
+            freezeAuthority: new PublicKey(new Uint8Array(32).fill(1)),
+        },
+        mintData,
+    );
 
     const baseData = Buffer.alloc(AccountLayout.span + 1);
     mintData.copy(baseData, 0);
@@ -91,13 +100,16 @@ function createMockMintData(decimals = 2, hasInterestBearingConfig = false, conf
     }
 
     const extensionData = Buffer.alloc(InterestBearingMintConfigStateLayout.span);
-    InterestBearingMintConfigStateLayout.encode({
-        rateAuthority: new PublicKey(new Uint8Array(32).fill(1)),
-        initializationTimestamp: 0,
-        preUpdateAverageRate: config.preUpdateAverageRate || 500, // default to 5%
-        lastUpdateTimestamp: ONE_YEAR_IN_SECONDS, // 1 year in seconds
-        currentRate: config.currentRate || 500, // default to 5%
-    }, extensionData);
+    InterestBearingMintConfigStateLayout.encode(
+        {
+            rateAuthority: new PublicKey(new Uint8Array(32).fill(1)),
+            initializationTimestamp: 0,
+            preUpdateAverageRate: config.preUpdateAverageRate || 500, // default to 5%
+            lastUpdateTimestamp: ONE_YEAR_IN_SECONDS, // 1 year in seconds
+            currentRate: config.currentRate || 500, // default to 5%
+        },
+        extensionData,
+    );
 
     const TYPE_SIZE = 2;
     const LENGTH_SIZE = 2;
@@ -109,7 +121,7 @@ function createMockMintData(decimals = 2, hasInterestBearingConfig = false, conf
     const fullData = Buffer.alloc(baseData.length + tlvBuffer.length);
     baseData.copy(fullData, 0);
     tlvBuffer.copy(fullData, baseData.length);
-    
+
     return fullData;
 }
 
@@ -131,7 +143,7 @@ describe('amountToUiAmountForMintWithoutSimulation', () => {
             { decimals: 2, amount: BigInt(100), expected: '1' },
             { decimals: 9, amount: BigInt(1000000000), expected: '1' },
             { decimals: 10, amount: BigInt(1), expected: '1e-10' },
-            { decimals: 10, amount: BigInt(1000000000), expected: '0.1' }
+            { decimals: 10, amount: BigInt(1000000000), expected: '0.1' },
         ];
 
         for (const { decimals, amount, expected } of testCases) {
@@ -141,7 +153,11 @@ describe('amountToUiAmountForMintWithoutSimulation', () => {
                 data: createMockMintData(decimals, false),
             });
 
-            const result = await amountToUiAmountForMintWithoutSimulation(connection as unknown as Connection, mint, amount);
+            const result = await amountToUiAmountForMintWithoutSimulation(
+                connection as unknown as Connection,
+                mint,
+                amount,
+            );
             expect(result).to.equal(expected);
         }
     });
@@ -152,7 +168,7 @@ describe('amountToUiAmountForMintWithoutSimulation', () => {
             { decimals: 0, amount: BigInt(1), expected: '1' },
             { decimals: 1, amount: BigInt(1), expected: '0.1' },
             { decimals: 10, amount: BigInt(1), expected: '1e-10' },
-            { decimals: 10, amount: BigInt(10000000000), expected: '1.0512710963' }
+            { decimals: 10, amount: BigInt(10000000000), expected: '1.0512710963' },
         ];
 
         for (const { decimals, amount, expected } of testCases) {
@@ -162,7 +178,11 @@ describe('amountToUiAmountForMintWithoutSimulation', () => {
                 data: createMockMintData(decimals, true),
             });
 
-            const result = await amountToUiAmountForMintWithoutSimulation(connection as unknown as Connection, mint, amount);
+            const result = await amountToUiAmountForMintWithoutSimulation(
+                connection as unknown as Connection,
+                mint,
+                amount,
+            );
             expect(result).to.equal(expected);
         }
     });
@@ -174,37 +194,48 @@ describe('amountToUiAmountForMintWithoutSimulation', () => {
             data: createMockMintData(10, true, { preUpdateAverageRate: -500, currentRate: -500 }),
         });
 
-        const result = await amountToUiAmountForMintWithoutSimulation(connection as unknown as Connection, mint, BigInt(10000000000));
+        const result = await amountToUiAmountForMintWithoutSimulation(
+            connection as unknown as Connection,
+            mint,
+            BigInt(10000000000),
+        );
         expect(result).to.equal('0.9512294245');
     });
 
     it('should return the correct UiAmount for netting out rates', async () => {
-        connection.setClockTimestamp(ONE_YEAR_IN_SECONDS*2);
+        connection.setClockTimestamp(ONE_YEAR_IN_SECONDS * 2);
         connection.setAccountInfo({
             owner: TOKEN_2022_PROGRAM_ID,
             lamports: 1000000,
             data: createMockMintData(10, true, { preUpdateAverageRate: -500, currentRate: 500 }),
         });
 
-        const result = await amountToUiAmountForMintWithoutSimulation(connection as unknown as Connection, mint, BigInt(10000000000));
+        const result = await amountToUiAmountForMintWithoutSimulation(
+            connection as unknown as Connection,
+            mint,
+            BigInt(10000000000),
+        );
         expect(result).to.equal('1');
     });
 
     it('should handle huge values correctly', async () => {
-        connection.setClockTimestamp(ONE_YEAR_IN_SECONDS*2);
+        connection.setClockTimestamp(ONE_YEAR_IN_SECONDS * 2);
         connection.setAccountInfo({
             owner: TOKEN_2022_PROGRAM_ID,
             lamports: 1000000,
             data: createMockMintData(6, true),
         });
 
-        const result = await amountToUiAmountForMintWithoutSimulation(connection as unknown as Connection, mint, BigInt('18446744073709551615'));
+        const result = await amountToUiAmountForMintWithoutSimulation(
+            connection as unknown as Connection,
+            mint,
+            BigInt('18446744073709551615'),
+        );
         expect(result).to.equal('20386805083448.098');
     });
 });
 
 describe('amountToUiAmountForMintWithoutSimulation', () => {
-
     let connection: MockConnection;
     const mint = new PublicKey('So11111111111111111111111111111111111111112');
 
@@ -222,7 +253,11 @@ describe('amountToUiAmountForMintWithoutSimulation', () => {
             data: createMockMintData(0, true),
         });
 
-        const result = await uiAmountToAmountForMintWithoutSimulation(connection as unknown as Connection, mint, '1.0512710963760241');
+        const result = await uiAmountToAmountForMintWithoutSimulation(
+            connection as unknown as Connection,
+            mint,
+            '1.0512710963760241',
+        );
         expect(result).to.equal(1n);
     });
 
@@ -240,7 +275,11 @@ describe('amountToUiAmountForMintWithoutSimulation', () => {
                 data: createMockMintData(decimals, true),
             });
 
-            const result = await uiAmountToAmountForMintWithoutSimulation(connection as unknown as Connection, mint, uiAmount);
+            const result = await uiAmountToAmountForMintWithoutSimulation(
+                connection as unknown as Connection,
+                mint,
+                uiAmount,
+            );
             expect(result).to.equal(expected);
         }
     });
@@ -252,12 +291,16 @@ describe('amountToUiAmountForMintWithoutSimulation', () => {
             data: createMockMintData(10, true, { preUpdateAverageRate: -500, currentRate: -500 }),
         });
 
-        const result = await uiAmountToAmountForMintWithoutSimulation(connection as unknown as Connection, mint, '0.951229424500714');
+        const result = await uiAmountToAmountForMintWithoutSimulation(
+            connection as unknown as Connection,
+            mint,
+            '0.951229424500714',
+        );
         expect(result).to.equal(9999999999n); // calculation truncates to avoid floating point precision issues in transfers
     });
 
     it('should return the correct amount for netting out rates', async () => {
-        connection.setClockTimestamp(ONE_YEAR_IN_SECONDS*2);
+        connection.setClockTimestamp(ONE_YEAR_IN_SECONDS * 2);
         connection.setAccountInfo({
             owner: TOKEN_2022_PROGRAM_ID,
             lamports: 1000000,
@@ -269,14 +312,18 @@ describe('amountToUiAmountForMintWithoutSimulation', () => {
     });
 
     it('should handle huge values correctly', async () => {
-        connection.setClockTimestamp(ONE_YEAR_IN_SECONDS*2);
+        connection.setClockTimestamp(ONE_YEAR_IN_SECONDS * 2);
         connection.setAccountInfo({
             owner: TOKEN_2022_PROGRAM_ID,
             lamports: 1000000,
             data: createMockMintData(0, true),
         });
 
-        const result = await uiAmountToAmountForMintWithoutSimulation(connection as unknown as Connection, mint, '20386805083448100000');
+        const result = await uiAmountToAmountForMintWithoutSimulation(
+            connection as unknown as Connection,
+            mint,
+            '20386805083448100000',
+        );
         expect(result).to.equal(18446744073709551616n);
     });
 });
