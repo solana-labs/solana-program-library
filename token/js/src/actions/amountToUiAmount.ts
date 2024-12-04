@@ -225,8 +225,8 @@ export function uiAmountToAmountWithoutSimulation(
     const totalScale = preUpdateExp * postUpdateExp;
 
     // Calculate original principal by dividing the UI amount (principal + interest) by the total scale
-    const originalprincipal = uiAmountScaled / totalScale;
-    return BigInt(Math.trunc(originalprincipal));
+    const originalPrincipal = uiAmountScaled / totalScale;
+    return BigInt(Math.trunc(originalPrincipal));
 }
 
 /**
