@@ -2,7 +2,7 @@ import type { Connection, Signer, TransactionError } from '@solana/web3.js';
 import { PublicKey, Transaction } from '@solana/web3.js';
 import { TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from '../constants.js';
 import { createAmountToUiAmountInstruction } from '../instructions/amountToUiAmount.js';
-import { getMint, unpackMint } from '../state/mint.js';
+import { unpackMint } from '../state/mint.js';
 import { getInterestBearingMintConfigState } from '../extensions/interestBearingMint/state.js';
 
 /**
