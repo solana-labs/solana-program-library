@@ -99,17 +99,14 @@ function createMockMintData(
         return baseData;
     }
 
+    // write extension data using the InterestBearingMintConfigStateLayout
     const extensionData = Buffer.alloc(InterestBearingMintConfigStateLayout.span);
-    InterestBearingMintConfigStateLayout.encode(
-        {
-            rateAuthority: new PublicKey(new Uint8Array(32).fill(1)),
-            initializationTimestamp: 0,
-            preUpdateAverageRate: config.preUpdateAverageRate || 500, // default to 5%
-            lastUpdateTimestamp: ONE_YEAR_IN_SECONDS, // 1 year in seconds
-            currentRate: config.currentRate || 500, // default to 5%
-        },
-        extensionData,
-    );
+    const rateAuthority = new Uint8Array(32).fill(1); // rate authority
+    Buffer.from(rateAuthority).copy(extensionData, 0);
+    extensionData.writeBigUInt64LE(BigInt(0), 32); // initialization timestamp
+    extensionData.writeInt16LE(config.preUpdateAverageRate || 500, 40); // pre-update average rate
+    extensionData.writeBigUInt64LE(BigInt(ONE_YEAR_IN_SECONDS), 42); // last update timestamp
+    extensionData.writeInt16LE(config.currentRate || 500, 50); // current rate
 
     const TYPE_SIZE = 2;
     const LENGTH_SIZE = 2;

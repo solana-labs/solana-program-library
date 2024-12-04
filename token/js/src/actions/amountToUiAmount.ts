@@ -164,8 +164,8 @@ export async function amountToUiAmountForMintWithoutSimulation(
         amount,
         mintInfo.decimals,
         timestamp,
-        interestBearingMintConfigState.lastUpdateTimestamp,
-        interestBearingMintConfigState.initializationTimestamp,
+        Number(interestBearingMintConfigState.lastUpdateTimestamp),
+        Number(interestBearingMintConfigState.initializationTimestamp),
         interestBearingMintConfigState.preUpdateAverageRate,
         interestBearingMintConfigState.currentRate,
     );
@@ -266,8 +266,8 @@ export async function uiAmountToAmountForMintWithoutSimulation(
         uiAmount,
         mintInfo.decimals,
         timestamp,
-        interestBearingMintConfigState.lastUpdateTimestamp,
-        interestBearingMintConfigState.initializationTimestamp,
+        Number(interestBearingMintConfigState.lastUpdateTimestamp),
+        Number(interestBearingMintConfigState.initializationTimestamp),
         interestBearingMintConfigState.preUpdateAverageRate,
         interestBearingMintConfigState.currentRate,
     );
