@@ -266,6 +266,9 @@ pub enum TokenError {
     /// Invalid scale for scaled ui amount
     #[error("Invalid scale for scaled ui amount")]
     InvalidScale,
+    /// Transferring, minting, and burning is paused on this mint
+    #[error("Transferring, minting, and burning is paused on this mint")]
+    MintPaused,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {
@@ -458,6 +461,9 @@ impl PrintProgramError for TokenError {
             }
             TokenError::InvalidScale => {
                 msg!("Invalid scale for scaled ui amount")
+            }
+            TokenError::MintPaused => {
+                msg!("Transferring, minting, and burning is paused on this mint")
             }
         }
     }

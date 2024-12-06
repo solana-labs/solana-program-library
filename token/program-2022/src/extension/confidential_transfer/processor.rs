@@ -16,6 +16,7 @@ use {
                 EncryptedWithheldAmount,
             },
             memo_transfer::{check_previous_sibling_instruction_is_memo, memo_required},
+            pausable::PausableConfig,
             set_account_type,
             transfer_fee::TransferFeeConfig,
             transfer_hook, BaseStateWithExtensions, BaseStateWithExtensionsMut,
@@ -397,6 +398,12 @@ fn process_deposit(
     let mint_data = &mint_info.data.borrow_mut();
     let mint = PodStateWithExtensions::<PodMint>::unpack(mint_data)?;
 
+    if let Ok(extension) = mint.get_extension::<PausableConfig>() {
+        if extension.paused.into() {
+            return Err(TokenError::MintPaused.into());
+        }
+    }
+
     if expected_decimals != mint.base.decimals {
         return Err(TokenError::MintDecimalsMismatch.into());
     }
@@ -518,6 +525,12 @@ fn process_withdraw(
         return Err(TokenError::IllegalMintBurnConversion.into());
     }
 
+    if let Ok(extension) = mint.get_extension::<PausableConfig>() {
+        if extension.paused.into() {
+            return Err(TokenError::MintPaused.into());
+        }
+    }
+
     check_program_account(token_account_info.owner)?;
     let token_account_data = &mut token_account_info.data.borrow_mut();
     let mut token_account = PodStateWithExtensionsMut::<PodAccount>::unpack(token_account_data)?;
@@ -607,6 +620,12 @@ fn process_transfer(
     check_program_account(mint_info.owner)?;
     let mint_data = mint_info.data.borrow_mut();
     let mint = PodStateWithExtensions::<PodMint>::unpack(&mint_data)?;
+
+    if let Ok(extension) = mint.get_extension::<PausableConfig>() {
+        if extension.paused.into() {
+            return Err(TokenError::MintPaused.into());
+        }
+    }
 
     let confidential_transfer_mint = mint.get_extension::<ConfidentialTransferMint>()?;
 

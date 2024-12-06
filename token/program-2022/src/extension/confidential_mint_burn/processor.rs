@@ -15,6 +15,7 @@ use {
                 ConfidentialMintBurn,
             },
             confidential_transfer::{ConfidentialTransferAccount, ConfidentialTransferMint},
+            pausable::PausableConfig,
             BaseStateWithExtensions, BaseStateWithExtensionsMut, PodStateWithExtensionsMut,
         },
         instruction::{decode_instruction_data, decode_instruction_type},
@@ -161,6 +162,11 @@ fn process_confidential_mint(
     let auditor_elgamal_pubkey = mint
         .get_extension::<ConfidentialTransferMint>()?
         .auditor_elgamal_pubkey;
+    if let Ok(extension) = mint.get_extension::<PausableConfig>() {
+        if extension.paused.into() {
+            return Err(TokenError::MintPaused.into());
+        }
+    }
     let mint_burn_extension = mint.get_extension_mut::<ConfidentialMintBurn>()?;
 
     let proof_context = verify_mint_proof(
@@ -285,6 +291,11 @@ fn process_confidential_burn(
     let auditor_elgamal_pubkey = mint
         .get_extension::<ConfidentialTransferMint>()?
         .auditor_elgamal_pubkey;
+    if let Ok(extension) = mint.get_extension::<PausableConfig>() {
+        if extension.paused.into() {
+            return Err(TokenError::MintPaused.into());
+        }
+    }
     let mint_burn_extension = mint.get_extension_mut::<ConfidentialMintBurn>()?;
 
     let proof_context = verify_burn_proof(

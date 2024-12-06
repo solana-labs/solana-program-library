@@ -1618,6 +1618,251 @@ async fn confidential_transfer_transfer() {
 }
 
 #[cfg(feature = "zk-ops")]
+#[tokio::test]
+async fn pause_confidential_deposit() {
+    let authority = Keypair::new();
+    let pausable_authority = Keypair::new();
+    let auto_approve_new_accounts = true;
+    let auditor_elgamal_keypair = ElGamalKeypair::new_rand();
+    let auditor_elgamal_pubkey = (*auditor_elgamal_keypair.pubkey()).into();
+
+    let mut context = TestContext::new().await;
+    context
+        .init_token_with_mint(vec![
+            ExtensionInitializationParams::ConfidentialTransferMint {
+                authority: Some(authority.pubkey()),
+                auto_approve_new_accounts,
+                auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
+            },
+            ExtensionInitializationParams::PausableConfig {
+                authority: pausable_authority.pubkey(),
+            },
+        ])
+        .await
+        .unwrap();
+    let TokenContext {
+        token,
+        alice,
+        mint_authority,
+        decimals,
+        ..
+    } = context.token_context.unwrap();
+
+    let alice_meta = ConfidentialTokenAccountMeta::new(&token, &alice, None, false, false).await;
+
+    token
+        .mint_to(
+            &alice_meta.token_account,
+            &mint_authority.pubkey(),
+            42,
+            &[mint_authority],
+        )
+        .await
+        .unwrap();
+
+    token
+        .pause(&pausable_authority.pubkey(), &[&pausable_authority])
+        .await
+        .unwrap();
+
+    let error = token
+        .confidential_transfer_deposit(
+            &alice_meta.token_account,
+            &alice.pubkey(),
+            42,
+            decimals,
+            &[alice],
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(
+        error,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::MintPaused as u32)
+            )
+        )))
+    );
+}
+
+#[cfg(feature = "zk-ops")]
+#[tokio::test]
+async fn pause_confidential_withdraw() {
+    let authority = Keypair::new();
+    let pausable_authority = Keypair::new();
+    let auto_approve_new_accounts = true;
+    let auditor_elgamal_keypair = ElGamalKeypair::new_rand();
+    let auditor_elgamal_pubkey = (*auditor_elgamal_keypair.pubkey()).into();
+
+    let mut context = TestContext::new().await;
+    context
+        .init_token_with_mint(vec![
+            ExtensionInitializationParams::ConfidentialTransferMint {
+                authority: Some(authority.pubkey()),
+                auto_approve_new_accounts,
+                auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
+            },
+            ExtensionInitializationParams::PausableConfig {
+                authority: pausable_authority.pubkey(),
+            },
+        ])
+        .await
+        .unwrap();
+    let TokenContext {
+        token,
+        alice,
+        mint_authority,
+        decimals,
+        ..
+    } = context.token_context.unwrap();
+
+    let alice_meta = ConfidentialTokenAccountMeta::new(&token, &alice, None, false, false).await;
+
+    token
+        .mint_to(
+            &alice_meta.token_account,
+            &mint_authority.pubkey(),
+            42,
+            &[mint_authority],
+        )
+        .await
+        .unwrap();
+
+    token
+        .confidential_transfer_deposit(
+            &alice_meta.token_account,
+            &alice.pubkey(),
+            42,
+            decimals,
+            &[&alice],
+        )
+        .await
+        .unwrap();
+
+    token
+        .confidential_transfer_apply_pending_balance(
+            &alice_meta.token_account,
+            &alice.pubkey(),
+            None,
+            alice_meta.elgamal_keypair.secret(),
+            &alice_meta.aes_key,
+            &[&alice],
+        )
+        .await
+        .unwrap();
+
+    token
+        .pause(&pausable_authority.pubkey(), &[&pausable_authority])
+        .await
+        .unwrap();
+
+    let error = withdraw_with_option(
+        &token,
+        &alice_meta.token_account,
+        &alice.pubkey(),
+        42,
+        decimals,
+        &alice_meta.elgamal_keypair,
+        &alice_meta.aes_key,
+        &[&alice],
+        ConfidentialTransferOption::InstructionData,
+    )
+    .await
+    .unwrap_err();
+
+    assert_eq!(
+        error,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::MintPaused as u32)
+            )
+        )))
+    );
+}
+
+#[cfg(feature = "zk-ops")]
+#[tokio::test]
+async fn pause_confidential_transfer() {
+    let authority = Keypair::new();
+    let pausable_authority = Keypair::new();
+    let auto_approve_new_accounts = true;
+    let auditor_elgamal_keypair = ElGamalKeypair::new_rand();
+    let auditor_elgamal_pubkey = (*auditor_elgamal_keypair.pubkey()).into();
+
+    let mut context = TestContext::new().await;
+    context
+        .init_token_with_mint(vec![
+            ExtensionInitializationParams::ConfidentialTransferMint {
+                authority: Some(authority.pubkey()),
+                auto_approve_new_accounts,
+                auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
+            },
+            ExtensionInitializationParams::PausableConfig {
+                authority: pausable_authority.pubkey(),
+            },
+        ])
+        .await
+        .unwrap();
+
+    let TokenContext {
+        token,
+        alice,
+        bob,
+        mint_authority,
+        decimals,
+        ..
+    } = context.token_context.unwrap();
+
+    let alice_meta = ConfidentialTokenAccountMeta::new_with_tokens(
+        &token,
+        &alice,
+        None,
+        false,
+        false,
+        &mint_authority,
+        42,
+        decimals,
+    )
+    .await;
+
+    let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob, Some(2), false, false).await;
+
+    // pause it
+    token
+        .pause(&pausable_authority.pubkey(), &[&pausable_authority])
+        .await
+        .unwrap();
+    let error = confidential_transfer_with_option(
+        &token,
+        &alice_meta.token_account,
+        &bob_meta.token_account,
+        &alice.pubkey(),
+        10,
+        &alice_meta.elgamal_keypair,
+        &alice_meta.aes_key,
+        bob_meta.elgamal_keypair.pubkey(),
+        Some(auditor_elgamal_keypair.pubkey()),
+        None,
+        &[&alice],
+        ConfidentialTransferOption::InstructionData,
+    )
+    .await
+    .unwrap_err();
+
+    assert_eq!(
+        error,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::MintPaused as u32)
+            )
+        )))
+    );
+}
+
+#[cfg(feature = "zk-ops")]
 async fn confidential_transfer_transfer_with_option(option: ConfidentialTransferOption) {
     let authority = Keypair::new();
     let auto_approve_new_accounts = true;
@@ -2326,6 +2571,107 @@ async fn confidential_transfer_transfer_with_fee() {
         ConfidentialTransferOption::ContextStateAccount,
     )
     .await;
+}
+
+#[cfg(feature = "zk-ops")]
+#[tokio::test]
+async fn pause_confidential_transfer_with_fee() {
+    let transfer_fee_authority = Keypair::new();
+    let withdraw_withheld_authority = Keypair::new();
+
+    let pausable_authority = Keypair::new();
+    let confidential_transfer_authority = Keypair::new();
+    let auto_approve_new_accounts = true;
+    let auditor_elgamal_keypair = ElGamalKeypair::new_rand();
+    let auditor_elgamal_pubkey = (*auditor_elgamal_keypair.pubkey()).into();
+
+    let confidential_transfer_fee_authority = Keypair::new();
+    let withdraw_withheld_authority_elgamal_keypair = ElGamalKeypair::new_rand();
+    let withdraw_withheld_authority_elgamal_pubkey =
+        (*withdraw_withheld_authority_elgamal_keypair.pubkey()).into();
+
+    let mut context = TestContext::new().await;
+    context
+        .init_token_with_mint(vec![
+            ExtensionInitializationParams::TransferFeeConfig {
+                transfer_fee_config_authority: Some(transfer_fee_authority.pubkey()),
+                withdraw_withheld_authority: Some(withdraw_withheld_authority.pubkey()),
+                transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
+                maximum_fee: TEST_MAXIMUM_FEE,
+            },
+            ExtensionInitializationParams::ConfidentialTransferMint {
+                authority: Some(confidential_transfer_authority.pubkey()),
+                auto_approve_new_accounts,
+                auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
+            },
+            ExtensionInitializationParams::ConfidentialTransferFeeConfig {
+                authority: Some(confidential_transfer_fee_authority.pubkey()),
+                withdraw_withheld_authority_elgamal_pubkey,
+            },
+            ExtensionInitializationParams::PausableConfig {
+                authority: pausable_authority.pubkey(),
+            },
+        ])
+        .await
+        .unwrap();
+
+    let TokenContext {
+        token,
+        alice,
+        bob,
+        mint_authority,
+        decimals,
+        ..
+    } = context.token_context.unwrap();
+
+    let alice_meta = ConfidentialTokenAccountMeta::new_with_tokens(
+        &token,
+        &alice,
+        None,
+        false,
+        true,
+        &mint_authority,
+        100,
+        decimals,
+    )
+    .await;
+
+    let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob, None, false, true).await;
+
+    token
+        .pause(&pausable_authority.pubkey(), &[&pausable_authority])
+        .await
+        .unwrap();
+
+    let error = confidential_transfer_with_fee_with_option(
+        &token,
+        &alice_meta.token_account,
+        &bob_meta.token_account,
+        &alice.pubkey(),
+        10,
+        &alice_meta.elgamal_keypair,
+        &alice_meta.aes_key,
+        bob_meta.elgamal_keypair.pubkey(),
+        Some(auditor_elgamal_keypair.pubkey()),
+        withdraw_withheld_authority_elgamal_keypair.pubkey(),
+        TEST_FEE_BASIS_POINTS,
+        TEST_MAXIMUM_FEE,
+        None,
+        &[&alice],
+        ConfidentialTransferOption::InstructionData,
+    )
+    .await
+    .unwrap_err();
+
+    assert_eq!(
+        error,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::MintPaused as u32)
+            )
+        )))
+    );
 }
 
 #[cfg(feature = "zk-ops")]

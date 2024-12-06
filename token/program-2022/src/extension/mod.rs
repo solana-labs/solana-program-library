@@ -21,6 +21,7 @@ use {
             metadata_pointer::MetadataPointer,
             mint_close_authority::MintCloseAuthority,
             non_transferable::{NonTransferable, NonTransferableAccount},
+            pausable::{PausableAccount, PausableConfig},
             permanent_delegate::PermanentDelegate,
             scaled_ui_amount::ScaledUiAmountConfig,
             transfer_fee::{TransferFeeAmount, TransferFeeConfig},
@@ -73,6 +74,8 @@ pub mod metadata_pointer;
 pub mod mint_close_authority;
 /// Non Transferable extension
 pub mod non_transferable;
+/// Pausable extension
+pub mod pausable;
 /// Permanent Delegate extension
 pub mod permanent_delegate;
 /// Utility to reallocate token accounts
@@ -771,6 +774,9 @@ pub trait BaseStateWithExtensionsMut<S: BaseState>: BaseStateWithExtensions<S> {
             // ConfidentialTransfers are currently opt-in only, so this is a no-op for extra safety
             // on InitializeAccount
             ExtensionType::ConfidentialTransferAccount => Ok(()),
+            ExtensionType::PausableAccount => {
+                self.init_extension::<PausableAccount>(true).map(|_| ())
+            }
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => {
                 self.init_extension::<AccountPaddingTest>(true).map(|_| ())
@@ -1114,6 +1120,10 @@ pub enum ExtensionType {
     ConfidentialMintBurn,
     /// Tokens whose UI amount is scaled by a given amount
     ScaledUiAmount,
+    /// Tokens where minting / burning / transferring can be paused
+    Pausable,
+    /// Indicates that the account belongs to a pausable mint
+    PausableAccount,
 
     /// Test variable-length mint extension
     #[cfg(test)]
@@ -1197,6 +1207,8 @@ impl ExtensionType {
             ExtensionType::TokenGroupMember => pod_get_packed_len::<TokenGroupMember>(),
             ExtensionType::ConfidentialMintBurn => pod_get_packed_len::<ConfidentialMintBurn>(),
             ExtensionType::ScaledUiAmount => pod_get_packed_len::<ScaledUiAmountConfig>(),
+            ExtensionType::Pausable => pod_get_packed_len::<PausableConfig>(),
+            ExtensionType::PausableAccount => pod_get_packed_len::<PausableAccount>(),
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => pod_get_packed_len::<AccountPaddingTest>(),
             #[cfg(test)]
@@ -1262,7 +1274,8 @@ impl ExtensionType {
             | ExtensionType::GroupMemberPointer
             | ExtensionType::ConfidentialMintBurn
             | ExtensionType::TokenGroupMember
-            | ExtensionType::ScaledUiAmount => AccountType::Mint,
+            | ExtensionType::ScaledUiAmount
+            | ExtensionType::Pausable => AccountType::Mint,
             ExtensionType::ImmutableOwner
             | ExtensionType::TransferFeeAmount
             | ExtensionType::ConfidentialTransferAccount
@@ -1270,7 +1283,8 @@ impl ExtensionType {
             | ExtensionType::NonTransferableAccount
             | ExtensionType::TransferHookAccount
             | ExtensionType::CpiGuard
-            | ExtensionType::ConfidentialTransferFeeAmount => AccountType::Account,
+            | ExtensionType::ConfidentialTransferFeeAmount
+            | ExtensionType::PausableAccount => AccountType::Account,
             #[cfg(test)]
             ExtensionType::VariableLenMintTest => AccountType::Mint,
             #[cfg(test)]
@@ -1295,6 +1309,9 @@ impl ExtensionType {
                 }
                 ExtensionType::TransferHook => {
                     account_extension_types.push(ExtensionType::TransferHookAccount);
+                }
+                ExtensionType::Pausable => {
+                    account_extension_types.push(ExtensionType::PausableAccount);
                 }
                 #[cfg(test)]
                 ExtensionType::MintPaddingTest => {
