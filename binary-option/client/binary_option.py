@@ -140,7 +140,7 @@ class BinaryOption():
 
     def initialize(self, api_endpoint, escrow_mint, decimals=2, skip_confirmation=True):
         msg = ""
-        # Initialize Clinet
+        # Initialize Client
         client = Client(api_endpoint)
         msg += "Initialized client"
         # Create account objects

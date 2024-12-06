@@ -755,7 +755,7 @@ impl ReserveFees {
     }
 }
 
-/// Calculate fees exlusive or inclusive of an amount
+/// Calculate fees exclusive or inclusive of an amount
 pub enum FeeCalculation {
     /// Fee added to amount: fee = rate * amount
     Exclusive,
