@@ -32,7 +32,7 @@ impl BurnProofContext {
         range_proof_context: &BatchedRangeProofContext,
     ) -> Result<Self, TokenProofExtractionError> {
         // The equality proof context consists of the source ElGamal public key, the new
-        // source available balance ciphertext, and the new source avaialble
+        // source available balance ciphertext, and the new source available
         // balance commitment. The public key should be checked with ciphertext
         // validity proof context for consistency and the commitment should be
         // checked with range proof for consistency. The public key and
