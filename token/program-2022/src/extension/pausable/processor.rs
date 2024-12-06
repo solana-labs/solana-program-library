@@ -37,7 +37,7 @@ fn process_initialize(
     Ok(())
 }
 
-/// Pause minting / burning / transferring on the mint
+/// Pause or resume minting / burning / transferring on the mint
 fn process_toggle_pause(
     program_id: &Pubkey,
     accounts: &[AccountInfo],

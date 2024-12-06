@@ -463,7 +463,7 @@ impl PrintProgramError for TokenError {
                 msg!("Invalid scale for scaled ui amount")
             }
             TokenError::MintPaused => {
-                msg!("Transferring, minting, and burning is paused on this mint");
+                msg!("Transferring, minting, and burning is paused on this mint")
             }
         }
     }
