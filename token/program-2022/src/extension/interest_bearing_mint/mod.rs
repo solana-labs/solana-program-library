@@ -1,7 +1,10 @@
 #[cfg(feature = "serde-traits")]
 use serde::{Deserialize, Serialize};
 use {
-    crate::extension::{Extension, ExtensionType},
+    crate::{
+        extension::{Extension, ExtensionType},
+        trim_ui_amount_string,
+    },
     bytemuck::{Pod, Zeroable},
     solana_program::program_error::ProgramError,
     spl_pod::{
@@ -81,7 +84,7 @@ impl InterestBearingConfig {
     }
 
     /// Convert a raw amount to its UI representation using the given decimals
-    /// field Excess zeroes or unneeded decimal point are trimmed.
+    /// field. Excess zeroes or unneeded decimal point are trimmed.
     pub fn amount_to_ui_amount(
         &self,
         amount: u64,
@@ -90,7 +93,8 @@ impl InterestBearingConfig {
     ) -> Option<String> {
         let scaled_amount_with_interest =
             (amount as f64) * self.total_scale(decimals, unix_timestamp)?;
-        Some(scaled_amount_with_interest.to_string())
+        let ui_amount = format!("{scaled_amount_with_interest:.*}", decimals as usize);
+        Some(trim_ui_amount_string(ui_amount, decimals))
     }
 
     /// Try to convert a UI representation of a token amount to its raw amount
@@ -167,6 +171,7 @@ mod tests {
 
     #[test]
     fn specific_amount_to_ui_amount() {
+        const ONE: u64 = 1_000_000_000_000_000_000;
         // constant 5%
         let config = InterestBearingConfig {
             rate_authority: OptionalNonZeroPubkey::default(),
@@ -177,25 +182,25 @@ mod tests {
         };
         // 1 year at 5% gives a total of exp(0.05) = 1.0512710963760241
         let ui_amount = config
-            .amount_to_ui_amount(1, 0, INT_SECONDS_PER_YEAR)
+            .amount_to_ui_amount(ONE, 18, INT_SECONDS_PER_YEAR)
             .unwrap();
-        assert_eq!(ui_amount, "1.0512710963760241");
+        assert_eq!(ui_amount, "1.051271096376024117");
         // with 1 decimal place
         let ui_amount = config
-            .amount_to_ui_amount(1, 1, INT_SECONDS_PER_YEAR)
+            .amount_to_ui_amount(ONE, 19, INT_SECONDS_PER_YEAR)
             .unwrap();
-        assert_eq!(ui_amount, "0.10512710963760241");
+        assert_eq!(ui_amount, "0.1051271096376024117");
         // with 10 decimal places
         let ui_amount = config
-            .amount_to_ui_amount(1, 10, INT_SECONDS_PER_YEAR)
+            .amount_to_ui_amount(ONE, 28, INT_SECONDS_PER_YEAR)
             .unwrap();
-        assert_eq!(ui_amount, "0.00000000010512710963760242"); // different digit at the end!
+        assert_eq!(ui_amount, "0.0000000001051271096376024175"); // different digits at the end!
 
         // huge amount with 10 decimal places
         let ui_amount = config
             .amount_to_ui_amount(10_000_000_000, 10, INT_SECONDS_PER_YEAR)
             .unwrap();
-        assert_eq!(ui_amount, "1.0512710963760241");
+        assert_eq!(ui_amount, "1.0512710964");
 
         // negative
         let config = InterestBearingConfig {
@@ -207,9 +212,9 @@ mod tests {
         };
         // 1 year at -5% gives a total of exp(-0.05) = 0.951229424500714
         let ui_amount = config
-            .amount_to_ui_amount(1, 0, INT_SECONDS_PER_YEAR)
+            .amount_to_ui_amount(ONE, 18, INT_SECONDS_PER_YEAR)
             .unwrap();
-        assert_eq!(ui_amount, "0.951229424500714");
+        assert_eq!(ui_amount, "0.951229424500713905");
 
         // net out
         let config = InterestBearingConfig {
@@ -236,12 +241,12 @@ mod tests {
         let ui_amount = config
             .amount_to_ui_amount(u64::MAX, 0, INT_SECONDS_PER_YEAR * 2)
             .unwrap();
-        assert_eq!(ui_amount, "20386805083448100000");
+        assert_eq!(ui_amount, "20386805083448098816");
         let ui_amount = config
             .amount_to_ui_amount(u64::MAX, 0, INT_SECONDS_PER_YEAR * 10_000)
             .unwrap();
         // there's an underflow risk, but it works!
-        assert_eq!(ui_amount, "258917064265813830000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
+        assert_eq!(ui_amount, "258917064265813826192025834755112557504850551118283225815045099303279643822914042296793377611277551888244755303462190670431480816358154467489350925148558569427069926786360814068189956495940285398273555561779717914539956777398245259214848");
     }
 
     #[test]

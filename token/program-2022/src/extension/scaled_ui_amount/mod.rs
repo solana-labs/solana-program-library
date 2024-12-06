@@ -1,7 +1,10 @@
 #[cfg(feature = "serde-traits")]
 use serde::{Deserialize, Serialize};
 use {
-    crate::extension::{Extension, ExtensionType},
+    crate::{
+        extension::{Extension, ExtensionType},
+        trim_ui_amount_string,
+    },
     bytemuck::{Pod, Zeroable},
     solana_program::program_error::ProgramError,
     spl_pod::{optional_keys::OptionalNonZeroPubkey, primitives::PodI64},
@@ -72,7 +75,8 @@ impl ScaledUiAmountConfig {
         unix_timestamp: i64,
     ) -> Option<String> {
         let scaled_amount = (amount as f64) * self.total_multiplier(decimals, unix_timestamp);
-        Some(scaled_amount.to_string())
+        let ui_amount = format!("{scaled_amount:.*}", decimals as usize);
+        Some(trim_ui_amount_string(ui_amount, decimals))
     }
 
     /// Try to convert a UI representation of a token amount to its raw amount
