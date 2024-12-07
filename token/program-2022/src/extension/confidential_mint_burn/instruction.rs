@@ -26,7 +26,7 @@ use {
 #[cfg(not(target_os = "solana"))]
 use {
     solana_zk_sdk::{
-        encryption::{auth_encryption::AeCiphertext, elgamal::ElGamalPubkey},
+        encryption::elgamal::ElGamalPubkey,
         zk_elgamal_proof_program::{
             instruction::ProofInstruction,
             proof_data::{
@@ -291,8 +291,8 @@ pub struct BurnInstructionData {
 pub fn initialize_mint(
     token_program_id: &Pubkey,
     mint: &Pubkey,
-    supply_elgamal_pubkey: PodElGamalPubkey,
-    decryptable_supply: PodAeCiphertext,
+    supply_elgamal_pubkey: &PodElGamalPubkey,
+    decryptable_supply: &DecryptableBalance,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let accounts = vec![AccountMeta::new(*mint, false)];
@@ -303,8 +303,8 @@ pub fn initialize_mint(
         TokenInstruction::ConfidentialMintBurnExtension,
         ConfidentialMintBurnInstruction::InitializeMint,
         &InitializeMintData {
-            supply_elgamal_pubkey,
-            decryptable_supply,
+            supply_elgamal_pubkey: *supply_elgamal_pubkey,
+            decryptable_supply: *decryptable_supply,
         },
     ))
 }
@@ -317,7 +317,7 @@ pub fn rotate_supply_elgamal_pubkey(
     mint: &Pubkey,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    new_supply_elgamal_pubkey: ElGamalPubkey,
+    new_supply_elgamal_pubkey: &PodElGamalPubkey,
     ciphertext_equality_proof: ProofLocation<CiphertextCiphertextEqualityProofData>,
 ) -> Result<Vec<Instruction>, ProgramError> {
     check_program_account(token_program_id)?;
@@ -349,7 +349,7 @@ pub fn rotate_supply_elgamal_pubkey(
         TokenInstruction::ConfidentialMintBurnExtension,
         ConfidentialMintBurnInstruction::RotateSupplyElGamalPubkey,
         &RotateSupplyElGamalPubkeyData {
-            new_supply_elgamal_pubkey: PodElGamalPubkey::from(new_supply_elgamal_pubkey),
+            new_supply_elgamal_pubkey: *new_supply_elgamal_pubkey,
             proof_instruction_offset,
         },
     )];
@@ -366,7 +366,7 @@ pub fn update_decryptable_supply(
     mint: &Pubkey,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    new_decryptable_supply: AeCiphertext,
+    new_decryptable_supply: &DecryptableBalance,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let mut accounts = vec![
@@ -382,7 +382,7 @@ pub fn update_decryptable_supply(
         TokenInstruction::ConfidentialMintBurnExtension,
         ConfidentialMintBurnInstruction::UpdateDecryptableSupply,
         &UpdateDecryptableSupplyData {
-            new_decryptable_supply: new_decryptable_supply.into(),
+            new_decryptable_supply: *new_decryptable_supply,
         },
     ))
 }
@@ -417,7 +417,7 @@ pub fn confidential_mint_with_split_proofs(
         BatchedGroupedCiphertext3HandlesValidityProofData,
     >,
     range_proof_location: ProofLocation<BatchedRangeProofU128Data>,
-    new_decryptable_supply: AeCiphertext,
+    new_decryptable_supply: &DecryptableBalance,
 ) -> Result<Vec<Instruction>, ProgramError> {
     check_program_account(token_program_id)?;
     let mut accounts = vec![AccountMeta::new(*token_account, false)];
@@ -473,7 +473,7 @@ pub fn confidential_mint_with_split_proofs(
         TokenInstruction::ConfidentialMintBurnExtension,
         ConfidentialMintBurnInstruction::Mint,
         &MintInstructionData {
-            new_decryptable_supply: new_decryptable_supply.into(),
+            new_decryptable_supply: *new_decryptable_supply,
             mint_amount_auditor_ciphertext_lo: *mint_amount_auditor_ciphertext_lo,
             mint_amount_auditor_ciphertext_hi: *mint_amount_auditor_ciphertext_hi,
             equality_proof_instruction_offset,
@@ -495,7 +495,7 @@ pub fn confidential_burn_with_split_proofs(
     token_account: &Pubkey,
     mint: &Pubkey,
     supply_elgamal_pubkey: Option<ElGamalPubkey>,
-    new_decryptable_available_balance: DecryptableBalance,
+    new_decryptable_available_balance: &DecryptableBalance,
     burn_amount_auditor_ciphertext_lo: &PodElGamalCiphertext,
     burn_amount_auditor_ciphertext_hi: &PodElGamalCiphertext,
     authority: &Pubkey,
@@ -559,7 +559,7 @@ pub fn confidential_burn_with_split_proofs(
         TokenInstruction::ConfidentialMintBurnExtension,
         ConfidentialMintBurnInstruction::Burn,
         &BurnInstructionData {
-            new_decryptable_available_balance,
+            new_decryptable_available_balance: *new_decryptable_available_balance,
             burn_amount_auditor_ciphertext_lo: *burn_amount_auditor_ciphertext_lo,
             burn_amount_auditor_ciphertext_hi: *burn_amount_auditor_ciphertext_hi,
             equality_proof_instruction_offset,
