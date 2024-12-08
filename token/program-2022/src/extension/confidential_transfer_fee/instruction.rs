@@ -275,7 +275,7 @@ pub fn initialize_confidential_transfer_fee_config(
     token_program_id: &Pubkey,
     mint: &Pubkey,
     authority: Option<Pubkey>,
-    withdraw_withheld_authority_elgamal_pubkey: PodElGamalPubkey,
+    withdraw_withheld_authority_elgamal_pubkey: &PodElGamalPubkey,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let accounts = vec![AccountMeta::new(*mint, false)];
@@ -287,7 +287,7 @@ pub fn initialize_confidential_transfer_fee_config(
         ConfidentialTransferFeeInstruction::InitializeConfidentialTransferFeeConfig,
         &InitializeConfidentialTransferFeeConfigData {
             authority: authority.try_into()?,
-            withdraw_withheld_authority_elgamal_pubkey,
+            withdraw_withheld_authority_elgamal_pubkey: *withdraw_withheld_authority_elgamal_pubkey,
         },
     ))
 }

@@ -38,8 +38,11 @@ pub fn mint_split_proof_data(
     supply_elgamal_keypair: &ElGamalKeypair,
     supply_aes_key: &AeKey,
     destination_elgamal_pubkey: &ElGamalPubkey,
-    auditor_elgamal_pubkey: &ElGamalPubkey,
+    auditor_elgamal_pubkey: Option<&ElGamalPubkey>,
 ) -> Result<MintProofData, TokenProofGenerationError> {
+    let default_auditor_pubkey = ElGamalPubkey::default();
+    let auditor_elgamal_pubkey = auditor_elgamal_pubkey.unwrap_or(&default_auditor_pubkey);
+
     // split the mint amount into low and high bits
     let (mint_amount_lo, mint_amount_hi) = try_split_u64(mint_amount, MINT_AMOUNT_LO_BIT_LENGTH)
         .ok_or(TokenProofGenerationError::IllegalAmountBitLength)?;

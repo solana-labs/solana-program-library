@@ -238,7 +238,7 @@ fn test_mint_validity(mint_amount: u64, supply: u64) {
         &supply_keypair,
         &supply_aes_key,
         destination_pubkey,
-        auditor_pubkey,
+        Some(auditor_pubkey),
     )
     .unwrap();
 
@@ -291,7 +291,7 @@ fn test_burn_validity(spendable_balance: u64, burn_amount: u64) {
         burn_amount,
         &source_keypair,
         &aes_key,
-        auditor_pubkey,
+        Some(auditor_pubkey),
         supply_pubkey,
     )
     .unwrap();
