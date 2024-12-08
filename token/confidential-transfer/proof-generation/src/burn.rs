@@ -36,9 +36,12 @@ pub fn burn_split_proof_data(
     burn_amount: u64,
     source_elgamal_keypair: &ElGamalKeypair,
     source_aes_key: &AeKey,
-    auditor_elgamal_pubkey: &ElGamalPubkey,
+    auditor_elgamal_pubkey: Option<&ElGamalPubkey>,
     supply_elgamal_pubkey: &ElGamalPubkey,
 ) -> Result<BurnProofData, TokenProofGenerationError> {
+    let default_auditor_pubkey = ElGamalPubkey::default();
+    let auditor_elgamal_pubkey = auditor_elgamal_pubkey.unwrap_or(&default_auditor_pubkey);
+
     // split the burn amount into low and high bits
     let (burn_amount_lo, burn_amount_hi) = try_split_u64(burn_amount, BURN_AMOUNT_LO_BIT_LENGTH)
         .ok_or(TokenProofGenerationError::IllegalAmountBitLength)?;
