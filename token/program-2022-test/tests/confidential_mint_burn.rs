@@ -1,4 +1,4 @@
-#![cfg(feature = "test-sbf")]
+//#![cfg(feature = "test-sbf")]
 
 mod program_test;
 use {
@@ -19,7 +19,7 @@ use {
     },
     spl_token_client::{
         client::ProgramBanksClientProcessTransaction,
-        token::{ExtensionInitializationParams, ProofAccount, Token},
+        token::{ExtensionInitializationParams, ProofAccount, ProofAccountWithCiphertext, Token},
     },
     spl_token_confidential_transfer_proof_generation::{
         burn::burn_split_proof_data, mint::mint_split_proof_data,
@@ -36,21 +36,27 @@ async fn test_confidential_mint() {
     let auditor_elgamal_keypair = ElGamalKeypair::new_rand();
     let auditor_elgamal_pubkey = (*auditor_elgamal_keypair.pubkey()).into();
     let supply_aes_key = AeKey::new_rand();
+    let mint_account = Keypair::new();
 
     let mut context = TestContext::new().await;
     context
-        .init_token_with_mint(vec![
-            ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: Some(authority.pubkey()),
-                auto_approve_new_accounts: true,
-                auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
-            },
-            ExtensionInitializationParams::ConfidentialMintBurnMint {
-                authority: authority.pubkey(),
-                confidential_supply_pubkey: Some(auditor_elgamal_pubkey),
-                decryptable_supply: Some(supply_aes_key.encrypt(0).into()),
-            },
-        ])
+        .init_token_with_mint_keypair_and_freeze_authority_and_mint_authority(
+            mint_account,
+            vec![
+                ExtensionInitializationParams::ConfidentialTransferMint {
+                    authority: Some(authority.pubkey()),
+                    auto_approve_new_accounts: true,
+                    auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
+                },
+                ExtensionInitializationParams::ConfidentialMintBurnMint {
+                    confidential_supply_pubkey: auditor_elgamal_pubkey,
+                    decryptable_supply: supply_aes_key.encrypt(0).into(),
+                },
+            ],
+            None,
+            // hacky but we have to clone somehow
+            Keypair::from_bytes(&authority.to_bytes()).unwrap(),
+        )
         .await
         .unwrap();
 
@@ -121,21 +127,26 @@ async fn test_confidential_burn() {
     let auditor_elgamal_keypair = ElGamalKeypair::new_rand();
     let auditor_elgamal_pubkey = (*auditor_elgamal_keypair.pubkey()).into();
     let supply_aes_key = AeKey::new_rand();
+    let mint_account = Keypair::new();
 
     let mut context = TestContext::new().await;
     context
-        .init_token_with_mint(vec![
-            ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: Some(authority.pubkey()),
-                auto_approve_new_accounts: true,
-                auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
-            },
-            ExtensionInitializationParams::ConfidentialMintBurnMint {
-                authority: authority.pubkey(),
-                confidential_supply_pubkey: Some(auditor_elgamal_pubkey),
-                decryptable_supply: Some(supply_aes_key.encrypt(0).into()),
-            },
-        ])
+        .init_token_with_mint_keypair_and_freeze_authority_and_mint_authority(
+            mint_account,
+            vec![
+                ExtensionInitializationParams::ConfidentialTransferMint {
+                    authority: Some(authority.pubkey()),
+                    auto_approve_new_accounts: true,
+                    auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
+                },
+                ExtensionInitializationParams::ConfidentialMintBurnMint {
+                    confidential_supply_pubkey: auditor_elgamal_pubkey,
+                    decryptable_supply: supply_aes_key.encrypt(0).into(),
+                },
+            ],
+            None,
+            Keypair::from_bytes(&authority.to_bytes()).unwrap(),
+        )
         .await
         .unwrap();
 
@@ -227,7 +238,9 @@ async fn test_confidential_burn() {
         .confidential_transfer_create_context_state_account(
             &ciphertext_validity_proof_context_pubkey,
             &context_state_auth_pubkey,
-            &proof_data.ciphertext_validity_proof_data,
+            &proof_data
+                .ciphertext_validity_proof_data_with_ciphertext
+                .proof_data,
             false,
             ciphertext_validity_proof_signer,
         )
@@ -247,6 +260,15 @@ async fn test_confidential_burn() {
     let equality_proof_location = ProofAccount::ContextAccount(equality_proof_context_pubkey);
     let ciphertext_validity_proof_location =
         ProofAccount::ContextAccount(ciphertext_validity_proof_context_pubkey);
+    let ciphertext_validity_proof_location = ProofAccountWithCiphertext {
+        proof_account: ciphertext_validity_proof_location,
+        ciphertext_lo: proof_data
+            .ciphertext_validity_proof_data_with_ciphertext
+            .ciphertext_lo,
+        ciphertext_hi: proof_data
+            .ciphertext_validity_proof_data_with_ciphertext
+            .ciphertext_hi,
+    };
     let range_proof_location = ProofAccount::ContextAccount(range_proof_context_pubkey);
 
     // do the burn
@@ -324,21 +346,26 @@ async fn test_rotate_supply_elgamal() {
     let auditor_elgamal_keypair = ElGamalKeypair::new_rand();
     let auditor_elgamal_pubkey = (*auditor_elgamal_keypair.pubkey()).into();
     let supply_aes_key = AeKey::new_rand();
+    let mint_account = Keypair::new();
 
     let mut context = TestContext::new().await;
     context
-        .init_token_with_mint(vec![
-            ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: Some(authority.pubkey()),
-                auto_approve_new_accounts: true,
-                auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
-            },
-            ExtensionInitializationParams::ConfidentialMintBurnMint {
-                authority: authority.pubkey(),
-                confidential_supply_pubkey: Some(auditor_elgamal_pubkey),
-                decryptable_supply: Some(supply_aes_key.encrypt(0).into()),
-            },
-        ])
+        .init_token_with_mint_keypair_and_freeze_authority_and_mint_authority(
+            mint_account,
+            vec![
+                ExtensionInitializationParams::ConfidentialTransferMint {
+                    authority: Some(authority.pubkey()),
+                    auto_approve_new_accounts: true,
+                    auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
+                },
+                ExtensionInitializationParams::ConfidentialMintBurnMint {
+                    confidential_supply_pubkey: auditor_elgamal_pubkey,
+                    decryptable_supply: supply_aes_key.encrypt(0).into(),
+                },
+            ],
+            None,
+            Keypair::from_bytes(&authority.to_bytes()).unwrap(),
+        )
         .await
         .unwrap();
 
@@ -400,11 +427,7 @@ async fn test_rotate_supply_elgamal() {
 
     assert_eq!(
         mint_burn_extension.supply_elgamal_pubkey,
-        Some(Into::<PodElGamalPubkey>::into(
-            *new_supply_elgamal_keypair.pubkey(),
-        ))
-        .try_into()
-        .unwrap(),
+        Into::<PodElGamalPubkey>::into(*new_supply_elgamal_keypair.pubkey(),),
     );
 }
 
@@ -465,7 +488,9 @@ async fn mint_tokens(
         .confidential_transfer_create_context_state_account(
             &ciphertext_validity_proof_context_pubkey,
             &context_state_auth.pubkey(),
-            &proof_data.ciphertext_validity_proof_data,
+            &proof_data
+                .ciphertext_validity_proof_data_with_ciphertext
+                .proof_data,
             false,
             ciphertext_validity_proof_signer,
         )
@@ -485,8 +510,21 @@ async fn mint_tokens(
     let equality_proof_location = ProofAccount::ContextAccount(equality_proof_context_pubkey);
     let ciphertext_validity_proof_location =
         ProofAccount::ContextAccount(ciphertext_validity_proof_context_pubkey);
+    let ciphertext_validity_proof_location = ProofAccountWithCiphertext {
+        proof_account: ciphertext_validity_proof_location,
+        ciphertext_lo: proof_data
+            .ciphertext_validity_proof_data_with_ciphertext
+            .ciphertext_lo,
+        ciphertext_hi: proof_data
+            .ciphertext_validity_proof_data_with_ciphertext
+            .ciphertext_hi,
+    };
     let range_proof_location = ProofAccount::ContextAccount(range_proof_context_pubkey);
 
+    println!(
+        "TOKEN: {}, ata: {token_account}, auth: {authority}",
+        token.get_address()
+    );
     token
         .confidential_mint(
             token_account,
