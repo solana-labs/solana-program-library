@@ -7,13 +7,13 @@ title: Example usage of the TS SDK
 ## Install
 
 ```shell
-npm install --save @solana/spl-account-compression @solana/web3.js
+npm install --save @solana/spl-account-compression @solana/web3.js@1
 ```
 
 __OR__
 
 ```shell
-yarn add @solana/spl-account-compression @solana/web3.js
+yarn add @solana/spl-account-compression @solana/web3.js@1
 ```
 
 ### Examples

@@ -22,18 +22,18 @@ default = []
 test = []
 
 [dependencies]
-borsh = "1.5.1"
+borsh = "1.5.3"
 shank = "^0.4.2"
-solana-program = "2.0.3"
-spl-associated-token-account = { version = "5.0.1", path = "../../associated-token-account/program", features = [
+solana-program = "2.1.0"
+spl-associated-token-account = { version = "6.0.0", path = "../../associated-token-account/program", features = [
   "no-entrypoint",
 ] }
-spl-associated-token-account-client = { version = "1.0.0", path = "../../associated-token-account/client" }
-spl-token = { version = "6.0", path = "../../token/program", features = [
+spl-associated-token-account-client = { version = "2.0.0", path = "../../associated-token-account/client" }
+spl-token = { version = "7.0", path = "../../token/program", features = [
   "no-entrypoint",
 ] }
-thiserror = "^1.0.65"
+thiserror = "^2.0.3"
 
 [dev-dependencies]
-solana-program-test = "2.0.3"
-solana-sdk = "2.0.3"
+solana-program-test = "2.1.0"
+solana-sdk = "2.1.0"

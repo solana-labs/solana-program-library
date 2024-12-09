@@ -6,40 +6,40 @@ homepage = "https://spl.solana.com/token"
 license = "Apache-2.0"
 name = "spl-token-cli"
 repository = "https://github.com/solana-labs/solana-program-library"
-version = "4.1.1"
+version = "5.0.0"
 
 [build-dependencies]
 walkdir = "2"
 
 [dependencies]
 base64 = "0.22.1"
-clap = "2.33.3"
+clap = "3.2.23"
 console = "0.15.8"
 futures = "0.3"
-serde = "1.0.213"
+serde = "1.0.215"
 serde_derive = "1.0.103"
 serde_json = "1.0.132"
-solana-account-decoder = "2.0.3"
-solana-clap-utils = "2.0.3"
-solana-cli-config = "2.0.3"
-solana-cli-output = "2.0.3"
-solana-client = "2.0.3"
-solana-logger = "2.0.3"
-solana-remote-wallet = "2.0.3"
-solana-sdk = "2.0.3"
-solana-transaction-status = "2.0.3"
-spl-associated-token-account-client = { version = "1.0.0", path = "../../associated-token-account/client" }
-spl-token = { version = "6.0", path = "../program", features = [
+solana-account-decoder = "2.1.0"
+solana-clap-v3-utils = "2.1.0"
+solana-cli-config = "2.1.0"
+solana-cli-output = "2.1.0"
+solana-client = "2.1.0"
+solana-logger = "2.1.0"
+solana-remote-wallet = "2.1.0"
+solana-sdk = "2.1.0"
+solana-transaction-status = "2.1.0"
+spl-associated-token-account-client = { version = "2.0.0", path = "../../associated-token-account/client" }
+spl-token = { version = "7.0", path = "../program", features = [
   "no-entrypoint",
 ] }
-spl-token-2022 = { version = "5.0.2", path = "../program-2022", features = [
+spl-token-2022 = { version = "6.0.0", path = "../program-2022", features = [
   "no-entrypoint",
 ] }
-spl-token-client = { version = "0.12.1", path = "../client" }
-spl-token-confidential-transfer-proof-generation = { version = "0.1.0", path = "../confidential-transfer/proof-generation" }
-spl-token-metadata-interface = { version = "0.5.1", path = "../../token-metadata/interface" }
-spl-token-group-interface = { version = "0.4.2", path = "../../token-group/interface" }
-spl-memo = { version = "5.0", path = "../../memo/program", features = [
+spl-token-client = { version = "0.13.0", path = "../client" }
+spl-token-confidential-transfer-proof-generation = { version = "0.2.0", path = "../confidential-transfer/proof-generation" }
+spl-token-metadata-interface = { version = "0.6.0", path = "../../token-metadata/interface" }
+spl-token-group-interface = { version = "0.5.0", path = "../../token-group/interface" }
+spl-memo = { version = "6.0", path = "../../memo/program", features = [
   "no-entrypoint",
 ] }
 strum = "0.26"
@@ -47,11 +47,11 @@ strum_macros = "0.26"
 tokio = "1.41"
 
 [dev-dependencies]
-solana-test-validator = "2.0.3"
+solana-test-validator = "2.1.0"
 assert_cmd = "2.0.16"
 libtest-mimic = "0.8"
-serial_test = "3.1.1"
-tempfile = "3.13.0"
+serial_test = "3.2.0"
+tempfile = "3.14.0"
 
 [[bin]]
 name = "spl-token"

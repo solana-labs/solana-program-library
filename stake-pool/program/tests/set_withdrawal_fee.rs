@@ -645,7 +645,7 @@ async fn success_increase_fee_from_0() {
 
 #[tokio::test]
 async fn fail_wrong_manager() {
-    let (mut context, stake_pool_accounts, new_stake_withdrawal_fee) = setup(None).await;
+    let (context, stake_pool_accounts, new_stake_withdrawal_fee) = setup(None).await;
 
     let wrong_manager = Keypair::new();
     let transaction = Transaction::new_signed_with_payer(
@@ -678,7 +678,7 @@ async fn fail_wrong_manager() {
 
 #[tokio::test]
 async fn fail_high_withdrawal_fee() {
-    let (mut context, stake_pool_accounts, _new_stake_withdrawal_fee) = setup(None).await;
+    let (context, stake_pool_accounts, _new_stake_withdrawal_fee) = setup(None).await;
 
     let new_stake_withdrawal_fee = Fee {
         numerator: 11,
@@ -714,7 +714,7 @@ async fn fail_high_withdrawal_fee() {
 
 #[tokio::test]
 async fn fail_high_stake_fee_increase() {
-    let (mut context, stake_pool_accounts, _new_stake_withdrawal_fee) = setup(None).await;
+    let (context, stake_pool_accounts, _new_stake_withdrawal_fee) = setup(None).await;
     let new_withdrawal_fee = Fee {
         numerator: 46,
         denominator: 10_000,
@@ -749,7 +749,7 @@ async fn fail_high_stake_fee_increase() {
 
 #[tokio::test]
 async fn fail_high_sol_fee_increase() {
-    let (mut context, stake_pool_accounts, _new_stake_withdrawal_fee) = setup(None).await;
+    let (context, stake_pool_accounts, _new_stake_withdrawal_fee) = setup(None).await;
     let new_withdrawal_fee = Fee {
         numerator: 46,
         denominator: 10_000,
@@ -785,7 +785,7 @@ async fn fail_high_sol_fee_increase() {
 
 #[tokio::test]
 async fn fail_high_stake_fee_increase_from_0() {
-    let (mut context, stake_pool_accounts, _new_stake_withdrawal_fee) = setup(Some(Fee {
+    let (context, stake_pool_accounts, _new_stake_withdrawal_fee) = setup(Some(Fee {
         numerator: 0,
         denominator: 1,
     }))
@@ -824,7 +824,7 @@ async fn fail_high_stake_fee_increase_from_0() {
 
 #[tokio::test]
 async fn fail_high_sol_fee_increase_from_0() {
-    let (mut context, stake_pool_accounts, _new_stake_withdrawal_fee) = setup(Some(Fee {
+    let (context, stake_pool_accounts, _new_stake_withdrawal_fee) = setup(Some(Fee {
         numerator: 0,
         denominator: 1,
     }))

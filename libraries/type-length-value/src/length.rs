@@ -1,7 +1,7 @@
 //! Module for the length portion of a Type-Length-Value structure
 use {
     bytemuck::{Pod, Zeroable},
-    solana_program::program_error::ProgramError,
+    solana_program_error::ProgramError,
     spl_pod::primitives::PodU32,
 };
 

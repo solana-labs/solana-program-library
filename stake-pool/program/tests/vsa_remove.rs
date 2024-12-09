@@ -121,7 +121,7 @@ async fn success() {
 
 #[tokio::test]
 async fn fail_with_wrong_stake_program_id() {
-    let (mut context, stake_pool_accounts, validator_stake) = setup().await;
+    let (context, stake_pool_accounts, validator_stake) = setup().await;
 
     let wrong_stake_program = Pubkey::new_unique();
 
@@ -168,7 +168,7 @@ async fn fail_with_wrong_stake_program_id() {
 
 #[tokio::test]
 async fn fail_with_wrong_validator_list_account() {
-    let (mut context, stake_pool_accounts, validator_stake) = setup().await;
+    let (context, stake_pool_accounts, validator_stake) = setup().await;
 
     let wrong_validator_list = Keypair::new();
 
@@ -297,7 +297,7 @@ async fn fail_double_remove() {
 
 #[tokio::test]
 async fn fail_wrong_staker() {
-    let (mut context, stake_pool_accounts, validator_stake) = setup().await;
+    let (context, stake_pool_accounts, validator_stake) = setup().await;
 
     let malicious = Keypair::new();
 
@@ -338,7 +338,7 @@ async fn fail_wrong_staker() {
 
 #[tokio::test]
 async fn fail_no_signature() {
-    let (mut context, stake_pool_accounts, validator_stake) = setup().await;
+    let (context, stake_pool_accounts, validator_stake) = setup().await;
 
     let accounts = vec![
         AccountMeta::new(stake_pool_accounts.stake_pool.pubkey(), false),

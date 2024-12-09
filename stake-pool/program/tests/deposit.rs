@@ -465,7 +465,7 @@ async fn success_with_extra_stake_lamports() {
 #[tokio::test]
 async fn fail_with_wrong_stake_program_id() {
     let (
-        mut context,
+        context,
         stake_pool_accounts,
         validator_stake_account,
         _user,
@@ -522,7 +522,7 @@ async fn fail_with_wrong_stake_program_id() {
 #[tokio::test]
 async fn fail_with_wrong_token_program_id() {
     let (
-        mut context,
+        context,
         stake_pool_accounts,
         validator_stake_account,
         user,

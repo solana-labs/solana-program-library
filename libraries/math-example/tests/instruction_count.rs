@@ -5,7 +5,7 @@
 use {
     solana_program_test::*,
     solana_sdk::{signature::Signer, transaction::Transaction},
-    spl_math::{id, instruction, processor::process_instruction},
+    spl_math_example::{id, instruction, processor::process_instruction},
 };
 
 #[tokio::test]
@@ -16,7 +16,7 @@ async fn test_precise_sqrt_u64_max() {
     // something reasonable, but the better option is to do everything in u64
     pc.set_compute_max_units(350_000);
 
-    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+    let (banks_client, payer, recent_blockhash) = pc.start().await;
 
     let mut transaction = Transaction::new_with_payer(
         &[instruction::precise_sqrt(u64::MAX)],
@@ -32,7 +32,7 @@ async fn test_precise_sqrt_u32_max() {
 
     pc.set_compute_max_units(170_000);
 
-    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+    let (banks_client, payer, recent_blockhash) = pc.start().await;
 
     let mut transaction = Transaction::new_with_payer(
         &[instruction::precise_sqrt(u32::MAX as u64)],
@@ -50,7 +50,7 @@ async fn test_sqrt_u64() {
     // the future
     pc.set_compute_max_units(2_500);
 
-    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+    let (banks_client, payer, recent_blockhash) = pc.start().await;
 
     let mut transaction =
         Transaction::new_with_payer(&[instruction::sqrt_u64(u64::MAX)], Some(&payer.pubkey()));
@@ -66,7 +66,7 @@ async fn test_sqrt_u128() {
     // the future
     pc.set_compute_max_units(4_100);
 
-    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+    let (banks_client, payer, recent_blockhash) = pc.start().await;
 
     let mut transaction = Transaction::new_with_payer(
         &[instruction::sqrt_u128(u64::MAX as u128)],
@@ -82,7 +82,7 @@ async fn test_sqrt_u128_max() {
 
     pc.set_compute_max_units(7_000);
 
-    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+    let (banks_client, payer, recent_blockhash) = pc.start().await;
 
     let mut transaction =
         Transaction::new_with_payer(&[instruction::sqrt_u128(u128::MAX)], Some(&payer.pubkey()));
@@ -96,7 +96,7 @@ async fn test_u64_multiply() {
 
     pc.set_compute_max_units(1350);
 
-    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+    let (banks_client, payer, recent_blockhash) = pc.start().await;
 
     let mut transaction =
         Transaction::new_with_payer(&[instruction::u64_multiply(42, 84)], Some(&payer.pubkey()));
@@ -110,7 +110,7 @@ async fn test_u64_divide() {
 
     pc.set_compute_max_units(1650);
 
-    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+    let (banks_client, payer, recent_blockhash) = pc.start().await;
 
     let mut transaction =
         Transaction::new_with_payer(&[instruction::u64_divide(3, 1)], Some(&payer.pubkey()));
@@ -124,7 +124,7 @@ async fn test_f32_multiply() {
 
     pc.set_compute_max_units(1600);
 
-    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+    let (banks_client, payer, recent_blockhash) = pc.start().await;
 
     let mut transaction = Transaction::new_with_payer(
         &[instruction::f32_multiply(1.5_f32, 2.0_f32)],
@@ -140,7 +140,7 @@ async fn test_f32_divide() {
 
     pc.set_compute_max_units(1650);
 
-    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+    let (banks_client, payer, recent_blockhash) = pc.start().await;
 
     let mut transaction = Transaction::new_with_payer(
         &[instruction::f32_divide(3_f32, 1.5_f32)],
@@ -156,7 +156,7 @@ async fn test_f32_exponentiate() {
 
     pc.set_compute_max_units(1400);
 
-    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+    let (banks_client, payer, recent_blockhash) = pc.start().await;
 
     let mut transaction = Transaction::new_with_payer(
         &[instruction::f32_exponentiate(4_f32, 2_f32)],
@@ -172,7 +172,7 @@ async fn test_f32_natural_log() {
 
     pc.set_compute_max_units(3500);
 
-    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+    let (banks_client, payer, recent_blockhash) = pc.start().await;
 
     let mut transaction = Transaction::new_with_payer(
         &[instruction::f32_natural_log(1_f32.exp())],
@@ -190,7 +190,7 @@ async fn test_f32_normal_cdf() {
     // the future
     pc.set_compute_max_units(3_100);
 
-    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+    let (banks_client, payer, recent_blockhash) = pc.start().await;
 
     let mut transaction =
         Transaction::new_with_payer(&[instruction::f32_normal_cdf(0_f32)], Some(&payer.pubkey()));
@@ -204,7 +204,7 @@ async fn test_f64_pow() {
 
     pc.set_compute_max_units(30_000);
 
-    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+    let (banks_client, payer, recent_blockhash) = pc.start().await;
 
     let mut transaction = Transaction::new_with_payer(
         &[instruction::f64_pow(50_f64, 10.5_f64)],
@@ -220,7 +220,7 @@ async fn test_u128_multiply() {
 
     pc.set_compute_max_units(10000);
 
-    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+    let (banks_client, payer, recent_blockhash) = pc.start().await;
 
     let mut transaction = Transaction::new_with_payer(
         &[instruction::u128_multiply(u64::MAX.into(), u64::MAX.into())],
@@ -236,7 +236,7 @@ async fn test_u128_divide() {
 
     pc.set_compute_max_units(10000);
 
-    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+    let (banks_client, payer, recent_blockhash) = pc.start().await;
 
     let mut transaction = Transaction::new_with_payer(
         &[instruction::u128_divide(u128::MAX, u128::MAX / 69)],
@@ -252,7 +252,7 @@ async fn test_f64_multiply() {
 
     pc.set_compute_max_units(10000);
 
-    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+    let (banks_client, payer, recent_blockhash) = pc.start().await;
 
     let mut transaction = Transaction::new_with_payer(
         &[instruction::f64_multiply(f64::powf(2., 42.), 1e-4)],
@@ -268,7 +268,7 @@ async fn test_f64_divide() {
 
     pc.set_compute_max_units(10000);
 
-    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+    let (banks_client, payer, recent_blockhash) = pc.start().await;
 
     let mut transaction = Transaction::new_with_payer(
         &[instruction::f64_divide(f64::powf(2., 42.), 420420.6969)],
@@ -284,7 +284,7 @@ async fn test_noop() {
 
     pc.set_compute_max_units(1200);
 
-    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+    let (banks_client, payer, recent_blockhash) = pc.start().await;
 
     let mut transaction =
         Transaction::new_with_payer(&[instruction::noop()], Some(&payer.pubkey()));

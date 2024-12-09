@@ -32,10 +32,11 @@ jobs:
 
       - name: Set env vars
         run: |
+          echo "RUST_STABLE_VERSION=1.78.0" >> $GITHUB_ENV
+          echo "SOLANA_VERSION=v2.0.14" >> $GITHUB_ENV
           source ci/rust-version.sh
           echo "RUST_STABLE=$rust_stable" >> $GITHUB_ENV
           source ci/solana-version.sh
-          echo "SOLANA_VERSION=$solana_version" >> $GITHUB_ENV
           source ci/install-anchor.sh
           echo "ANCHOR_CLI_VERSION=$anchor_cli_version" >> $GITHUB_ENV
 
@@ -80,7 +81,7 @@ jobs:
   js-test-account-compression:
     runs-on: ubuntu-latest
     env:
-      NODE_VERSION: 20.5
+      NODE_VERSION: 20.X
     steps:
       - uses: actions/checkout@v4
       - name: Use Node.js ${{ env.NODE_VERSION }}
@@ -94,4 +95,6 @@ jobs:
           key: node-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: |
             node-
+      - name: Set env vars
+        run: echo "SOLANA_VERSION=v2.0.14" >> $GITHUB_ENV
       - run: ./ci/js-test-account-compression.sh

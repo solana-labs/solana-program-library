@@ -29,7 +29,7 @@
 
 #[cfg(feature = "serde-traits")]
 use serde::{Deserialize, Serialize};
-use {crate::error::AccountResolutionError, solana_program::program_error::ProgramError};
+use {crate::error::AccountResolutionError, solana_program_error::ProgramError};
 
 /// Enum to describe a required seed for a Program-Derived Address
 #[derive(Clone, Debug, PartialEq)]

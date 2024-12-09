@@ -66,7 +66,7 @@ async fn test_invalid_owner() {
     );
 
     let lending_market = add_lending_market(&mut test);
-    let (mut banks_client, payer, recent_blockhash) = test.start().await;
+    let (banks_client, payer, recent_blockhash) = test.start().await;
 
     let invalid_owner = Keypair::new();
     let new_owner = Pubkey::new_unique();
@@ -104,7 +104,7 @@ async fn test_owner_not_signer() {
     );
 
     let lending_market = add_lending_market(&mut test);
-    let (mut banks_client, payer, recent_blockhash) = test.start().await;
+    let (banks_client, payer, recent_blockhash) = test.start().await;
 
     let new_owner = Pubkey::new_unique();
     let mut transaction = Transaction::new_with_payer(

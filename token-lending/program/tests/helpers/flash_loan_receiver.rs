@@ -23,8 +23,8 @@ pub enum FlashLoanReceiverInstruction {
     ///   1. `[writable]` Destination liquidity (matching the source from
     ///      above).
     ///   2. `[]` Token program id
-    ///   .. `[any]` Additional accounts provided to the lending program's
-    /// `FlashLoan` instruction above.
+    ///   3. ..`[any]` Additional accounts provided to the lending program's
+    ///      `FlashLoan` instruction above.
     ReceiveFlashLoan {
         /// The amount that is loaned
         amount: u64,

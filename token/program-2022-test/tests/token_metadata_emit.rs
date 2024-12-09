@@ -92,7 +92,7 @@ async fn success(start: Option<u64>, end: Option<u64>) {
         .await
         .unwrap();
 
-    let mut context = test_context.context.lock().await;
+    let context = test_context.context.lock().await;
 
     let transaction = Transaction::new_signed_with_payer(
         &[emit(

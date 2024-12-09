@@ -37,8 +37,8 @@ use {
     spl_token_client::{
         client::ProgramBanksClientProcessTransaction,
         token::{
-            ExtensionInitializationParams, ProofAccount, Token, TokenError as TokenClientError,
-            TokenResult,
+            ExtensionInitializationParams, ProofAccount, ProofAccountWithCiphertext, Token,
+            TokenError as TokenClientError, TokenResult,
         },
     },
     spl_token_confidential_transfer_proof_extraction::instruction::{ProofData, ProofLocation},
@@ -1338,7 +1338,7 @@ async fn confidential_transfer_with_option<S: Signers>(
 
             let TransferProofData {
                 equality_proof_data,
-                ciphertext_validity_proof_data,
+                ciphertext_validity_proof_data_with_ciphertext,
                 range_proof_data,
             } = transfer_account_info
                 .generate_split_transfer_proof_data(
@@ -1349,6 +1349,11 @@ async fn confidential_transfer_with_option<S: Signers>(
                     auditor_elgamal_pubkey,
                 )
                 .unwrap();
+
+            let transfer_amount_auditor_ciphertext_lo =
+                ciphertext_validity_proof_data_with_ciphertext.ciphertext_lo;
+            let transfer_amount_auditor_ciphertext_hi =
+                ciphertext_validity_proof_data_with_ciphertext.ciphertext_hi;
 
             let equality_proof_record_account = Keypair::new();
             let ciphertext_validity_proof_record_account = Keypair::new();
@@ -1375,7 +1380,7 @@ async fn confidential_transfer_with_option<S: Signers>(
                 .confidential_transfer_create_record_account(
                     &ciphertext_validity_proof_record_account.pubkey(),
                     &record_account_authority.pubkey(),
-                    &ciphertext_validity_proof_data,
+                    &ciphertext_validity_proof_data_with_ciphertext.proof_data,
                     &ciphertext_validity_proof_record_account,
                     &record_account_authority,
                 )
@@ -1409,13 +1414,19 @@ async fn confidential_transfer_with_option<S: Signers>(
                 token
             };
 
+            let ciphertext_validity_proof_account_with_ciphertext = ProofAccountWithCiphertext {
+                proof_account: ciphertext_validity_proof_account,
+                ciphertext_lo: transfer_amount_auditor_ciphertext_lo,
+                ciphertext_hi: transfer_amount_auditor_ciphertext_hi,
+            };
+
             let result = transfer_token
                 .confidential_transfer_transfer(
                     source_account,
                     destination_account,
                     source_authority,
                     Some(&equality_proof_account),
-                    Some(&ciphertext_validity_proof_account),
+                    Some(&ciphertext_validity_proof_account_with_ciphertext),
                     Some(&range_proof_account),
                     transfer_amount,
                     None,
@@ -1468,7 +1479,7 @@ async fn confidential_transfer_with_option<S: Signers>(
 
             let TransferProofData {
                 equality_proof_data,
-                ciphertext_validity_proof_data,
+                ciphertext_validity_proof_data_with_ciphertext,
                 range_proof_data,
             } = transfer_account_info
                 .generate_split_transfer_proof_data(
@@ -1479,6 +1490,11 @@ async fn confidential_transfer_with_option<S: Signers>(
                     auditor_elgamal_pubkey,
                 )
                 .unwrap();
+
+            let transfer_amount_auditor_ciphertext_lo =
+                ciphertext_validity_proof_data_with_ciphertext.ciphertext_lo;
+            let transfer_amount_auditor_ciphertext_hi =
+                ciphertext_validity_proof_data_with_ciphertext.ciphertext_hi;
 
             let equality_proof_context_account = Keypair::new();
             let ciphertext_validity_proof_context_account = Keypair::new();
@@ -1503,7 +1519,7 @@ async fn confidential_transfer_with_option<S: Signers>(
                 .confidential_transfer_create_context_state_account(
                     &ciphertext_validity_proof_context_account.pubkey(),
                     &context_account_authority.pubkey(),
-                    &ciphertext_validity_proof_data,
+                    &ciphertext_validity_proof_data_with_ciphertext.proof_data,
                     false,
                     &[&ciphertext_validity_proof_context_account],
                 )
@@ -1533,13 +1549,19 @@ async fn confidential_transfer_with_option<S: Signers>(
                 token
             };
 
+            let ciphertext_validity_proof_account_with_ciphertext = ProofAccountWithCiphertext {
+                proof_account: ciphertext_validity_proof_context_proof_account,
+                ciphertext_lo: transfer_amount_auditor_ciphertext_lo,
+                ciphertext_hi: transfer_amount_auditor_ciphertext_hi,
+            };
+
             let result = transfer_token
                 .confidential_transfer_transfer(
                     source_account,
                     destination_account,
                     source_authority,
                     Some(&equality_proof_context_proof_account),
-                    Some(&ciphertext_validity_proof_context_proof_account),
+                    Some(&ciphertext_validity_proof_account_with_ciphertext),
                     Some(&range_proof_context_proof_account),
                     transfer_amount,
                     None,
@@ -1892,7 +1914,7 @@ async fn confidential_transfer_with_fee_with_option<S: Signers>(
 
             let TransferWithFeeProofData {
                 equality_proof_data,
-                transfer_amount_ciphertext_validity_proof_data,
+                transfer_amount_ciphertext_validity_proof_data_with_ciphertext,
                 percentage_with_cap_proof_data,
                 fee_ciphertext_validity_proof_data,
                 range_proof_data,
@@ -1908,6 +1930,11 @@ async fn confidential_transfer_with_fee_with_option<S: Signers>(
                     maximum_fee,
                 )
                 .unwrap();
+
+            let transfer_amount_auditor_ciphertext_lo =
+                transfer_amount_ciphertext_validity_proof_data_with_ciphertext.ciphertext_lo;
+            let transfer_amount_auditor_ciphertext_hi =
+                transfer_amount_ciphertext_validity_proof_data_with_ciphertext.ciphertext_hi;
 
             let equality_proof_record_account = Keypair::new();
             let transfer_amount_ciphertext_validity_proof_record_account = Keypair::new();
@@ -1936,7 +1963,7 @@ async fn confidential_transfer_with_fee_with_option<S: Signers>(
                 .confidential_transfer_create_record_account(
                     &transfer_amount_ciphertext_validity_proof_record_account.pubkey(),
                     &record_account_authority.pubkey(),
-                    &transfer_amount_ciphertext_validity_proof_data,
+                    &transfer_amount_ciphertext_validity_proof_data_with_ciphertext.proof_data,
                     &transfer_amount_ciphertext_validity_proof_record_account,
                     &record_account_authority,
                 )
@@ -2002,13 +2029,20 @@ async fn confidential_transfer_with_fee_with_option<S: Signers>(
                 token
             };
 
+            let transfer_amount_ciphertext_validity_proof_account_with_ciphertext =
+                ProofAccountWithCiphertext {
+                    proof_account: transfer_amount_ciphertext_validity_proof_account,
+                    ciphertext_lo: transfer_amount_auditor_ciphertext_lo,
+                    ciphertext_hi: transfer_amount_auditor_ciphertext_hi,
+                };
+
             let result = transfer_token
                 .confidential_transfer_transfer_with_fee(
                     source_account,
                     destination_account,
                     source_authority,
                     Some(&equality_proof_account),
-                    Some(&transfer_amount_ciphertext_validity_proof_account),
+                    Some(&transfer_amount_ciphertext_validity_proof_account_with_ciphertext),
                     Some(&fee_sigma_proof_account),
                     Some(&fee_ciphertext_validity_proof_account),
                     Some(&range_proof_account),
@@ -2086,7 +2120,7 @@ async fn confidential_transfer_with_fee_with_option<S: Signers>(
 
             let TransferWithFeeProofData {
                 equality_proof_data,
-                transfer_amount_ciphertext_validity_proof_data,
+                transfer_amount_ciphertext_validity_proof_data_with_ciphertext,
                 percentage_with_cap_proof_data,
                 fee_ciphertext_validity_proof_data,
                 range_proof_data,
@@ -2102,6 +2136,11 @@ async fn confidential_transfer_with_fee_with_option<S: Signers>(
                     maximum_fee,
                 )
                 .unwrap();
+
+            let transfer_amount_auditor_ciphertext_lo =
+                transfer_amount_ciphertext_validity_proof_data_with_ciphertext.ciphertext_lo;
+            let transfer_amount_auditor_ciphertext_hi =
+                transfer_amount_ciphertext_validity_proof_data_with_ciphertext.ciphertext_hi;
 
             let equality_proof_context_account = Keypair::new();
             let transfer_amount_ciphertext_validity_proof_context_account = Keypair::new();
@@ -2128,7 +2167,7 @@ async fn confidential_transfer_with_fee_with_option<S: Signers>(
                 .confidential_transfer_create_context_state_account(
                     &transfer_amount_ciphertext_validity_proof_context_account.pubkey(),
                     &context_account_authority.pubkey(),
-                    &transfer_amount_ciphertext_validity_proof_data,
+                    &transfer_amount_ciphertext_validity_proof_data_with_ciphertext.proof_data,
                     false,
                     &[&transfer_amount_ciphertext_validity_proof_context_account],
                 )
@@ -2189,13 +2228,20 @@ async fn confidential_transfer_with_fee_with_option<S: Signers>(
                 token
             };
 
+            let transfer_amount_ciphertext_validity_proof_account_with_ciphertext =
+                ProofAccountWithCiphertext {
+                    proof_account: transfer_amount_ciphertext_validity_proof_context_proof_account,
+                    ciphertext_lo: transfer_amount_auditor_ciphertext_lo,
+                    ciphertext_hi: transfer_amount_auditor_ciphertext_hi,
+                };
+
             let result = transfer_token
                 .confidential_transfer_transfer_with_fee(
                     source_account,
                     destination_account,
                     source_authority,
                     Some(&equality_proof_context_proof_account),
-                    Some(&transfer_amount_ciphertext_validity_proof_context_proof_account),
+                    Some(&transfer_amount_ciphertext_validity_proof_account_with_ciphertext),
                     Some(&fee_sigma_proof_context_proof_account),
                     Some(&fee_ciphertext_validity_proof_context_proof_account),
                     Some(&range_proof_context_proof_account),
@@ -2847,7 +2893,7 @@ async fn confidential_transfer_configure_token_account_with_registry() {
     let elgamal_keypair = ElGamalKeypair::new_rand();
 
     // create ElGamal registry
-    let mut ctx = context.context.lock().await;
+    let ctx = context.context.lock().await;
     let proof_data =
         confidential_transfer::instruction::PubkeyValidityProofData::new(&elgamal_keypair).unwrap();
     let proof_location = ProofLocation::InstructionOffset(

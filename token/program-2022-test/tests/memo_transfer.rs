@@ -95,7 +95,7 @@ async fn test_memo_transfers(
     // attempt to transfer from alice to bob with misplaced memo, v1 and current
     let mut memo_ix = spl_memo::build_memo(&[240, 159, 166, 150], &[]);
     for program_id in [spl_memo::id(), spl_memo::v1::id()] {
-        let mut ctx = context.lock().await;
+        let ctx = context.lock().await;
         memo_ix.program_id = program_id;
         #[allow(deprecated)]
         let instructions = vec![
@@ -145,7 +145,7 @@ async fn test_memo_transfers(
     assert_eq!(bob_state.base.amount, 10);
 
     // transfer with memo v1
-    let mut ctx = context.lock().await;
+    let ctx = context.lock().await;
     memo_ix.program_id = spl_memo::v1::id();
     #[allow(deprecated)]
     let instructions = vec![

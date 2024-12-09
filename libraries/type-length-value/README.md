@@ -51,7 +51,7 @@ let account_size = TlvStateMut::get_base_len()
     + TlvStateMut::get_base_len()
     + std::mem::size_of::<MyOtherPodValue>();
 
-// Buffer likely comes from a Solana `solana_program::account_info::AccountInfo`,
+// Buffer likely comes from a Solana `solana_account_info::AccountInfo`,
 // but this example just uses a vector.
 let mut buffer = vec![0; account_size];
 
@@ -146,10 +146,8 @@ trait on your type.
 ```rust
 use {
     borsh::{BorshDeserialize, BorshSerialize},
-    solana_program::{
-        borsh1::{get_instance_packed_len, try_from_slice_unchecked},
-        program_error::ProgramError,
-    },
+    solana_borsh::v1::{get_instance_packed_len, try_from_slice_unchecked},
+    solana_program_error::ProgramError,
     spl_discriminator::{ArrayDiscriminator, SplDiscriminate},
     spl_type_length_value::{
         state::{TlvState, TlvStateMut},
@@ -181,7 +179,7 @@ let initial_data = "This is a pretty cool test!";
 let tlv_size = 4 + initial_data.len();
 let account_size = TlvStateMut::get_base_len() + tlv_size;
 
-// Buffer likely comes from a Solana `solana_program::account_info::AccountInfo`,
+// Buffer likely comes from a Solana `solana_account_info::AccountInfo`,
 // but this example just uses a vector.
 let mut buffer = vec![0; account_size];
 let mut state = TlvStateMut::unpack(&mut buffer).unwrap();

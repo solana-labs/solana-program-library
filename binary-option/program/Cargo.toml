@@ -9,14 +9,17 @@ no-entrypoint = []
 test-sbf = []
 
 [dependencies]
-solana-program = "2.0.3"
-thiserror = "1.0"
-spl-token = { version = "6.0", path = "../../token/program", features = [
+solana-program = "2.1.0"
+thiserror = "2.0"
+spl-token = { version = "7.0", path = "../../token/program", features = [
   "no-entrypoint",
 ] }
 arrayref = "0.3.9"
-borsh = "1.5.1"
+borsh = "1.5.3"
 uint = "0.10"
 
 [lib]
 crate-type = ["cdylib", "lib"]
+
+[lints]
+workspace = true

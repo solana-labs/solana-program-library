@@ -260,7 +260,7 @@ async fn _success(token_program_id: Pubkey, test_type: SuccessTestType) {
 #[tokio::test]
 async fn fail_with_wrong_stake_program() {
     let (
-        mut context,
+        context,
         stake_pool_accounts,
         validator_stake_account,
         deposit_info,
@@ -363,7 +363,7 @@ async fn fail_with_wrong_withdraw_authority() {
 #[tokio::test]
 async fn fail_with_wrong_token_program_id() {
     let (
-        mut context,
+        context,
         stake_pool_accounts,
         validator_stake_account,
         deposit_info,

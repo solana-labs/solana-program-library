@@ -1,6 +1,6 @@
 //! Address derivation functions
 
-use solana_program::pubkey::Pubkey;
+use solana_pubkey::Pubkey;
 
 /// Derives the associated token account address and bump seed
 /// for the given wallet address, token mint and token program id
@@ -19,7 +19,7 @@ pub fn get_associated_token_address_and_bump_seed(
 }
 
 mod inline_spl_token {
-    solana_program::declare_id!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+    solana_pubkey::declare_id!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 }
 
 /// Derives the associated token account address for the given wallet address

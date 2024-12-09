@@ -7,7 +7,7 @@
 pub mod test {
     use {
         borsh::{BorshDeserialize, BorshSerialize},
-        solana_program::borsh1::{get_instance_packed_len, try_from_slice_unchecked},
+        solana_borsh::v1::{get_instance_packed_len, try_from_slice_unchecked},
         spl_discriminator::SplDiscriminate,
         spl_type_length_value::{variable_len_pack::VariableLenPack, SplBorshVariableLenPack},
     };

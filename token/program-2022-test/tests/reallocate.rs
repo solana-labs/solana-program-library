@@ -227,7 +227,7 @@ async fn reallocate_updates_native_rent_exemption(
 
     // transfer more lamports
     if transfer_lamports > 0 {
-        let mut context = context.lock().await;
+        let context = context.lock().await;
         let instructions = vec![system_instruction::transfer(
             &context.payer.pubkey(),
             &alice_account,
@@ -268,7 +268,7 @@ async fn reallocate_updates_native_rent_exemption(
         ExtensionType::try_calculate_account_len::<Account>(extensions).unwrap()
     );
     let expected_rent_exempt_reserve = {
-        let mut context = context.lock().await;
+        let context = context.lock().await;
         let rent = context.banks_client.get_rent().await.unwrap();
         rent.minimum_balance(account.data.len())
     };

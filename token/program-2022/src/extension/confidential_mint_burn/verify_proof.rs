@@ -1,7 +1,6 @@
 use crate::error::TokenError;
 #[cfg(feature = "zk-ops")]
 use {
-    crate::proof::verify_and_extract_context,
     solana_program::{
         account_info::{next_account_info, AccountInfo},
         program_error::ProgramError,
@@ -12,8 +11,9 @@ use {
         BatchedRangeProofU128Data, CiphertextCommitmentEqualityProofContext,
         CiphertextCommitmentEqualityProofData,
     },
-    spl_token_confidential_transfer_proof_extraction::burn::BurnProofContext,
-    spl_token_confidential_transfer_proof_extraction::mint::MintProofContext,
+    spl_token_confidential_transfer_proof_extraction::{
+        burn::BurnProofContext, instruction::verify_and_extract_context, mint::MintProofContext,
+    },
     std::slice::Iter,
 };
 

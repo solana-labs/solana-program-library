@@ -11,20 +11,23 @@ no-entrypoint = []
 test-sbf = []
 
 [dependencies]
-borsh = "1.5.1"
-solana-program = "2.0.3"
-spl-token = { version = "6.0", path = "../../token/program", features = [
+borsh = "1.5.3"
+solana-program = "2.1.0"
+spl-token = { version = "7.0", path = "../../token/program", features = [
   "no-entrypoint",
 ] }
-spl-associated-token-account-client = { version = "1.0.0", path = "../../associated-token-account/client" }
-thiserror = "1.0"
+spl-associated-token-account-client = { version = "2.0.0", path = "../../associated-token-account/client" }
+thiserror = "2.0"
 
 [dev-dependencies]
-solana-program-test = "2.0.3"
-solana-sdk = "2.0.3"
+solana-program-test = "2.1.0"
+solana-sdk = "2.1.0"
 
 [lib]
 crate-type = ["cdylib", "lib"]
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
+
+[lints]
+workspace = true

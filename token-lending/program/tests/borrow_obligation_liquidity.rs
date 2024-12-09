@@ -372,7 +372,7 @@ async fn test_borrow_too_large() {
         },
     );
 
-    let (mut banks_client, payer, recent_blockhash) = test.start().await;
+    let (banks_client, payer, recent_blockhash) = test.start().await;
 
     let mut transaction = Transaction::new_with_payer(
         &[
@@ -626,7 +626,7 @@ async fn test_borrow_max_receive_less_than_slippage() {
         },
     );
 
-    let (mut banks_client, payer, recent_blockhash) = test.start().await;
+    let (banks_client, payer, recent_blockhash) = test.start().await;
 
     let mut transaction = Transaction::new_with_payer(
         &[
@@ -732,7 +732,7 @@ async fn test_borrow_less_than_max_with_slippage() {
         },
     );
 
-    let (mut banks_client, payer, recent_blockhash) = test.start().await;
+    let (banks_client, payer, recent_blockhash) = test.start().await;
 
     let mut transaction = Transaction::new_with_payer(
         &[

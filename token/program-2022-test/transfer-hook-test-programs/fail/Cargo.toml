@@ -1,0 +1,21 @@
+[package]
+name = "spl-transfer-hook-example-fail"
+version = "1.0.0"
+description = "Solana Program Library Transfer Hook Example: Fail"
+authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
+repository = "https://github.com/solana-labs/solana-program-library"
+license = "Apache-2.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+solana-account-info = "2.1.0"
+solana-program-entrypoint = "2.1.0"
+solana-program-error = "2.1.0"
+solana-pubkey = "2.1.0"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]

@@ -2,6 +2,11 @@
 
 A TypeScript library for interacting with the SPL Token and Token-2022 programs.
 
+> [!IMPORTANT]  
+> If you are using [@solana/web3.js version 2](https://github.com/solana-labs/solana-web3.js/?tab=readme-ov-file#whats-new-in-version-20)
+> , you should use the `@solana-program/token` and `@solana-program/token-2022` 
+> packages instead.
+
 ## Links
 
 - [TypeScript Docs](https://solana-labs.github.io/solana-program-library/token/js/)
@@ -25,11 +30,11 @@ Please see [upgrading from 0.1.x](#upgrading-from-01x).
 ## Install
 
 ```shell
-npm install --save @solana/spl-token @solana/web3.js
+npm install --save @solana/spl-token @solana/web3.js@1
 ```
 _OR_
 ```shell
-yarn add @solana/spl-token @solana/web3.js
+yarn add @solana/spl-token @solana/web3.js@1
 ```
 
 ## Build from Source

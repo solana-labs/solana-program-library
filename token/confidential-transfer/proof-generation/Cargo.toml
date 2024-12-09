@@ -1,6 +1,6 @@
 [package]
 name = "spl-token-confidential-transfer-proof-generation"
-version = "0.1.0"
+version = "0.2.0"
 description = "Solana Program Library Confidential Transfer Proof Generation"
 authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
 repository = "https://github.com/solana-labs/solana-program-library"
@@ -8,11 +8,14 @@ license = "Apache-2.0"
 edition = "2021"
 
 [dependencies]
-curve25519-dalek = "3.2.1"
-solana-zk-sdk = "2.0.3"
-thiserror = "1.0.65"
+curve25519-dalek = "4.1.3"
+solana-zk-sdk = "2.1.0"
+thiserror = "2.0.3"
 
 [dev-dependencies]
 
 [lib]
 crate-type = ["cdylib", "lib"]
+
+[lints]
+workspace = true

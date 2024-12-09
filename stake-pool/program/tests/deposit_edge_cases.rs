@@ -288,7 +288,7 @@ async fn success_with_referral_fee() {
 #[tokio::test]
 async fn fail_with_invalid_referrer() {
     let (
-        mut context,
+        context,
         stake_pool_accounts,
         validator_stake_account,
         user,

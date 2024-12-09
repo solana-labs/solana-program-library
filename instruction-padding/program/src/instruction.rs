@@ -2,14 +2,25 @@
 
 use {
     num_enum::{IntoPrimitive, TryFromPrimitive},
-    solana_program::{
-        instruction::{AccountMeta, Instruction},
-        program_error::ProgramError,
-        pubkey::Pubkey,
-        syscalls::{MAX_CPI_ACCOUNT_INFOS, MAX_CPI_INSTRUCTION_DATA_LEN},
-    },
+    solana_instruction::{AccountMeta, Instruction},
+    solana_program_error::ProgramError,
+    solana_pubkey::Pubkey,
     std::{convert::TryInto, mem::size_of},
 };
+
+const MAX_CPI_ACCOUNT_INFOS: usize = 128;
+const MAX_CPI_INSTRUCTION_DATA_LEN: u64 = 10 * 1024;
+
+#[cfg(test)]
+static_assertions::const_assert_eq!(
+    MAX_CPI_ACCOUNT_INFOS,
+    solana_program::syscalls::MAX_CPI_ACCOUNT_INFOS
+);
+#[cfg(test)]
+static_assertions::const_assert_eq!(
+    MAX_CPI_INSTRUCTION_DATA_LEN,
+    solana_program::syscalls::MAX_CPI_INSTRUCTION_DATA_LEN
+);
 
 /// Instructions supported by the padding program, which takes in additional
 /// account data or accounts and does nothing with them. It's meant for testing

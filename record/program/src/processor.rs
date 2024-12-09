@@ -2,15 +2,11 @@
 
 use {
     crate::{error::RecordError, instruction::RecordInstruction, state::RecordData},
-    solana_program::{
-        account_info::{next_account_info, AccountInfo},
-        entrypoint::ProgramResult,
-        msg,
-        program_error::ProgramError,
-        program_pack::IsInitialized,
-        pubkey::Pubkey,
-    },
-    spl_pod::bytemuck::{pod_from_bytes, pod_from_bytes_mut, pod_get_packed_len},
+    solana_account_info::{next_account_info, AccountInfo},
+    solana_msg::msg,
+    solana_program_error::{ProgramError, ProgramResult},
+    solana_program_pack::IsInitialized,
+    solana_pubkey::Pubkey,
 };
 
 fn check_authority(authority_info: &AccountInfo, expected_authority: &Pubkey) -> ProgramResult {
@@ -46,9 +42,10 @@ pub fn process_instruction(
                 return Err(ProgramError::InvalidAccountData);
             }
 
-            let account_data = pod_from_bytes_mut::<RecordData>(
+            let account_data = bytemuck::try_from_bytes_mut::<RecordData>(
                 &mut raw_data[..RecordData::WRITABLE_START_INDEX],
-            )?;
+            )
+            .map_err(|_| ProgramError::InvalidArgument)?;
             if account_data.is_initialized() {
                 msg!("Record account already initialized");
                 return Err(ProgramError::AccountAlreadyInitialized);
@@ -68,8 +65,10 @@ pub fn process_instruction(
                 if raw_data.len() < RecordData::WRITABLE_START_INDEX {
                     return Err(ProgramError::InvalidAccountData);
                 }
-                let account_data =
-                    pod_from_bytes::<RecordData>(&raw_data[..RecordData::WRITABLE_START_INDEX])?;
+                let account_data = bytemuck::try_from_bytes::<RecordData>(
+                    &raw_data[..RecordData::WRITABLE_START_INDEX],
+                )
+                .map_err(|_| ProgramError::InvalidArgument)?;
                 if !account_data.is_initialized() {
                     msg!("Record account not initialized");
                     return Err(ProgramError::UninitializedAccount);
@@ -95,9 +94,10 @@ pub fn process_instruction(
             if raw_data.len() < RecordData::WRITABLE_START_INDEX {
                 return Err(ProgramError::InvalidAccountData);
             }
-            let account_data = pod_from_bytes_mut::<RecordData>(
+            let account_data = bytemuck::try_from_bytes_mut::<RecordData>(
                 &mut raw_data[..RecordData::WRITABLE_START_INDEX],
-            )?;
+            )
+            .map_err(|_| ProgramError::InvalidArgument)?;
             if !account_data.is_initialized() {
                 msg!("Record account not initialized");
                 return Err(ProgramError::UninitializedAccount);
@@ -116,9 +116,10 @@ pub fn process_instruction(
             if raw_data.len() < RecordData::WRITABLE_START_INDEX {
                 return Err(ProgramError::InvalidAccountData);
             }
-            let account_data = pod_from_bytes_mut::<RecordData>(
+            let account_data = bytemuck::try_from_bytes_mut::<RecordData>(
                 &mut raw_data[..RecordData::WRITABLE_START_INDEX],
-            )?;
+            )
+            .map_err(|_| ProgramError::InvalidArgument)?;
             if !account_data.is_initialized() {
                 msg!("Record not initialized");
                 return Err(ProgramError::UninitializedAccount);
@@ -143,9 +144,10 @@ pub fn process_instruction(
                 if raw_data.len() < RecordData::WRITABLE_START_INDEX {
                     return Err(ProgramError::InvalidAccountData);
                 }
-                let account_data = pod_from_bytes_mut::<RecordData>(
+                let account_data = bytemuck::try_from_bytes_mut::<RecordData>(
                     &mut raw_data[..RecordData::WRITABLE_START_INDEX],
-                )?;
+                )
+                .map_err(|_| ProgramError::InvalidArgument)?;
                 if !account_data.is_initialized() {
                     msg!("Record not initialized");
                     return Err(ProgramError::UninitializedAccount);
@@ -155,7 +157,7 @@ pub fn process_instruction(
 
             // needed account length is the sum of the meta data length and the specified
             // data length
-            let needed_account_length = pod_get_packed_len::<RecordData>()
+            let needed_account_length = std::mem::size_of::<RecordData>()
                 .checked_add(
                     usize::try_from(data_length).map_err(|_| ProgramError::InvalidArgument)?,
                 )

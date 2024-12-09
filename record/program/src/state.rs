@@ -1,7 +1,8 @@
 //! Program state
 use {
     bytemuck::{Pod, Zeroable},
-    solana_program::{program_pack::IsInitialized, pubkey::Pubkey},
+    solana_program_pack::IsInitialized,
+    solana_pubkey::Pubkey,
 };
 
 /// Header type for recorded account data
@@ -32,11 +33,7 @@ impl IsInitialized for RecordData {
 
 #[cfg(test)]
 pub mod tests {
-    use {
-        super::*,
-        solana_program::program_error::ProgramError,
-        spl_pod::bytemuck::{pod_bytes_of, pod_from_bytes},
-    };
+    use {super::*, solana_program_error::ProgramError};
 
     /// Version for tests
     pub const TEST_VERSION: u8 = 1;
@@ -54,9 +51,9 @@ pub mod tests {
     fn serialize_data() {
         let mut expected = vec![TEST_VERSION];
         expected.extend_from_slice(&TEST_PUBKEY.to_bytes());
-        assert_eq!(pod_bytes_of(&TEST_RECORD_DATA), expected);
+        assert_eq!(bytemuck::bytes_of(&TEST_RECORD_DATA), expected);
         assert_eq!(
-            *pod_from_bytes::<RecordData>(&expected).unwrap(),
+            *bytemuck::try_from_bytes::<RecordData>(&expected).unwrap(),
             TEST_RECORD_DATA,
         );
     }
@@ -66,7 +63,9 @@ pub mod tests {
         let mut expected = vec![TEST_VERSION];
         expected.extend_from_slice(&TEST_PUBKEY.to_bytes());
         expected.extend_from_slice(&TEST_BYTES);
-        let err: ProgramError = pod_from_bytes::<RecordData>(&expected).unwrap_err();
+        let err = bytemuck::try_from_bytes::<RecordData>(&expected)
+            .map_err(|_| ProgramError::InvalidArgument)
+            .unwrap_err();
         assert_eq!(err, ProgramError::InvalidArgument);
     }
 }

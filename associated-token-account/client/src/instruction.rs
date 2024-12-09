@@ -1,12 +1,11 @@
 //! Instruction creators for the program
 use {
     crate::{address::get_associated_token_address_with_program_id, program::id},
-    solana_program::{
-        instruction::{AccountMeta, Instruction},
-        pubkey::Pubkey,
-        system_program,
-    },
+    solana_instruction::{AccountMeta, Instruction},
+    solana_pubkey::Pubkey,
 };
+
+const SYSTEM_PROGRAM_ID: Pubkey = Pubkey::from_str_const("11111111111111111111111111111111");
 
 fn build_associated_token_account_instruction(
     funding_address: &Pubkey,
@@ -29,7 +28,7 @@ fn build_associated_token_account_instruction(
             AccountMeta::new(associated_account_address, false),
             AccountMeta::new_readonly(*wallet_address, false),
             AccountMeta::new_readonly(*token_mint_address, false),
-            AccountMeta::new_readonly(system_program::id(), false),
+            AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
             AccountMeta::new_readonly(*token_program_id, false),
         ],
         data: vec![instruction],
@@ -103,5 +102,15 @@ pub fn recover_nested(
             AccountMeta::new_readonly(*token_program_id, false),
         ],
         data: vec![2], // AssociatedTokenAccountInstruction::RecoverNested
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use {super::*, solana_program::system_program};
+
+    #[test]
+    fn system_program_id() {
+        assert_eq!(system_program::id(), SYSTEM_PROGRAM_ID);
     }
 }

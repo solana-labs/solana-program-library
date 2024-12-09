@@ -4,11 +4,9 @@
 use serde::{Deserialize, Serialize};
 use {
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
-    solana_program::{
-        borsh1::{get_instance_packed_len, try_from_slice_unchecked},
-        program_error::ProgramError,
-        pubkey::Pubkey,
-    },
+    solana_borsh::v1::{get_instance_packed_len, try_from_slice_unchecked},
+    solana_program_error::ProgramError,
+    solana_pubkey::Pubkey,
     spl_discriminator::{ArrayDiscriminator, SplDiscriminate},
     spl_pod::optional_keys::OptionalNonZeroPubkey,
     spl_type_length_value::{
@@ -125,11 +123,11 @@ pub enum Field {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, crate::NAMESPACE, solana_program::hash};
+    use {super::*, crate::NAMESPACE, solana_sha256_hasher::hashv};
 
     #[test]
     fn discriminator() {
-        let preimage = hash::hashv(&[format!("{NAMESPACE}:token_metadata").as_bytes()]);
+        let preimage = hashv(&[format!("{NAMESPACE}:token_metadata").as_bytes()]);
         let discriminator =
             ArrayDiscriminator::try_from(&preimage.as_ref()[..ArrayDiscriminator::LENGTH]).unwrap();
         assert_eq!(TokenMetadata::SPL_DISCRIMINATOR, discriminator);

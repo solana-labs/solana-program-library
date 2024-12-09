@@ -76,7 +76,7 @@ pub mod coption_fromstr {
     }
 }
 
-/// helper to ser/deser AeCiphertext values
+/// helper to ser/deser PodAeCiphertext values
 pub mod aeciphertext_fromstr {
     use {
         serde::{
@@ -121,7 +121,7 @@ pub mod aeciphertext_fromstr {
     }
 }
 
-/// helper to ser/deser pod::ElGamalPubkey values
+/// helper to ser/deser PodElGamalPubkey values
 pub mod elgamalpubkey_fromstr {
     use {
         serde::{
@@ -163,5 +163,50 @@ pub mod elgamalpubkey_fromstr {
         D: Deserializer<'de>,
     {
         d.deserialize_str(ElGamalPubkeyVisitor)
+    }
+}
+
+/// helper to ser/deser PodElGamalCiphertext values
+pub mod elgamalciphertext_fromstr {
+    use {
+        serde::{
+            de::{Error, Visitor},
+            Deserializer, Serializer,
+        },
+        solana_zk_sdk::encryption::pod::elgamal::PodElGamalCiphertext,
+        std::{fmt, str::FromStr},
+    };
+
+    /// serialize ElGamalCiphertext values supporting Display trait
+    pub fn serialize<S>(x: &PodElGamalCiphertext, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        s.serialize_str(&x.to_string())
+    }
+
+    struct ElGamalCiphertextVisitor;
+
+    impl<'de> Visitor<'de> for ElGamalCiphertextVisitor {
+        type Value = PodElGamalCiphertext;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("a FromStr type")
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: Error,
+        {
+            FromStr::from_str(v).map_err(Error::custom)
+        }
+    }
+
+    /// deserialize ElGamalCiphertext values from str
+    pub fn deserialize<'de, D>(d: D) -> Result<PodElGamalCiphertext, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        d.deserialize_str(ElGamalCiphertextVisitor)
     }
 }

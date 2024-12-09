@@ -21,11 +21,11 @@ If you've found a bug or you'd like to request a feature, please
 ## Install
 
 ```shell
-npm install --save @solana/spl-token-group @solana/web3.js
+npm install --save @solana/spl-token-group @solana/web3.js@1
 ```
 _OR_
 ```shell
-yarn add @solana/spl-token-group @solana/web3.js
+yarn add @solana/spl-token-group @solana/web3.js@1
 ```
 
 ## Build from Source

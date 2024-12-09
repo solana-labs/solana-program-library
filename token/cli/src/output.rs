@@ -991,6 +991,9 @@ fn display_ui_extension(
             "  Unparseable extension:",
             "Consider upgrading to a newer version of spl-token",
         ),
+        // remove when upgrading v2.1.1+ and match on ConfidentialMintBurn
+        #[allow(unreachable_patterns)]
+        _ => Ok(()),
     }
 }
 

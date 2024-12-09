@@ -54,7 +54,7 @@ async fn success_base() {
 #[tokio::test]
 async fn fail_extension_no_space() {
     let context = TestContext::new().await;
-    let mut ctx = context.context.lock().await;
+    let ctx = context.context.lock().await;
     let rent = ctx.banks_client.get_rent().await.unwrap();
     let mint_account = Keypair::new();
     let mint_authority_pubkey = Pubkey::new_unique();
@@ -105,7 +105,7 @@ async fn fail_extension_no_space() {
 #[tokio::test]
 async fn fail_extension_after_mint_init() {
     let context = TestContext::new().await;
-    let mut ctx = context.context.lock().await;
+    let ctx = context.context.lock().await;
     let rent = ctx.banks_client.get_rent().await.unwrap();
     let mint_account = Keypair::new();
     let mint_authority_pubkey = Pubkey::new_unique();
@@ -191,7 +191,7 @@ async fn success_extension_and_base() {
 #[tokio::test]
 async fn fail_init_overallocated_mint() {
     let context = TestContext::new().await;
-    let mut ctx = context.context.lock().await;
+    let ctx = context.context.lock().await;
     let rent = ctx.banks_client.get_rent().await.unwrap();
     let mint_account = Keypair::new();
     let mint_authority_pubkey = Pubkey::new_unique();
@@ -238,7 +238,7 @@ async fn fail_init_overallocated_mint() {
 #[tokio::test]
 async fn fail_account_init_after_mint_extension() {
     let context = TestContext::new().await;
-    let mut ctx = context.context.lock().await;
+    let ctx = context.context.lock().await;
     let rent = ctx.banks_client.get_rent().await.unwrap();
     let mint_account = Keypair::new();
     let mint_authority_pubkey = Pubkey::new_unique();
@@ -310,7 +310,7 @@ async fn fail_account_init_after_mint_extension() {
 #[tokio::test]
 async fn fail_account_init_after_mint_init() {
     let context = TestContext::new().await;
-    let mut ctx = context.context.lock().await;
+    let ctx = context.context.lock().await;
     let rent = ctx.banks_client.get_rent().await.unwrap();
     let mint_account = Keypair::new();
     let mint_authority_pubkey = Pubkey::new_unique();
@@ -362,7 +362,7 @@ async fn fail_account_init_after_mint_init() {
 #[tokio::test]
 async fn fail_account_init_after_mint_init_with_extension() {
     let context = TestContext::new().await;
-    let mut ctx = context.context.lock().await;
+    let ctx = context.context.lock().await;
     let rent = ctx.banks_client.get_rent().await.unwrap();
     let mint_account = Keypair::new();
     let mint_authority_pubkey = Pubkey::new_unique();
@@ -422,7 +422,7 @@ async fn fail_account_init_after_mint_init_with_extension() {
 #[tokio::test]
 async fn fail_fee_init_after_mint_init() {
     let context = TestContext::new().await;
-    let mut ctx = context.context.lock().await;
+    let ctx = context.context.lock().await;
     let rent = ctx.banks_client.get_rent().await.unwrap();
     let mint_account = Keypair::new();
     let mint_authority_pubkey = Pubkey::new_unique();
@@ -492,7 +492,7 @@ async fn create_native_mint() {
 #[tokio::test]
 async fn fail_invalid_extensions_combination() {
     let context = TestContext::new().await;
-    let mut ctx = context.context.lock().await;
+    let ctx = context.context.lock().await;
     let rent = ctx.banks_client.get_rent().await.unwrap();
     let mint_account = Keypair::new();
     let mint_authority_pubkey = Pubkey::new_unique();

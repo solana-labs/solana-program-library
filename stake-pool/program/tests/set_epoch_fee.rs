@@ -127,7 +127,7 @@ async fn success() {
 
 #[tokio::test]
 async fn fail_wrong_manager() {
-    let (mut context, stake_pool_accounts, new_fee) = setup().await;
+    let (context, stake_pool_accounts, new_fee) = setup().await;
 
     let wrong_manager = Keypair::new();
     let transaction = Transaction::new_signed_with_payer(
@@ -160,7 +160,7 @@ async fn fail_wrong_manager() {
 
 #[tokio::test]
 async fn fail_high_fee() {
-    let (mut context, stake_pool_accounts, _new_fee) = setup().await;
+    let (context, stake_pool_accounts, _new_fee) = setup().await;
 
     let new_fee = Fee {
         numerator: 11,

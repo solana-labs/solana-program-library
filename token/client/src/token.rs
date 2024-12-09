@@ -56,13 +56,14 @@ use {
             encryption::{
                 auth_encryption::{AeCiphertext, AeKey},
                 elgamal::{ElGamalCiphertext, ElGamalKeypair, ElGamalPubkey, ElGamalSecretKey},
-                pod::{auth_encryption::PodAeCiphertext, elgamal::PodElGamalPubkey},
+                pod::{
+                    auth_encryption::PodAeCiphertext,
+                    elgamal::{PodElGamalCiphertext, PodElGamalPubkey},
+                },
             },
             zk_elgamal_proof_program::{
                 self,
                 instruction::{close_context_state, ContextStateInfo},
-                proof_data::*,
-                state::ProofContextState,
             },
         },
         state::{Account, AccountState, Mint, Multisig},
@@ -201,9 +202,8 @@ pub enum ExtensionInitializationParams {
         member_address: Option<Pubkey>,
     },
     ConfidentialMintBurnMint {
-        authority: Pubkey,
-        confidential_supply_pubkey: Option<PodElGamalPubkey>,
-        decryptable_supply: Option<PodAeCiphertext>,
+        confidential_supply_pubkey: PodElGamalPubkey,
+        decryptable_supply: PodAeCiphertext,
     },
 }
 impl ExtensionInitializationParams {
@@ -335,13 +335,11 @@ impl ExtensionInitializationParams {
                 member_address,
             ),
             Self::ConfidentialMintBurnMint {
-                authority,
                 confidential_supply_pubkey,
                 decryptable_supply,
             } => confidential_mint_burn::instruction::initialize_mint(
                 token_program_id,
                 mint,
-                authority,
                 confidential_supply_pubkey,
                 decryptable_supply,
             ),
@@ -375,6 +373,12 @@ pub enum ComputeUnitLimit {
 pub enum ProofAccount {
     ContextAccount(Pubkey),
     RecordAccount(Pubkey, u32),
+}
+
+pub struct ProofAccountWithCiphertext {
+    pub proof_account: ProofAccount,
+    pub ciphertext_lo: PodElGamalCiphertext,
+    pub ciphertext_hi: PodElGamalCiphertext,
 }
 
 pub struct Token<T> {
@@ -2227,7 +2231,7 @@ where
         destination_account: &Pubkey,
         source_authority: &Pubkey,
         equality_proof_account: Option<&ProofAccount>,
-        ciphertext_validity_proof_account: Option<&ProofAccount>,
+        ciphertext_validity_proof_account_with_ciphertext: Option<&ProofAccountWithCiphertext>,
         range_proof_account: Option<&ProofAccount>,
         transfer_amount: u64,
         account_info: Option<TransferAccountInfo>,
@@ -2249,46 +2253,65 @@ where
             TransferAccountInfo::new(confidential_transfer_account)
         };
 
-        let (equality_proof_data, ciphertext_validity_proof_data, range_proof_data) = if [
-            equality_proof_account,
-            ciphertext_validity_proof_account,
-            range_proof_account,
-        ]
-        .iter()
-        .all(|proof_account| proof_account.is_some())
-        {
-            (None, None, None)
-        } else {
-            let TransferProofData {
-                equality_proof_data,
-                ciphertext_validity_proof_data,
-                range_proof_data,
-            } = account_info
-                .generate_split_transfer_proof_data(
-                    transfer_amount,
-                    source_elgamal_keypair,
-                    source_aes_key,
-                    destination_elgamal_pubkey,
-                    auditor_elgamal_pubkey,
+        let (equality_proof_data, ciphertext_validity_proof_data_with_ciphertext, range_proof_data) =
+            if equality_proof_account.is_some()
+                && ciphertext_validity_proof_account_with_ciphertext.is_some()
+                && range_proof_account.is_some()
+            {
+                (None, None, None)
+            } else {
+                let TransferProofData {
+                    equality_proof_data,
+                    ciphertext_validity_proof_data_with_ciphertext,
+                    range_proof_data,
+                } = account_info
+                    .generate_split_transfer_proof_data(
+                        transfer_amount,
+                        source_elgamal_keypair,
+                        source_aes_key,
+                        destination_elgamal_pubkey,
+                        auditor_elgamal_pubkey,
+                    )
+                    .map_err(|_| TokenError::ProofGeneration)?;
+
+                // if proof accounts are none, then proof data must be included as instruction
+                // data
+                let equality_proof_data = equality_proof_account
+                    .is_none()
+                    .then_some(equality_proof_data);
+                let ciphertext_validity_proof_data_with_ciphertext =
+                    ciphertext_validity_proof_account_with_ciphertext
+                        .is_none()
+                        .then_some(ciphertext_validity_proof_data_with_ciphertext);
+                let range_proof_data = range_proof_account.is_none().then_some(range_proof_data);
+
+                (
+                    equality_proof_data,
+                    ciphertext_validity_proof_data_with_ciphertext,
+                    range_proof_data,
                 )
-                .map_err(|_| TokenError::ProofGeneration)?;
+            };
 
-            // if proof accounts are none, then proof data must be included as instruction
-            // data
-            let equality_proof_data = equality_proof_account
-                .is_none()
-                .then_some(equality_proof_data);
-            let ciphertext_validity_proof_data = ciphertext_validity_proof_account
-                .is_none()
-                .then_some(ciphertext_validity_proof_data);
-            let range_proof_data = range_proof_account.is_none().then_some(range_proof_data);
-
-            (
-                equality_proof_data,
-                ciphertext_validity_proof_data,
-                range_proof_data,
-            )
-        };
+        let (transfer_amount_auditor_ciphertext_lo, transfer_amount_auditor_ciphertext_hi) =
+            if let Some(proof_data_with_ciphertext) = ciphertext_validity_proof_data_with_ciphertext
+            {
+                (
+                    proof_data_with_ciphertext.ciphertext_lo,
+                    proof_data_with_ciphertext.ciphertext_hi,
+                )
+            } else {
+                // unwrap is safe as long as either `proof_data_with_ciphertext`,
+                // `proof_account_with_ciphertext` is `Some(..)`, which is guaranteed by the
+                // previous check
+                (
+                    ciphertext_validity_proof_account_with_ciphertext
+                        .unwrap()
+                        .ciphertext_lo,
+                    ciphertext_validity_proof_account_with_ciphertext
+                        .unwrap()
+                        .ciphertext_hi,
+                )
+            };
 
         // cannot panic as long as either `proof_data` or `proof_account` is `Some(..)`,
         // which is guaranteed by the previous check
@@ -2298,9 +2321,11 @@ where
             1,
         )
         .unwrap();
+        let ciphertext_validity_proof_data =
+            ciphertext_validity_proof_data_with_ciphertext.map(|data| data.proof_data);
         let ciphertext_validity_proof_location = Self::confidential_transfer_create_proof_location(
             ciphertext_validity_proof_data.as_ref(),
-            ciphertext_validity_proof_account,
+            ciphertext_validity_proof_account_with_ciphertext.map(|account| &account.proof_account),
             2,
         )
         .unwrap();
@@ -2321,6 +2346,8 @@ where
             self.get_address(),
             destination_account,
             new_decryptable_available_balance.into(),
+            &transfer_amount_auditor_ciphertext_lo,
+            &transfer_amount_auditor_ciphertext_hi,
             source_authority,
             &multisig_signers,
             equality_proof_location,
@@ -2555,7 +2582,9 @@ where
         destination_account: &Pubkey,
         source_authority: &Pubkey,
         equality_proof_account: Option<&ProofAccount>,
-        transfer_amount_ciphertext_validity_proof_account: Option<&ProofAccount>,
+        transfer_amount_ciphertext_validity_proof_account_with_ciphertext: Option<
+            &ProofAccountWithCiphertext,
+        >,
         percentage_with_cap_proof_account: Option<&ProofAccount>,
         fee_ciphertext_validity_proof_account: Option<&ProofAccount>,
         range_proof_account: Option<&ProofAccount>,
@@ -2584,26 +2613,22 @@ where
 
         let (
             equality_proof_data,
-            transfer_amount_ciphertext_validity_proof_data,
+            transfer_amount_ciphertext_validity_proof_data_with_ciphertext,
             percentage_with_cap_proof_data,
             fee_ciphertext_validity_proof_data,
             range_proof_data,
-        ) = if [
-            equality_proof_account,
-            transfer_amount_ciphertext_validity_proof_account,
-            percentage_with_cap_proof_account,
-            fee_ciphertext_validity_proof_account,
-            range_proof_account,
-        ]
-        .iter()
-        .all(|proof_account| proof_account.is_some())
+        ) = if equality_proof_account.is_some()
+            && transfer_amount_ciphertext_validity_proof_account_with_ciphertext.is_some()
+            && percentage_with_cap_proof_account.is_some()
+            && fee_ciphertext_validity_proof_account.is_some()
+            && range_proof_account.is_some()
         {
             // is all proofs come from accounts, then skip proof generation
             (None, None, None, None, None)
         } else {
             let TransferWithFeeProofData {
                 equality_proof_data,
-                transfer_amount_ciphertext_validity_proof_data,
+                transfer_amount_ciphertext_validity_proof_data_with_ciphertext,
                 percentage_with_cap_proof_data,
                 fee_ciphertext_validity_proof_data,
                 range_proof_data,
@@ -2623,10 +2648,10 @@ where
             let equality_proof_data = equality_proof_account
                 .is_none()
                 .then_some(equality_proof_data);
-            let transfer_amount_ciphertext_validity_proof_data =
-                transfer_amount_ciphertext_validity_proof_account
+            let transfer_amount_ciphertext_validity_proof_data_with_ciphertext =
+                transfer_amount_ciphertext_validity_proof_account_with_ciphertext
                     .is_none()
-                    .then_some(transfer_amount_ciphertext_validity_proof_data);
+                    .then_some(transfer_amount_ciphertext_validity_proof_data_with_ciphertext);
             let percentage_with_cap_proof_data = percentage_with_cap_proof_account
                 .is_none()
                 .then_some(percentage_with_cap_proof_data);
@@ -2637,12 +2662,34 @@ where
 
             (
                 equality_proof_data,
-                transfer_amount_ciphertext_validity_proof_data,
+                transfer_amount_ciphertext_validity_proof_data_with_ciphertext,
                 percentage_with_cap_proof_data,
                 fee_ciphertext_validity_proof_data,
                 range_proof_data,
             )
         };
+
+        let (transfer_amount_auditor_ciphertext_lo, transfer_amount_auditor_ciphertext_hi) =
+            if let Some(proof_data_with_ciphertext) =
+                transfer_amount_ciphertext_validity_proof_data_with_ciphertext
+            {
+                (
+                    proof_data_with_ciphertext.ciphertext_lo,
+                    proof_data_with_ciphertext.ciphertext_hi,
+                )
+            } else {
+                // unwrap is safe as long as either `proof_data_with_ciphertext`,
+                // `proof_account_with_ciphertext` is `Some(..)`, which is guaranteed by the
+                // previous check
+                (
+                    transfer_amount_ciphertext_validity_proof_account_with_ciphertext
+                        .unwrap()
+                        .ciphertext_lo,
+                    transfer_amount_ciphertext_validity_proof_account_with_ciphertext
+                        .unwrap()
+                        .ciphertext_hi,
+                )
+            };
 
         // cannot panic as long as either `proof_data` or `proof_account` is `Some(..)`,
         // which is guaranteed by the previous check
@@ -2652,10 +2699,14 @@ where
             1,
         )
         .unwrap();
+        let transfer_amount_ciphertext_validity_proof_data =
+            transfer_amount_ciphertext_validity_proof_data_with_ciphertext
+                .map(|data| data.proof_data);
         let transfer_amount_ciphertext_validity_proof_location =
             Self::confidential_transfer_create_proof_location(
                 transfer_amount_ciphertext_validity_proof_data.as_ref(),
-                transfer_amount_ciphertext_validity_proof_account,
+                transfer_amount_ciphertext_validity_proof_account_with_ciphertext
+                    .map(|account| &account.proof_account),
                 2,
             )
             .unwrap();
@@ -2689,6 +2740,8 @@ where
             self.get_address(),
             destination_account,
             new_decryptable_available_balance.into(),
+            &transfer_amount_auditor_ciphertext_lo,
+            &transfer_amount_auditor_ciphertext_hi,
             source_authority,
             &multisig_signers,
             equality_proof_location,
@@ -3511,7 +3564,7 @@ where
         authority: &Pubkey,
         supply_elgamal_pubkey: Option<ElGamalPubkey>,
         equality_proof_account: Option<&ProofAccount>,
-        ciphertext_validity_proof_account: Option<&ProofAccount>,
+        ciphertext_validity_proof_account_with_ciphertext: Option<&ProofAccountWithCiphertext>,
         range_proof_account: Option<&ProofAccount>,
         new_decryptable_supply: AeCiphertext,
         signing_keypairs: &S,
@@ -3519,16 +3572,38 @@ where
         let signing_pubkeys = signing_keypairs.pubkeys();
         let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
-        if !([
-            equality_proof_account,
-            ciphertext_validity_proof_account,
-            range_proof_account,
-        ]
-        .iter()
-        .all(|proof_account| proof_account.is_some()))
+        let (transfer_amount_auditor_ciphertext_lo, transfer_amount_auditor_ciphertext_hi) =
+            if let Some(proof_data_with_ciphertext) =
+                ciphertext_validity_proof_account_with_ciphertext
+            {
+                (
+                    proof_data_with_ciphertext.ciphertext_lo,
+                    proof_data_with_ciphertext.ciphertext_hi,
+                )
+            } else {
+                // unwrap is safe as long as either `proof_data_with_ciphertext`,
+                // `proof_account_with_ciphertext` is `Some(..)`, which is guaranteed by the
+                // previous check
+                (
+                    ciphertext_validity_proof_account_with_ciphertext
+                        .unwrap()
+                        .ciphertext_lo,
+                    ciphertext_validity_proof_account_with_ciphertext
+                        .unwrap()
+                        .ciphertext_hi,
+                )
+            };
+
+        if !([equality_proof_account, range_proof_account]
+            .iter()
+            .all(|proof_account| proof_account.is_some()))
         {
             return Err(TokenError::ProofGeneration);
         }
+        if ciphertext_validity_proof_account_with_ciphertext.is_none() {
+            return Err(TokenError::ProofGeneration);
+        }
+
         // cannot panic as long as either `proof_data` or `proof_account` is `Some(..)`,
         // which is guaranteed by the previous check
         let equality_proof_location =
@@ -3536,7 +3611,7 @@ where
                 .unwrap();
         let ciphertext_validity_proof_location = Self::confidential_transfer_create_proof_location(
             None,
-            ciphertext_validity_proof_account,
+            ciphertext_validity_proof_account_with_ciphertext.map(|account| &account.proof_account),
             2,
         )
         .unwrap();
@@ -3550,6 +3625,8 @@ where
                 account,
                 &self.pubkey,
                 supply_elgamal_pubkey,
+                &transfer_amount_auditor_ciphertext_lo,
+                &transfer_amount_auditor_ciphertext_hi,
                 authority,
                 &multisig_signers,
                 equality_proof_location,
@@ -3570,7 +3647,7 @@ where
         ata_pubkey: &Pubkey,
         authority: &Pubkey,
         equality_proof_account: Option<&ProofAccount>,
-        ciphertext_validity_proof_account: Option<&ProofAccount>,
+        ciphertext_validity_proof_account_with_ciphertext: Option<&ProofAccountWithCiphertext>,
         range_proof_account: Option<&ProofAccount>,
         amount: u64,
         supply_elgamal_pubkey: Option<ElGamalPubkey>,
@@ -3585,18 +3662,40 @@ where
             account.get_extension::<ConfidentialTransferAccount>()?;
         let account_info = TransferAccountInfo::new(confidential_transfer_account);
 
-        let new_decryptable_available_balance = account_info
+        let new_decryptable_available_balance: PodAeCiphertext = account_info
             .new_decryptable_available_balance(amount, aes_key)
-            .map_err(|_| TokenError::AccountDecryption)?;
+            .map_err(|_| TokenError::AccountDecryption)?
+            .into();
 
-        if !([
-            equality_proof_account,
-            ciphertext_validity_proof_account,
-            range_proof_account,
-        ]
-        .iter()
-        .all(|proof_account| proof_account.is_some()))
+        let (transfer_amount_auditor_ciphertext_lo, transfer_amount_auditor_ciphertext_hi) =
+            if let Some(proof_data_with_ciphertext) =
+                ciphertext_validity_proof_account_with_ciphertext
+            {
+                (
+                    proof_data_with_ciphertext.ciphertext_lo,
+                    proof_data_with_ciphertext.ciphertext_hi,
+                )
+            } else {
+                // unwrap is safe as long as either `proof_data_with_ciphertext`,
+                // `proof_account_with_ciphertext` is `Some(..)`, which is guaranteed by the
+                // previous check
+                (
+                    ciphertext_validity_proof_account_with_ciphertext
+                        .unwrap()
+                        .ciphertext_lo,
+                    ciphertext_validity_proof_account_with_ciphertext
+                        .unwrap()
+                        .ciphertext_hi,
+                )
+            };
+
+        if !([equality_proof_account, range_proof_account]
+            .iter()
+            .all(|proof_account| proof_account.is_some()))
         {
+            return Err(TokenError::ProofGeneration);
+        }
+        if ciphertext_validity_proof_account_with_ciphertext.is_none() {
             return Err(TokenError::ProofGeneration);
         }
         // cannot panic as long as either `proof_data` or `proof_account` is `Some(..)`,
@@ -3606,7 +3705,7 @@ where
                 .unwrap();
         let ciphertext_validity_proof_location = Self::confidential_transfer_create_proof_location(
             None,
-            ciphertext_validity_proof_account,
+            ciphertext_validity_proof_account_with_ciphertext.map(|account| &account.proof_account),
             2,
         )
         .unwrap();
@@ -3620,7 +3719,9 @@ where
                 ata_pubkey,
                 &self.pubkey,
                 supply_elgamal_pubkey,
-                new_decryptable_available_balance.into(),
+                new_decryptable_available_balance,
+                &transfer_amount_auditor_ciphertext_lo,
+                &transfer_amount_auditor_ciphertext_hi,
                 authority,
                 &multisig_signers,
                 equality_proof_location,

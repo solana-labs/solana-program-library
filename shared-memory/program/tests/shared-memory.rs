@@ -35,7 +35,7 @@ async fn assert_instruction_count() {
         },
     );
     program_test.set_compute_max_units(480);
-    let (mut banks_client, payer, recent_blockhash) = program_test.start().await;
+    let (banks_client, payer, recent_blockhash) = program_test.start().await;
 
     // success
     let content = vec![42; NUM_TO_SHARE];
@@ -74,7 +74,7 @@ async fn test_helloworld() {
             ..Account::default()
         },
     );
-    let (mut banks_client, payer, recent_blockhash) = program_test.start().await;
+    let (banks_client, payer, recent_blockhash) = program_test.start().await;
 
     // success
     let content = vec![42; NUM_TO_SHARE];

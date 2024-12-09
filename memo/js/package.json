@@ -52,10 +52,10 @@
     },
     "devDependencies": {
         "@solana/web3.js": "^1.95.4",
-        "@types/chai": "^5.0.0",
+        "@types/chai": "^5.0.1",
         "@types/jest": "^29.5.14",
-        "@types/node": "^22.8.1",
-        "@types/node-fetch": "^2.6.11",
+        "@types/node": "^22.9.0",
+        "@types/node-fetch": "^2.6.12",
         "@typescript-eslint/eslint-plugin": "^8.4.0",
         "@typescript-eslint/parser": "^8.4.0",
         "chai": "^5.1.2",
@@ -68,7 +68,7 @@
         "start-server-and-test": "^2.0.8",
         "ts-jest": "^29.2.5",
         "ts-node": "^10.9.2",
-        "typedoc": "^0.26.10",
+        "typedoc": "^0.26.11",
         "typescript": "^5.6.3"
     }
 }

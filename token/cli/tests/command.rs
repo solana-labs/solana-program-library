@@ -440,9 +440,8 @@ where
         &multisig_member_help,
     )
     .get_matches_from(args);
-    let (sub_command, sub_matches) = app_matches.subcommand();
+    let (sub_command, matches) = app_matches.subcommand().unwrap();
     let sub_command = CommandName::from_str(sub_command).unwrap();
-    let matches = sub_matches.unwrap();
 
     let wallet_manager = None;
     let bulk_signers: Vec<Arc<dyn Signer>> = vec![Arc::new(clone_keypair(payer))];
@@ -460,9 +459,8 @@ async fn exec_test_cmd<T: AsRef<OsStr>>(config: &Config<'_>, args: &[T]) -> Comm
         &multisig_member_help,
     )
     .get_matches_from(args);
-    let (sub_command, sub_matches) = app_matches.subcommand();
+    let (sub_command, matches) = app_matches.subcommand().unwrap();
     let sub_command = CommandName::from_str(sub_command).unwrap();
-    let matches = sub_matches.unwrap();
 
     let mut wallet_manager = None;
     let mut bulk_signers: Vec<Arc<dyn Signer>> = Vec::new();
@@ -520,9 +518,10 @@ async fn create_token_2022(test_validator: &TestValidator, payer: &Keypair) {
         &multisig_member_help,
     )
     .get_matches_from(args);
+    let (_, matches) = app_matches.subcommand().unwrap();
 
     let config = Config::new_with_clients_and_ws_url(
-        &app_matches,
+        matches,
         &mut wallet_manager,
         &mut bulk_signers,
         &mut multisigner_ids,
@@ -3130,14 +3129,16 @@ async fn do_offline_multisig_transfer(
             .await
             .unwrap();
 
-        let program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>> = Arc::new(
-            ProgramOfflineClient::new(blockhash, ProgramRpcClientSendTransaction),
-        );
+        let offline_program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>> =
+            Arc::new(ProgramOfflineClient::new(
+                blockhash,
+                ProgramRpcClientSendTransaction,
+            ));
         let mut args = vec![
             "spl-token".to_string(),
             CommandName::Transfer.as_ref().to_string(),
             token.to_string(),
-            "10".to_string(),
+            "100".to_string(),
             destination.to_string(),
             "--blockhash".to_string(),
             blockhash.to_string(),
@@ -3167,7 +3168,7 @@ async fn do_offline_multisig_transfer(
             args.push("--with-compute-unit-limit".to_string());
             args.push(10_000.to_string());
         }
-        config.program_client = program_client;
+        config.program_client = offline_program_client;
         let result = exec_test_cmd(&config, &args).await.unwrap();
         // the provided signer has a signature, denoted by the pubkey followed
         // by "=" and the signature
@@ -3191,15 +3192,15 @@ async fn do_offline_multisig_transfer(
         assert!(!absent_signers.contains(&token.to_string()));
 
         // now send the transaction
-        let program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>> = Arc::new(
+        let rpc_program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>> = Arc::new(
             ProgramRpcClient::new(config.rpc_client.clone(), ProgramRpcClientSendTransaction),
         );
-        config.program_client = program_client;
+        config.program_client = rpc_program_client;
         let mut args = vec![
             "spl-token".to_string(),
             CommandName::Transfer.as_ref().to_string(),
             token.to_string(),
-            "10".to_string(),
+            "100".to_string(),
             destination.to_string(),
             "--blockhash".to_string(),
             blockhash.to_string(),
@@ -3234,12 +3235,46 @@ async fn do_offline_multisig_transfer(
 
         let account = config.rpc_client.get_account(&source).await.unwrap();
         let token_account = StateWithExtensionsOwned::<Account>::unpack(account.data).unwrap();
-        let amount = spl_token::ui_amount_to_amount(90.0, TEST_DECIMALS);
+        let amount = spl_token::ui_amount_to_amount(0.0, TEST_DECIMALS);
         assert_eq!(token_account.base.amount, amount);
         let account = config.rpc_client.get_account(&destination).await.unwrap();
         let token_account = StateWithExtensionsOwned::<Account>::unpack(account.data).unwrap();
-        let amount = spl_token::ui_amount_to_amount(10.0, TEST_DECIMALS);
+        let amount = spl_token::ui_amount_to_amount(100.0, TEST_DECIMALS);
         assert_eq!(token_account.base.amount, amount);
+
+        // get new nonce
+        let nonce_account = config.rpc_client.get_account(&nonce).await.unwrap();
+        let blockhash = Hash::new(&nonce_account.data[start_hash_index..start_hash_index + 32]);
+        let mut args = vec![
+            "spl-token".to_string(),
+            CommandName::Close.as_ref().to_string(),
+            "--address".to_string(),
+            source.to_string(),
+            "--blockhash".to_string(),
+            blockhash.to_string(),
+            "--nonce".to_string(),
+            nonce.to_string(),
+            "--nonce-authority".to_string(),
+            fee_payer_keypair_file.path().to_str().unwrap().to_string(),
+            "--multisig-signer".to_string(),
+            multisig_paths[1].path().to_str().unwrap().to_string(),
+            "--multisig-signer".to_string(),
+            multisig_paths[2].path().to_str().unwrap().to_string(),
+            "--owner".to_string(),
+            multisig_pubkey.to_string(),
+            "--fee-payer".to_string(),
+            fee_payer_keypair_file.path().to_str().unwrap().to_string(),
+            "--program-id".to_string(),
+            program_id.to_string(),
+        ];
+        if let Some(compute_unit_price) = compute_unit_price {
+            args.push("--with-compute-unit-price".to_string());
+            args.push(compute_unit_price.to_string());
+            args.push("--with-compute-unit-limit".to_string());
+            args.push(10_000.to_string());
+        }
+        exec_test_cmd(&config, &args).await.unwrap();
+        let _ = config.rpc_client.get_account(&source).await.unwrap_err();
     }
 }
 

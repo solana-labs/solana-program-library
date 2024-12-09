@@ -68,9 +68,9 @@ pub fn print_program_error(input: TokenStream) -> TokenStream {
 /// a unique `u32` _starting_ error codes from the names of the enum variants.
 /// Notes:
 /// - The _error_ variant will start at this value, and the rest will be
-/// incremented by one
+///   incremented by one
 /// - The value provided is only for code readability, the actual error code
-/// will be a hash of the input string and is checked against your input
+///   will be a hash of the input string and is checked against your input
 ///
 /// Syntax: `#[spl_program_error(hash_error_code_start = 1275525928)]`
 /// Hash Input: `spl_program_error:<enum name>:<variant name>`

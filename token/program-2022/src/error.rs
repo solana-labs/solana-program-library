@@ -465,6 +465,7 @@ impl From<TokenProofGenerationError> for TokenError {
             TokenProofGenerationError::NotEnoughFunds => TokenError::InsufficientFunds,
             TokenProofGenerationError::IllegalAmountBitLength => TokenError::IllegalBitLength,
             TokenProofGenerationError::FeeCalculation => TokenError::FeeCalculation,
+            TokenProofGenerationError::CiphertextExtraction => TokenError::MalformedCiphertext,
         }
     }
 }

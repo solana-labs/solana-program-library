@@ -166,7 +166,7 @@ async fn test_basic() {
 async fn test_expired() {
     let feature_proposal = Keypair::new();
 
-    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
+    let (banks_client, payer, recent_blockhash) = program_test().start().await;
 
     // Create a new feature proposal
     let mut transaction = Transaction::new_with_payer(

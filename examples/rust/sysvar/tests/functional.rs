@@ -13,7 +13,7 @@ use {
 #[tokio::test]
 async fn test_sysvar() {
     let program_id = Pubkey::from_str("Sysvar1111111111111111111111111111111111111").unwrap();
-    let (mut banks_client, payer, recent_blockhash) = ProgramTest::new(
+    let (banks_client, payer, recent_blockhash) = ProgramTest::new(
         "spl_example_sysvar",
         program_id,
         processor!(process_instruction),

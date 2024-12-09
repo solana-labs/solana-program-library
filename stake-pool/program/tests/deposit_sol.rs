@@ -141,8 +141,7 @@ async fn success(token_program_id: Pubkey) {
 
 #[tokio::test]
 async fn fail_with_wrong_token_program_id() {
-    let (mut context, stake_pool_accounts, _user, pool_token_account) =
-        setup(spl_token::id()).await;
+    let (context, stake_pool_accounts, _user, pool_token_account) = setup(spl_token::id()).await;
 
     let wrong_token_program = Keypair::new();
 
@@ -467,8 +466,7 @@ async fn success_with_referral_fee() {
 
 #[tokio::test]
 async fn fail_with_invalid_referrer() {
-    let (mut context, stake_pool_accounts, _user, pool_token_account) =
-        setup(spl_token::id()).await;
+    let (context, stake_pool_accounts, _user, pool_token_account) = setup(spl_token::id()).await;
 
     let invalid_token_account = Keypair::new();
 

@@ -230,7 +230,7 @@ async fn fail_authority_checks() {
     );
 
     // no signature
-    let mut context = test_context.context.lock().await;
+    let context = test_context.context.lock().await;
     let mut instruction = remove_key(
         &program_id,
         &mint_pubkey,

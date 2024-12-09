@@ -6,7 +6,7 @@ use {
     solana_program::{
         account_info::{next_account_info, AccountInfo},
         entrypoint::ProgramResult,
-        instruction::Instruction,
+        instruction::{AccountMeta, Instruction},
         msg,
         program_error::ProgramError,
         pubkey::Pubkey,
@@ -167,7 +167,7 @@ where
         ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) => {
             let proof_instruction_offset: i8 = proof_instruction_offset.into();
             if &proof_instruction_offset != expected_instruction_offset {
-                return Err(TokenError::InvalidProofInstructionOffset.into());
+                return Err(ProgramError::InvalidInstructionData);
             }
 
             if push_sysvar_to_accounts {

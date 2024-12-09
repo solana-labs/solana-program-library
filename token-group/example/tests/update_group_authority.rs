@@ -45,7 +45,7 @@ async fn test_update_group_authority() {
     );
     setup_mint(&token_client, &group_mint, &group_mint_authority).await;
 
-    let mut context = context.lock().await;
+    let context = context.lock().await;
 
     let rent = context.banks_client.get_rent().await.unwrap();
     let space = TlvStateBorrowed::get_base_len() + std::mem::size_of::<TokenGroup>();

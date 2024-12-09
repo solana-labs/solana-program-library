@@ -16,8 +16,8 @@ use {
         parse_token::{get_token_account_mint, parse_token_v2, TokenAccountType, UiAccountState},
         UiAccountData,
     },
-    solana_clap_utils::{
-        input_parsers::{pubkey_of_signer, pubkeys_of_multiple_signers, value_of},
+    solana_clap_v3_utils::{
+        input_parsers::{pubkey_of_signer, pubkeys_of_multiple_signers, Amount},
         keypair::signer_from_path,
     },
     solana_cli_output::{
@@ -68,7 +68,10 @@ use {
     },
     spl_token_client::{
         client::{ProgramRpcClientSendTransaction, RpcClientResponse},
-        token::{ComputeUnitLimit, ExtensionInitializationParams, ProofAccount, Token},
+        token::{
+            ComputeUnitLimit, ExtensionInitializationParams, ProofAccount,
+            ProofAccountWithCiphertext, Token,
+        },
     },
     spl_token_confidential_transfer_proof_generation::{
         burn::burn_split_proof_data, mint::mint_split_proof_data, transfer::TransferProofData,
@@ -82,6 +85,21 @@ use {
 fn print_error_and_exit<T, E: Display>(e: E) -> T {
     eprintln!("error: {}", e);
     exit(1)
+}
+
+fn amount_to_raw_amount(amount: Amount, decimals: u8, all_amount: Option<u64>, name: &str) -> u64 {
+    match amount {
+        Amount::Raw(ui_amount) => ui_amount,
+        Amount::Decimal(ui_amount) => spl_token::ui_amount_to_amount(ui_amount, decimals),
+        Amount::All => {
+            if let Some(raw_amount) = all_amount {
+                raw_amount
+            } else {
+                eprintln!("ALL keyword is not allowed for {}", name);
+                exit(1)
+            }
+        }
+    }
 }
 
 type BulkSigners = Vec<Arc<dyn Signer>>;
@@ -100,7 +118,7 @@ fn new_throwaway_signer() -> (Arc<dyn Signer>, Pubkey) {
 }
 
 fn get_signer(
-    matches: &ArgMatches<'_>,
+    matches: &ArgMatches,
     keypair_name: &str,
     wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
 ) -> Option<(Arc<dyn Signer>, Pubkey)> {
@@ -110,13 +128,6 @@ fn get_signer(
         let signer_pubkey = signer.pubkey();
         (Arc::from(signer), signer_pubkey)
     })
-}
-
-fn parse_amount_or_all(matches: &ArgMatches<'_>) -> Option<f64> {
-    match matches.value_of("amount").unwrap() {
-        "ALL" => None,
-        amount => Some(amount.parse::<f64>().unwrap()),
-    }
 }
 
 async fn check_wallet_balance(
@@ -335,15 +346,11 @@ async fn command_create_token(
     if enable_confidential_mint_burn {
         let confidential_supply_pubkey: Option<PodElGamalPubkey> =
             confidential_supply_pubkey.into();
-        let decryptable_supply = if confidential_supply_pubkey.is_some() {
-            let aes_key = AeKey::new_from_signer(config.default_signer()?.as_ref(), b"").unwrap();
-            Some(aes_key.encrypt(0).into())
-        } else {
-            None
-        };
+        let confidential_supply_pubkey = confidential_supply_pubkey.unwrap();
+        let aes_key = AeKey::new_from_signer(config.default_signer()?.as_ref(), b"").unwrap();
+        let decryptable_supply = aes_key.encrypt(0).into();
 
         extensions.push(ExtensionInitializationParams::ConfidentialMintBurnMint {
-            authority,
             confidential_supply_pubkey,
             decryptable_supply,
         });
@@ -758,7 +765,7 @@ async fn command_set_transfer_fee(
     token_pubkey: Pubkey,
     transfer_fee_authority: Pubkey,
     transfer_fee_basis_points: u16,
-    maximum_fee: f64,
+    maximum_fee: Amount,
     mint_decimals: Option<u8>,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
@@ -800,16 +807,19 @@ async fn command_set_transfer_fee(
         mint_decimals.unwrap()
     };
 
+    let token = token_client_from_config(config, &token_pubkey, Some(decimals))?;
+    let maximum_fee = amount_to_raw_amount(maximum_fee, decimals, None, "MAXIMUM_FEE");
+
     println_display(
         config,
         format!(
             "Setting transfer fee for {} to {} bps, {} maximum",
-            token_pubkey, transfer_fee_basis_points, maximum_fee
+            token_pubkey,
+            transfer_fee_basis_points,
+            spl_token::amount_to_ui_amount(maximum_fee, decimals)
         ),
     );
 
-    let token = token_client_from_config(config, &token_pubkey, Some(decimals))?;
-    let maximum_fee = spl_token::ui_amount_to_amount(maximum_fee, decimals);
     let res = token
         .set_transfer_fee(
             &transfer_fee_authority,
@@ -1223,7 +1233,7 @@ async fn command_authorize(
 async fn command_transfer(
     config: &Config<'_>,
     token_pubkey: Pubkey,
-    ui_amount: Option<f64>,
+    ui_amount: Amount,
     recipient: Pubkey,
     sender: Option<Pubkey>,
     sender_owner: Pubkey,
@@ -1232,7 +1242,7 @@ async fn command_transfer(
     mint_decimals: Option<u8>,
     no_recipient_is_ata_owner: bool,
     use_unchecked_instruction: bool,
-    ui_fee: Option<f64>,
+    ui_fee: Option<Amount>,
     memo: Option<String>,
     bulk_signers: BulkSigners,
     no_wait: bool,
@@ -1286,30 +1296,43 @@ async fn command_transfer(
         token.get_associated_token_address(&sender_owner)
     };
 
-    // the amount the user wants to transfer, as a f64
-    let maybe_transfer_balance =
-        ui_amount.map(|ui_amount| spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals));
+    // the sender balance
+    let sender_balance = if config.sign_only {
+        None
+    } else {
+        Some(token.get_account_info(&sender).await?.base.amount)
+    };
 
-    // the amount we will transfer, as a u64
-    let transfer_balance = if !config.sign_only {
-        let sender_balance = token.get_account_info(&sender).await?.base.amount;
-        let transfer_balance = maybe_transfer_balance.unwrap_or(sender_balance);
+    // the amount the user wants to transfer, as a u64
+    let transfer_balance = match ui_amount {
+        Amount::Raw(ui_amount) => ui_amount,
+        Amount::Decimal(ui_amount) => spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals),
+        Amount::All => {
+            if config.sign_only {
+                return Err("Use of ALL keyword to burn tokens requires online signing"
+                    .to_string()
+                    .into());
+            }
+            sender_balance.unwrap()
+        }
+    };
 
-        println_display(
-            config,
-            format!(
-                "{}Transfer {} tokens\n  Sender: {}\n  Recipient: {}",
-                if confidential_transfer_args.is_some() {
-                    "Confidential "
-                } else {
-                    ""
-                },
-                spl_token::amount_to_ui_amount(transfer_balance, mint_info.decimals),
-                sender,
-                recipient
-            ),
-        );
+    println_display(
+        config,
+        format!(
+            "{}Transfer {} tokens\n  Sender: {}\n  Recipient: {}",
+            if confidential_transfer_args.is_some() {
+                "Confidential "
+            } else {
+                ""
+            },
+            spl_token::amount_to_ui_amount(transfer_balance, mint_info.decimals),
+            sender,
+            recipient
+        ),
+    );
 
+    if let Some(sender_balance) = sender_balance {
         if transfer_balance > sender_balance && confidential_transfer_args.is_none() {
             return Err(format!(
                 "Error: Sender has insufficient funds, current balance is {}",
@@ -1320,14 +1343,10 @@ async fn command_transfer(
             )
             .into());
         }
-
-        transfer_balance
-    } else {
-        maybe_transfer_balance.unwrap()
-    };
+    }
 
     let maybe_fee =
-        ui_fee.map(|ui_amount| spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals));
+        ui_fee.map(|v| amount_to_raw_amount(v, mint_info.decimals, None, "EXPECTED_FEE"));
 
     // determine whether recipient is a token account or an expected owner of one
     let recipient_is_token_account = if !config.sign_only {
@@ -1614,7 +1633,7 @@ async fn command_transfer(
 
             let TransferProofData {
                 equality_proof_data,
-                ciphertext_validity_proof_data,
+                ciphertext_validity_proof_data_with_ciphertext,
                 range_proof_data,
             } = transfer_account_info
                 .generate_split_transfer_proof_data(
@@ -1625,6 +1644,11 @@ async fn command_transfer(
                     auditor_elgamal_pubkey.as_ref(),
                 )
                 .unwrap();
+
+            let transfer_amount_auditor_ciphertext_lo =
+                ciphertext_validity_proof_data_with_ciphertext.ciphertext_lo;
+            let transfer_amount_auditor_ciphertext_hi =
+                ciphertext_validity_proof_data_with_ciphertext.ciphertext_hi;
 
             // setup proofs
             let create_range_proof_context_signer = &[&range_proof_context_state_account];
@@ -1650,7 +1674,7 @@ async fn command_transfer(
                 token.confidential_transfer_create_context_state_account(
                     &ciphertext_validity_proof_pubkey,
                     &context_state_authority_pubkey,
-                    &ciphertext_validity_proof_data,
+                    &ciphertext_validity_proof_data_with_ciphertext.proof_data,
                     false,
                     create_ciphertext_validity_proof_context_signer
                 )
@@ -1664,13 +1688,19 @@ async fn command_transfer(
             let range_proof_context_proof_account =
                 ProofAccount::ContextAccount(range_proof_pubkey);
 
+            let ciphertext_validity_proof_account_with_ciphertext = ProofAccountWithCiphertext {
+                proof_account: ciphertext_validity_proof_context_proof_account,
+                ciphertext_lo: transfer_amount_auditor_ciphertext_lo,
+                ciphertext_hi: transfer_amount_auditor_ciphertext_hi,
+            };
+
             let transfer_result = token
                 .confidential_transfer_transfer(
                     &sender,
                     &recipient_token_account,
                     &sender_owner,
                     Some(&equality_proof_context_proof_account),
-                    Some(&ciphertext_validity_proof_context_proof_account),
+                    Some(&ciphertext_validity_proof_account_with_ciphertext),
                     Some(&range_proof_context_proof_account),
                     transfer_balance,
                     Some(transfer_account_info),
@@ -1739,7 +1769,7 @@ async fn command_burn(
     config: &Config<'_>,
     account: Pubkey,
     owner: Pubkey,
-    ui_amount: Option<f64>,
+    ui_amount: Amount,
     mint_address: Option<Pubkey>,
     mint_decimals: Option<u8>,
     use_unchecked_instruction: bool,
@@ -1756,15 +1786,17 @@ async fn command_burn(
 
     let token = token_client_from_config(config, &mint_info.address, decimals)?;
 
-    let amount = if let Some(ui_amount) = ui_amount {
-        spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals)
-    } else {
-        if config.sign_only {
-            return Err("Use of ALL keyword to burn tokens requires online signing"
-                .to_string()
-                .into());
+    let amount = match ui_amount {
+        Amount::Raw(ui_amount) => ui_amount,
+        Amount::Decimal(ui_amount) => spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals),
+        Amount::All => {
+            if config.sign_only {
+                return Err("Use of ALL keyword to burn tokens requires online signing"
+                    .to_string()
+                    .into());
+            }
+            token.get_account_info(&account).await?.base.amount
         }
-        token.get_account_info(&account).await?.base.amount
     };
 
     println_display(
@@ -1797,7 +1829,7 @@ async fn command_burn(
 async fn command_mint(
     config: &Config<'_>,
     token: Pubkey,
-    ui_amount: f64,
+    ui_amount: Amount,
     recipient: Pubkey,
     mint_info: MintInfo,
     mint_authority: Pubkey,
@@ -1805,15 +1837,18 @@ async fn command_mint(
     memo: Option<String>,
     bulk_signers: BulkSigners,
 ) -> CommandResult {
+    let amount = amount_to_raw_amount(ui_amount, mint_info.decimals, None, "TOKEN_AMOUNT");
+
     println_display(
         config,
         format!(
             "Minting {} tokens\n  Token: {}\n  Recipient: {}",
-            ui_amount, token, recipient
+            spl_token::amount_to_ui_amount(amount, mint_info.decimals),
+            token,
+            recipient
         ),
     );
 
-    let amount = spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals);
     let decimals = if use_unchecked_instruction {
         None
     } else {
@@ -1914,19 +1949,32 @@ async fn command_thaw(
 
 async fn command_wrap(
     config: &Config<'_>,
-    sol: f64,
+    amount: Amount,
     wallet_address: Pubkey,
     wrapped_sol_account: Option<Pubkey>,
     immutable_owner: bool,
     bulk_signers: BulkSigners,
 ) -> CommandResult {
-    let lamports = sol_to_lamports(sol);
+    let lamports = match amount {
+        Amount::Raw(amount) => amount,
+        Amount::Decimal(amount) => sol_to_lamports(amount),
+        Amount::All => {
+            return Err("ALL keyword not supported for SOL amount".into());
+        }
+    };
     let token = native_token_client_from_config(config)?;
 
     let account =
         wrapped_sol_account.unwrap_or_else(|| token.get_associated_token_address(&wallet_address));
 
-    println_display(config, format!("Wrapping {} SOL into {}", sol, account));
+    println_display(
+        config,
+        format!(
+            "Wrapping {} SOL into {}",
+            lamports_to_sol(lamports),
+            account
+        ),
+    );
 
     if !config.sign_only {
         if let Some(account_data) = config.program_client.get_account(account).await? {
@@ -2030,29 +2078,31 @@ async fn command_approve(
     config: &Config<'_>,
     account: Pubkey,
     owner: Pubkey,
-    ui_amount: f64,
+    ui_amount: Amount,
     delegate: Pubkey,
     mint_address: Option<Pubkey>,
     mint_decimals: Option<u8>,
     use_unchecked_instruction: bool,
     bulk_signers: BulkSigners,
 ) -> CommandResult {
-    println_display(
-        config,
-        format!(
-            "Approve {} tokens\n  Account: {}\n  Delegate: {}",
-            ui_amount, account, delegate
-        ),
-    );
-
     let mint_address = config.check_account(&account, mint_address).await?;
     let mint_info = config.get_mint_info(&mint_address, mint_decimals).await?;
-    let amount = spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals);
+    let amount = amount_to_raw_amount(ui_amount, mint_info.decimals, None, "TOKEN_AMOUNT");
     let decimals = if use_unchecked_instruction {
         None
     } else {
         Some(mint_info.decimals)
     };
+
+    println_display(
+        config,
+        format!(
+            "Approve {} tokens\n  Account: {}\n  Delegate: {}",
+            spl_token::amount_to_ui_amount(amount, mint_info.decimals),
+            account,
+            delegate
+        ),
+    );
 
     let token = token_client_from_config(config, &mint_info.address, decimals)?;
     let res = token
@@ -3255,7 +3305,7 @@ async fn command_deposit_withdraw_mint_confidential_tokens(
     owner: Pubkey,
     maybe_account: Option<Pubkey>,
     bulk_signers: BulkSigners,
-    ui_amount: Option<f64>,
+    ui_amount: Amount,
     mint_decimals: Option<u8>,
     instruction_type: ConfidentialInstructionType,
     elgamal_keypair: Option<&ElGamalKeypair>,
@@ -3296,59 +3346,65 @@ async fn command_deposit_withdraw_mint_confidential_tokens(
     let state_with_extension = StateWithExtensionsOwned::<Account>::unpack(account.data)?;
     let token = token_client_from_config(config, &state_with_extension.base.mint, None)?;
 
-    // the amount the user wants to deposit or withdraw, as an f64
-    let maybe_amount =
-        ui_amount.map(|ui_amount| spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals));
-
-    // the amount we will deposit or withdraw, as a u64
-    let amount = if !config.sign_only && instruction_type == ConfidentialInstructionType::Deposit {
-        let current_balance = state_with_extension.base.amount;
-        let deposit_amount = maybe_amount.unwrap_or(current_balance);
-
-        println_display(
-            config,
-            format!(
-                "Depositing {} confidential tokens",
-                spl_token::amount_to_ui_amount(deposit_amount, mint_info.decimals),
-            ),
-        );
-
-        if deposit_amount > current_balance {
-            return Err(format!(
-                "Error: Insufficient funds, current balance is {}",
-                spl_token_2022::amount_to_ui_amount_string_trimmed(
-                    current_balance,
-                    mint_info.decimals
-                )
-            )
-            .into());
+    // the amount the user wants to deposit or withdraw, as a u64
+    let amount = match ui_amount {
+        Amount::Raw(ui_amount) => ui_amount,
+        Amount::Decimal(ui_amount) => spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals),
+        Amount::All => {
+            if config.sign_only {
+                return Err("Use of ALL keyword to burn tokens requires online signing"
+                    .to_string()
+                    .into());
+            }
+            if instruction_type == ConfidentialInstructionType::Withdraw {
+                return Err("ALL keyword is not currently supported for withdraw"
+                    .to_string()
+                    .into());
+            }
+            state_with_extension.base.amount
         }
-
-        deposit_amount
-    } else if !config.sign_only && instruction_type == ConfidentialInstructionType::Withdraw {
-        // // TODO: expose account balance decryption in token
-        // let aes_key = aes_key.expect("AES key must be provided");
-        // let current_balance = token
-        //     .confidential_transfer_get_available_balance_with_key(
-        //         &token_account_address,
-        //         aes_key,
-        //     )
-        //     .await?;
-        let withdraw_amount =
-            maybe_amount.expect("ALL keyword is not currently supported for withdraw");
-
-        println_display(
-            config,
-            format!(
-                "Withdrawing {} confidential tokens",
-                spl_token::amount_to_ui_amount(withdraw_amount, mint_info.decimals)
-            ),
-        );
-
-        withdraw_amount
-    } else {
-        maybe_amount.unwrap()
     };
+
+    match instruction_type {
+        ConfidentialInstructionType::Deposit => {
+            println_display(
+                config,
+                format!(
+                    "Depositing {} confidential tokens",
+                    spl_token::amount_to_ui_amount(amount, mint_info.decimals),
+                ),
+            );
+            let current_balance = state_with_extension.base.amount;
+            if amount > current_balance {
+                return Err(format!(
+                    "Error: Insufficient funds, current balance is {}",
+                    spl_token_2022::amount_to_ui_amount_string_trimmed(
+                        current_balance,
+                        mint_info.decimals
+                    )
+                )
+                .into());
+            }
+        }
+        ConfidentialInstructionType::Withdraw => {
+            println_display(
+                config,
+                format!(
+                    "Withdrawing {} confidential tokens",
+                    spl_token::amount_to_ui_amount(amount, mint_info.decimals)
+                ),
+            );
+        }
+        ConfidentialInstructionType::Mint => {
+            println_display(
+                config,
+                format!(
+                    "Minting {} confidential tokens",
+                    spl_token::amount_to_ui_amount(amount, mint_info.decimals)
+                ),
+            );
+        }
+    }
 
     let res = match instruction_type {
         ConfidentialInstructionType::Deposit => {
@@ -3510,7 +3566,9 @@ async fn command_deposit_withdraw_mint_confidential_tokens(
                 token.confidential_transfer_create_context_state_account(
                     &ciphertext_validity_proof_context_pubkey,
                     &context_state_auth,
-                    &proof_data.ciphertext_validity_proof_data,
+                    &proof_data
+                        .ciphertext_validity_proof_data_with_ciphertext
+                        .proof_data,
                     false,
                     ciphertext_validity_proof_signer,
                 ),
@@ -3527,6 +3585,15 @@ async fn command_deposit_withdraw_mint_confidential_tokens(
                 ProofAccount::ContextAccount(equality_proof_context_pubkey);
             let ciphertext_validity_proof_location =
                 ProofAccount::ContextAccount(ciphertext_validity_proof_context_pubkey);
+            let ciphertext_validity_proof_location = ProofAccountWithCiphertext {
+                proof_account: ciphertext_validity_proof_location,
+                ciphertext_lo: proof_data
+                    .ciphertext_validity_proof_data_with_ciphertext
+                    .ciphertext_lo,
+                ciphertext_hi: proof_data
+                    .ciphertext_validity_proof_data_with_ciphertext
+                    .ciphertext_hi,
+            };
             let range_proof_location = ProofAccount::ContextAccount(range_proof_context_pubkey);
 
             let res = token
@@ -3643,7 +3710,7 @@ struct ConfidentialTransferArgs {
 
 pub async fn process_command<'a>(
     sub_command: &CommandName,
-    sub_matches: &ArgMatches<'_>,
+    sub_matches: &ArgMatches,
     config: &Config<'a>,
     mut wallet_manager: Option<Rc<RemoteWalletManager>>,
     mut bulk_signers: Vec<Arc<dyn Signer>>,
@@ -3659,7 +3726,7 @@ pub async fn process_command<'a>(
             .await
         }
         (CommandName::CreateToken, arg_matches) => {
-            let decimals = value_t_or_exit!(arg_matches, "decimals", u8);
+            let decimals = *arg_matches.get_one::<u8>("decimals").unwrap();
             let mint_authority =
                 config.pubkey_or_default(arg_matches, "mint_authority", &mut wallet_manager)?;
             let memo = value_t!(arg_matches, "memo", String).ok();
@@ -3682,11 +3749,12 @@ pub async fn process_command<'a>(
                 )
             });
 
-            let tranfer_fee_basis_point = value_of::<u16>(arg_matches, "transfer_fee_basis_points");
-            let transfer_fee_maximum_fee = value_of::<f64>(arg_matches, "transfer_fee_maximum_fee")
-                .map(|v| spl_token::ui_amount_to_amount(v, decimals));
-            let transfer_fee = tranfer_fee_basis_point
-                .map(|v| (v, transfer_fee_maximum_fee.unwrap()))
+            let transfer_fee_basis_point = arg_matches.get_one::<u16>("transfer_fee_basis_points");
+            let transfer_fee_maximum_fee = arg_matches
+                .get_one::<Amount>("transfer_fee_maximum_fee")
+                .map(|v| amount_to_raw_amount(*v, decimals, None, "MAXIMUM_FEE"));
+            let transfer_fee = transfer_fee_basis_point
+                .map(|v| (*v, transfer_fee_maximum_fee.unwrap()))
                 .or(transfer_fee);
 
             let (token_signer, token) =
@@ -3817,7 +3885,9 @@ pub async fn process_command<'a>(
                 _ => Field::Key(field.to_string()),
             };
             let value = arg_matches.value_of("value").map(|v| v.to_string());
-            let transfer_lamports = value_of::<u64>(arg_matches, TRANSFER_LAMPORTS_ARG.name);
+            let transfer_lamports = arg_matches
+                .get_one::<u64>(TRANSFER_LAMPORTS_ARG.name)
+                .copied();
             let bulk_signers = vec![authority_signer];
 
             command_update_metadata(
@@ -3835,7 +3905,7 @@ pub async fn process_command<'a>(
             let token_pubkey = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
-            let max_size = value_t_or_exit!(arg_matches, "max_size", u64);
+            let max_size = *arg_matches.get_one::<u64>("max_size").unwrap();
             let (mint_authority_signer, mint_authority) =
                 config.signer_or_default(arg_matches, "mint_authority", &mut wallet_manager);
             let update_authority =
@@ -3856,7 +3926,7 @@ pub async fn process_command<'a>(
             let token_pubkey = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
-            let new_max_size = value_t_or_exit!(arg_matches, "new_max_size", u64);
+            let new_max_size = *arg_matches.get_one::<u64>("new_max_size").unwrap();
             let (update_authority_signer, update_authority) =
                 config.signer_or_default(arg_matches, "update_authority", &mut wallet_manager);
             let bulk_signers = vec![update_authority_signer];
@@ -3923,7 +3993,10 @@ pub async fn process_command<'a>(
             .await
         }
         (CommandName::CreateMultisig, arg_matches) => {
-            let minimum_signers = value_of::<u8>(arg_matches, "minimum_signers").unwrap();
+            let minimum_signers = arg_matches
+                .get_one("minimum_signers")
+                .map(|v: &String| v.parse::<u8>().unwrap())
+                .unwrap();
             let multisig_members =
                 pubkeys_of_multiple_signers(arg_matches, "multisig_member", &mut wallet_manager)
                     .unwrap_or_else(print_error_and_exit)
@@ -3972,7 +4045,7 @@ pub async fn process_command<'a>(
             let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
-            let amount = parse_amount_or_all(arg_matches);
+            let amount = *arg_matches.get_one::<Amount>("amount").unwrap();
             let recipient = pubkey_of_signer(arg_matches, "recipient", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
@@ -4007,7 +4080,7 @@ pub async fn process_command<'a>(
                 push_signer_with_dedup(owner_signer, &mut bulk_signers);
             }
 
-            let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
+            let mint_decimals = arg_matches.get_one::<u8>(MINT_DECIMALS_ARG.name).copied();
             let fund_recipient = arg_matches.is_present("fund_recipient");
             let allow_unfunded_recipient = arg_matches.is_present("allow_empty_recipient")
                 || arg_matches.is_present("allow_unfunded_recipient");
@@ -4019,7 +4092,7 @@ pub async fn process_command<'a>(
                 println_display(config, "recipient-is-ata-owner is now the default behavior. The option has been deprecated and will be removed in a future release.".to_string());
             }
             let use_unchecked_instruction = arg_matches.is_present("use_unchecked_instruction");
-            let expected_fee = value_of::<f64>(arg_matches, "expected_fee");
+            let expected_fee = arg_matches.get_one::<Amount>("expected_fee").copied();
             let memo = value_t!(arg_matches, "memo", String).ok();
             let transfer_hook_accounts = arg_matches.values_of("transfer_hook_account").map(|v| {
                 v.into_iter()
@@ -4060,10 +4133,12 @@ pub async fn process_command<'a>(
                 push_signer_with_dedup(owner_signer, &mut bulk_signers);
             }
 
-            let amount = parse_amount_or_all(arg_matches);
+            let amount = *arg_matches.get_one::<Amount>("amount").unwrap();
             let mint_address =
                 pubkey_of_signer(arg_matches, MINT_ADDRESS_ARG.name, &mut wallet_manager).unwrap();
-            let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
+            let mint_decimals = arg_matches
+                .get_one(MINT_DECIMALS_ARG.name)
+                .map(|v: &String| v.parse::<u8>().unwrap());
             let use_unchecked_instruction = arg_matches.is_present("use_unchecked_instruction");
             let memo = value_t!(arg_matches, "memo", String).ok();
             command_burn(
@@ -4089,8 +4164,8 @@ pub async fn process_command<'a>(
             let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
-            let amount = value_t_or_exit!(arg_matches, "amount", f64);
-            let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
+            let amount = *arg_matches.get_one::<Amount>("amount").unwrap();
+            let mint_decimals = arg_matches.get_one::<u8>(MINT_DECIMALS_ARG.name).copied();
             let mint_info = config.get_mint_info(&token, mint_decimals).await?;
             let recipient = if let Some(address) =
                 pubkey_of_signer(arg_matches, "recipient", &mut wallet_manager).unwrap()
@@ -4167,7 +4242,7 @@ pub async fn process_command<'a>(
             .await
         }
         (CommandName::Wrap, arg_matches) => {
-            let amount = value_t_or_exit!(arg_matches, "amount", f64);
+            let amount = *arg_matches.get_one::<Amount>("amount").unwrap();
             let account = if arg_matches.is_present("create_aux_account") {
                 let (signer, account) = new_throwaway_signer();
                 bulk_signers.push(signer);
@@ -4209,13 +4284,15 @@ pub async fn process_command<'a>(
             let account = pubkey_of_signer(arg_matches, "account", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
-            let amount = value_t_or_exit!(arg_matches, "amount", f64);
+            let amount = *arg_matches.get_one::<Amount>("amount").unwrap();
             let delegate = pubkey_of_signer(arg_matches, "delegate", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
             let mint_address =
                 pubkey_of_signer(arg_matches, MINT_ADDRESS_ARG.name, &mut wallet_manager).unwrap();
-            let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
+            let mint_decimals = arg_matches
+                .get_one(MINT_DECIMALS_ARG.name)
+                .map(|v: &String| v.parse::<u8>().unwrap());
             let use_unchecked_instruction = arg_matches.is_present("use_unchecked_instruction");
             command_approve(
                 config,
@@ -4549,10 +4626,10 @@ pub async fn process_command<'a>(
                 .unwrap();
             let transfer_fee_basis_points =
                 value_t_or_exit!(arg_matches, "transfer_fee_basis_points", u16);
-            let maximum_fee = value_t_or_exit!(arg_matches, "maximum_fee", f64);
+            let maximum_fee = *arg_matches.get_one::<Amount>("maximum_fee").unwrap();
             let (transfer_fee_authority_signer, transfer_fee_authority_pubkey) = config
                 .signer_or_default(arg_matches, "transfer_fee_authority", &mut wallet_manager);
-            let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
+            let mint_decimals = arg_matches.get_one::<u8>(MINT_DECIMALS_ARG.name).copied();
             let bulk_signers = vec![transfer_fee_authority_signer];
 
             command_set_transfer_fee(
@@ -4702,7 +4779,7 @@ pub async fn process_command<'a>(
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
 
-            let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
+            let mint_decimals = ArgMatches::get_one(arg_matches, MINT_DECIMALS_ARG.name);
 
             let elgamal_keypair = ElGamalKeypair::new_from_signer(&*owner_signer, b"").unwrap();
             let aes_key = AeKey::new_from_signer(&*owner_signer, b"").unwrap();
@@ -4728,13 +4805,12 @@ pub async fn process_command<'a>(
             let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
-            let amount = parse_amount_or_all(arg_matches);
+            let amount = *arg_matches.get_one::<Amount>("amount").unwrap();
             let account = pubkey_of_signer(arg_matches, "address", &mut wallet_manager).unwrap();
 
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
-
-            let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
+            let mint_decimals = arg_matches.get_one::<u8>(MINT_DECIMALS_ARG.name).copied();
 
             let (instruction_type, elgamal_keypair, aes_key) = match c {
                 CommandName::DepositConfidentialTokens => {
@@ -4928,17 +5004,19 @@ async fn command_confidential_burn(
     ata_pubkey: Pubkey,
     ui_amount: Option<f64>,
     authority: Pubkey,
-    mint_decimals: Option<u8>,
+    mint_decimals: Option<&u8>,
     bulk_signers: BulkSigners,
     elgamal_keypair: &ElGamalKeypair,
     aes_key: &AeKey,
 ) -> CommandResult {
-    let mint_info = config.get_mint_info(&token_pubkey, mint_decimals).await?;
+    let mint_info = config
+        .get_mint_info(&token_pubkey, mint_decimals.copied())
+        .await?;
 
     // if the user got the decimals wrong, they may well have calculated the
     // transfer amount wrong we only check in online mode, because in offline,
     // mint_info.decimals is always 9
-    if !config.sign_only && mint_decimals.is_some() && mint_decimals != Some(mint_info.decimals) {
+    if !config.sign_only && mint_decimals.is_some() && mint_decimals != Some(&mint_info.decimals) {
         return Err(format!(
             "Decimals {} was provided, but actual value is {}",
             mint_decimals.unwrap(),
@@ -5005,7 +5083,9 @@ async fn command_confidential_burn(
         token.confidential_transfer_create_context_state_account(
             &ciphertext_validity_proof_context_pubkey,
             &context_state_auth_pubkey,
-            &proof_data.ciphertext_validity_proof_data,
+            &proof_data
+                .ciphertext_validity_proof_data_with_ciphertext
+                .proof_data,
             false,
             ciphertext_validity_proof_signer,
         ),
@@ -5021,6 +5101,15 @@ async fn command_confidential_burn(
     let equality_proof_location = ProofAccount::ContextAccount(equality_proof_context_pubkey);
     let ciphertext_validity_proof_location =
         ProofAccount::ContextAccount(ciphertext_validity_proof_context_pubkey);
+    let ciphertext_validity_proof_location = ProofAccountWithCiphertext {
+        proof_account: ciphertext_validity_proof_location,
+        ciphertext_lo: proof_data
+            .ciphertext_validity_proof_data_with_ciphertext
+            .ciphertext_lo,
+        ciphertext_hi: proof_data
+            .ciphertext_validity_proof_data_with_ciphertext
+            .ciphertext_hi,
+    };
     let range_proof_location = ProofAccount::ContextAccount(range_proof_context_pubkey);
 
     // do the burn

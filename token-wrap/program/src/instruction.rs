@@ -45,8 +45,8 @@ pub enum TokenWrapInstruction {
     /// 6. `[]` SPL Token program for unwrapped mint
     /// 7. `[]` SPL Token program for wrapped mint
     /// 8. `[signer]` Transfer authority on unwrapped token account
-    /// 8..8+M. `[signer]` (Optional) M multisig signers on unwrapped token
-    /// account
+    /// 9. ..8+M. `[signer]` (Optional) M multisig signers on unwrapped token
+    ///    account
     ///
     /// Data expected by this instruction:
     ///   * little-endian u64 representing the amount to wrap
@@ -72,8 +72,8 @@ pub enum TokenWrapInstruction {
     /// 6. `[]` SPL Token program for wrapped mint
     /// 7. `[]` SPL Token program for unwrapped mint
     /// 8. `[signer]` Transfer authority on wrapped token account
-    /// 8..8+M. `[signer]` (Optional) M multisig signers on wrapped token
-    /// account
+    /// 9. ..8+M. `[signer]` (Optional) M multisig signers on wrapped token
+    ///    account
     ///
     /// Data expected by this instruction:
     ///   * little-endian u64 representing the amount to unwrap

@@ -27,7 +27,7 @@ async fn run_basic(
     // system transfer to account
     let amount = 1_000;
     {
-        let mut context = context.lock().await;
+        let context = context.lock().await;
         let instructions = vec![system_instruction::transfer(
             &context.payer.pubkey(),
             &account,

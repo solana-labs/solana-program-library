@@ -131,7 +131,7 @@ async fn fail_without_authority_signature() {
         client.clone(),
     )
     .await;
-    let mut context = context.lock().await;
+    let context = context.lock().await;
 
     let update_authority = Pubkey::new_unique();
     let name = "MySuperCoolToken".to_string();
@@ -208,7 +208,7 @@ async fn fail_incorrect_authority() {
         client.clone(),
     )
     .await;
-    let mut context = context.lock().await;
+    let context = context.lock().await;
 
     let update_authority = Pubkey::new_unique();
     let name = "MySuperCoolToken".to_string();

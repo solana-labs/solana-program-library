@@ -1,20 +1,8 @@
-#[cfg(not(target_os = "solana"))]
-use {
-    crate::proof::{process_proof_location, ProofLocation},
-    solana_zk_sdk::{
-        encryption::{auth_encryption::AeCiphertext, elgamal::ElGamalPubkey},
-        zk_elgamal_proof_program::{
-            instruction::ProofInstruction,
-            proof_data::{
-                BatchedGroupedCiphertext3HandlesValidityProofData, BatchedRangeProofU128Data,
-                CiphertextCiphertextEqualityProofData, CiphertextCommitmentEqualityProofData,
-            },
-        },
-    },
-};
 #[cfg(feature = "serde-traits")]
 use {
-    crate::serialization::{aeciphertext_fromstr, elgamalpubkey_fromstr},
+    crate::serialization::{
+        aeciphertext_fromstr, elgamalciphertext_fromstr, elgamalpubkey_fromstr,
+    },
     serde::{Deserialize, Serialize},
 };
 use {
@@ -30,7 +18,26 @@ use {
         program_error::ProgramError,
         pubkey::Pubkey,
     },
-    solana_zk_sdk::encryption::pod::{auth_encryption::PodAeCiphertext, elgamal::PodElGamalPubkey},
+    solana_zk_sdk::encryption::pod::{
+        auth_encryption::PodAeCiphertext,
+        elgamal::{PodElGamalCiphertext, PodElGamalPubkey},
+    },
+};
+#[cfg(not(target_os = "solana"))]
+use {
+    solana_zk_sdk::{
+        encryption::{auth_encryption::AeCiphertext, elgamal::ElGamalPubkey},
+        zk_elgamal_proof_program::{
+            instruction::ProofInstruction,
+            proof_data::{
+                BatchedGroupedCiphertext3HandlesValidityProofData, BatchedRangeProofU128Data,
+                CiphertextCiphertextEqualityProofData, CiphertextCommitmentEqualityProofData,
+            },
+        },
+    },
+    spl_token_confidential_transfer_proof_extraction::instruction::{
+        process_proof_location, ProofLocation,
+    },
 };
 
 /// Confidential Transfer extension instructions
@@ -75,7 +82,7 @@ pub enum ConfidentialMintBurnInstruction {
     ///      `CiphertextCiphertextEquality` is pre-verified into a context state
     ///      account.
     ///   2. `[]` The multisig authority account owner.
-    ///   3.. `[signer]` Required M signer accounts for the SPL Token Multisig
+    ///   3. ..`[signer]` Required M signer accounts for the SPL Token Multisig
     ///
     /// Data expected by this instruction:
     ///   `RotateSupplyElGamalPubkeyData`
@@ -91,7 +98,7 @@ pub enum ConfidentialMintBurnInstruction {
     ///   * Multisignature authority
     ///   0. `[writable]` The SPL Token mint.
     ///   1. `[]` The multisig authority account owner.
-    ///   2.. `[signer]` Required M signer accounts for the SPL Token Multisig
+    ///   2. ..`[signer]` Required M signer accounts for the SPL Token Multisig
     ///
     /// Data expected by this instruction:
     ///   `UpdateDecryptableSupplyData`
@@ -131,7 +138,7 @@ pub enum ConfidentialMintBurnInstruction {
     ///   5. `[]` (Optional) The context state account containing the
     ///      pre-verified `VerifyBatchedRangeProofU128`
     ///   6. `[]` The multisig account owner.
-    ///   7.. `[signer]` Required M signer accounts for the SPL Token Multisig
+    ///   7. ..`[signer]` Required M signer accounts for the SPL Token Multisig
     ///
     /// Data expected by this instruction:
     ///   `MintInstructionData`
@@ -171,7 +178,7 @@ pub enum ConfidentialMintBurnInstruction {
     ///   5. `[]` (Optional) The context state account containing the
     ///      pre-verified `VerifyBatchedRangeProofU128`
     ///   6. `[]` The multisig account owner.
-    ///   7.. `[signer]` Required M signer accounts for the SPL Token Multisig
+    ///   7. ..`[signer]` Required M signer accounts for the SPL Token Multisig
     ///
     /// Data expected by this instruction:
     ///   `BurnInstructionData`
@@ -227,6 +234,12 @@ pub struct MintInstructionData {
     /// The new decryptable supply if the mint succeeds
     #[cfg_attr(feature = "serde-traits", serde(with = "aeciphertext_fromstr"))]
     pub new_decryptable_supply: PodAeCiphertext,
+    /// The transfer amount encrypted under the auditor ElGamal public key
+    #[cfg_attr(feature = "serde-traits", serde(with = "elgamalciphertext_fromstr"))]
+    pub mint_amount_auditor_ciphertext_lo: PodElGamalCiphertext,
+    /// The transfer amount encrypted under the auditor ElGamal public key
+    #[cfg_attr(feature = "serde-traits", serde(with = "elgamalciphertext_fromstr"))]
+    pub mint_amount_auditor_ciphertext_hi: PodElGamalCiphertext,
     /// Relative location of the
     /// `ProofInstruction::VerifyCiphertextCommitmentEquality` instruction
     /// to the `ConfidentialMint` instruction in the transaction. 0 if the
@@ -252,6 +265,12 @@ pub struct BurnInstructionData {
     /// The new decryptable balance of the burner if the burn succeeds
     #[cfg_attr(feature = "serde-traits", serde(with = "aeciphertext_fromstr"))]
     pub new_decryptable_available_balance: DecryptableBalance,
+    /// The transfer amount encrypted under the auditor ElGamal public key
+    #[cfg_attr(feature = "serde-traits", serde(with = "elgamalciphertext_fromstr"))]
+    pub burn_amount_auditor_ciphertext_lo: PodElGamalCiphertext,
+    /// The transfer amount encrypted under the auditor ElGamal public key
+    #[cfg_attr(feature = "serde-traits", serde(with = "elgamalciphertext_fromstr"))]
+    pub burn_amount_auditor_ciphertext_hi: PodElGamalCiphertext,
     /// Relative location of the
     /// `ProofInstruction::VerifyCiphertextCommitmentEquality` instruction
     /// to the `ConfidentialMint` instruction in the transaction. 0 if the
@@ -299,7 +318,7 @@ pub fn rotate_supply_elgamal_pubkey(
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     new_supply_elgamal_pubkey: ElGamalPubkey,
-    ciphertext_equality_proof_location: ProofLocation<CiphertextCiphertextEqualityProofData>,
+    ciphertext_equality_proof: ProofLocation<CiphertextCiphertextEqualityProofData>,
 ) -> Result<Vec<Instruction>, ProgramError> {
     check_program_account(token_program_id)?;
     let mut accounts = vec![AccountMeta::new(*mint, false)];
@@ -311,7 +330,7 @@ pub fn rotate_supply_elgamal_pubkey(
         &mut accounts,
         &mut expected_instruction_offset,
         &mut proof_instructions,
-        ciphertext_equality_proof_location,
+        ciphertext_equality_proof,
         true,
         ProofInstruction::VerifyCiphertextCiphertextEquality,
     )?;
@@ -335,7 +354,7 @@ pub fn rotate_supply_elgamal_pubkey(
         },
     )];
 
-    instructions.extend_from_slice(&proof_instructions);
+    instructions.extend(proof_instructions);
 
     Ok(instructions)
 }
@@ -368,6 +387,19 @@ pub fn update_decryptable_supply(
     ))
 }
 
+/// Context state accounts used in confidential mint
+#[derive(Clone, Copy)]
+pub struct MintSplitContextStateAccounts<'a> {
+    /// Location of equality proof
+    pub equality_proof: &'a Pubkey,
+    /// Location of ciphertext validity proof
+    pub ciphertext_validity_proof: &'a Pubkey,
+    /// Location of range proof
+    pub range_proof: &'a Pubkey,
+    /// Authority able to close proof accounts
+    pub authority: &'a Pubkey,
+}
+
 /// Create a `ConfidentialMint` instruction
 #[allow(clippy::too_many_arguments)]
 #[cfg(not(target_os = "solana"))]
@@ -376,6 +408,8 @@ pub fn confidential_mint_with_split_proofs(
     token_account: &Pubkey,
     mint: &Pubkey,
     supply_elgamal_pubkey: Option<ElGamalPubkey>,
+    mint_amount_auditor_ciphertext_lo: &PodElGamalCiphertext,
+    mint_amount_auditor_ciphertext_hi: &PodElGamalCiphertext,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     equality_proof_location: ProofLocation<CiphertextCommitmentEqualityProofData>,
@@ -440,13 +474,15 @@ pub fn confidential_mint_with_split_proofs(
         ConfidentialMintBurnInstruction::Mint,
         &MintInstructionData {
             new_decryptable_supply: new_decryptable_supply.into(),
+            mint_amount_auditor_ciphertext_lo: *mint_amount_auditor_ciphertext_lo,
+            mint_amount_auditor_ciphertext_hi: *mint_amount_auditor_ciphertext_hi,
             equality_proof_instruction_offset,
             ciphertext_validity_proof_instruction_offset,
             range_proof_instruction_offset,
         },
     )];
 
-    instructions.extend_from_slice(&proof_instructions);
+    instructions.extend(proof_instructions);
 
     Ok(instructions)
 }
@@ -460,11 +496,12 @@ pub fn confidential_burn_with_split_proofs(
     mint: &Pubkey,
     supply_elgamal_pubkey: Option<ElGamalPubkey>,
     new_decryptable_available_balance: DecryptableBalance,
+    burn_amount_auditor_ciphertext_lo: &PodElGamalCiphertext,
+    burn_amount_auditor_ciphertext_hi: &PodElGamalCiphertext,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     equality_proof_location: ProofLocation<CiphertextCommitmentEqualityProofData>,
     ciphertext_validity_proof_location: ProofLocation<
-        '_,
         BatchedGroupedCiphertext3HandlesValidityProofData,
     >,
     range_proof_location: ProofLocation<BatchedRangeProofU128Data>,
@@ -523,13 +560,15 @@ pub fn confidential_burn_with_split_proofs(
         ConfidentialMintBurnInstruction::Burn,
         &BurnInstructionData {
             new_decryptable_available_balance,
+            burn_amount_auditor_ciphertext_lo: *burn_amount_auditor_ciphertext_lo,
+            burn_amount_auditor_ciphertext_hi: *burn_amount_auditor_ciphertext_hi,
             equality_proof_instruction_offset,
             ciphertext_validity_proof_instruction_offset,
             range_proof_instruction_offset,
         },
     )];
 
-    instructions.extend_from_slice(&proof_instructions);
+    instructions.extend(proof_instructions);
 
     Ok(instructions)
 }
