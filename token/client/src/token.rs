@@ -43,8 +43,8 @@ use {
                 ConfidentialTransferFeeConfig,
             },
             cpi_guard, default_account_state, group_member_pointer, group_pointer,
-            interest_bearing_mint, memo_transfer, metadata_pointer, scaled_ui_amount, transfer_fee,
-            transfer_hook, BaseStateWithExtensions, Extension, ExtensionType,
+            interest_bearing_mint, memo_transfer, metadata_pointer, pausable, scaled_ui_amount,
+            transfer_fee, transfer_hook, BaseStateWithExtensions, Extension, ExtensionType,
             StateWithExtensionsOwned,
         },
         instruction, offchain,
@@ -193,6 +193,9 @@ pub enum ExtensionInitializationParams {
         authority: Option<Pubkey>,
         multiplier: f64,
     },
+    PausableConfig {
+        authority: Pubkey,
+    },
 }
 impl ExtensionInitializationParams {
     /// Get the extension type associated with the init params
@@ -213,6 +216,7 @@ impl ExtensionInitializationParams {
             Self::GroupPointer { .. } => ExtensionType::GroupPointer,
             Self::GroupMemberPointer { .. } => ExtensionType::GroupMemberPointer,
             Self::ScaledUiAmountConfig { .. } => ExtensionType::ScaledUiAmount,
+            Self::PausableConfig { .. } => ExtensionType::Pausable,
         }
     }
     /// Generate an appropriate initialization instruction for the given mint
@@ -331,6 +335,9 @@ impl ExtensionInitializationParams {
                 authority,
                 multiplier,
             ),
+            Self::PausableConfig { authority } => {
+                pausable::instruction::initialize(token_program_id, mint, &authority)
+            }
         }
     }
 }
@@ -1745,6 +1752,48 @@ where
             &[memo_transfer::instruction::disable_required_transfer_memos(
                 &self.program_id,
                 account,
+                authority,
+                &multisig_signers,
+            )?],
+            signing_keypairs,
+        )
+        .await
+    }
+
+    /// Pause transferring, minting, and burning on the mint
+    pub async fn pause<S: Signers>(
+        &self,
+        authority: &Pubkey,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
+        self.process_ixs(
+            &[pausable::instruction::pause(
+                &self.program_id,
+                self.get_address(),
+                authority,
+                &multisig_signers,
+            )?],
+            signing_keypairs,
+        )
+        .await
+    }
+
+    /// Resume transferring, minting, and burning on the mint
+    pub async fn resume<S: Signers>(
+        &self,
+        authority: &Pubkey,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
+        self.process_ixs(
+            &[pausable::instruction::resume(
+                &self.program_id,
+                self.get_address(),
                 authority,
                 &multisig_signers,
             )?],

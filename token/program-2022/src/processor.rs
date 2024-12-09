@@ -20,6 +20,7 @@ use {
             metadata_pointer::{self, MetadataPointer},
             mint_close_authority::MintCloseAuthority,
             non_transferable::{NonTransferable, NonTransferableAccount},
+            pausable::{self, PausableAccount, PausableConfig},
             permanent_delegate::{get_permanent_delegate, PermanentDelegate},
             reallocate,
             scaled_ui_amount::{self, ScaledUiAmountConfig},
@@ -349,6 +350,12 @@ impl Processor {
                     0
                 };
 
+                if let Ok(extension) = mint.get_extension::<PausableConfig>() {
+                    if extension.paused.into() {
+                        return Err(TokenError::MintPaused.into());
+                    }
+                }
+
                 let maybe_permanent_delegate = get_permanent_delegate(&mint);
                 let maybe_transfer_hook_program_id = transfer_hook::get_program_id(&mint);
 
@@ -373,6 +380,12 @@ impl Processor {
                     .get_extension_mut::<TransferFeeAmount>()
                     .is_ok()
                 {
+                    return Err(TokenError::MintRequiredForTransfer.into());
+                }
+
+                // Pausable extension exists on the account, but no mint
+                // was provided to see if it's paused, abort
+                if source_account.get_extension::<PausableAccount>().is_ok() {
                     return Err(TokenError::MintRequiredForTransfer.into());
                 }
 
@@ -921,6 +934,19 @@ impl Processor {
                     )?;
                     extension.authority = new_authority.try_into()?;
                 }
+                AuthorityType::Pause => {
+                    let extension = mint.get_extension_mut::<PausableConfig>()?;
+                    let maybe_authority: Option<Pubkey> = extension.authority.into();
+                    let authority = maybe_authority.ok_or(TokenError::AuthorityTypeNotSupported)?;
+                    Self::validate_owner(
+                        program_id,
+                        &authority,
+                        authority_info,
+                        authority_info_data_len,
+                        account_info_iter.as_slice(),
+                    )?;
+                    extension.authority = new_authority.try_into()?;
+                }
                 _ => {
                     return Err(TokenError::AuthorityTypeNotSupported.into());
                 }
@@ -970,6 +996,12 @@ impl Processor {
                 .is_err()
         {
             return Err(TokenError::NonTransferableNeedsImmutableOwnership.into());
+        }
+
+        if let Ok(extension) = mint.get_extension::<PausableConfig>() {
+            if extension.paused.into() {
+                return Err(TokenError::MintPaused.into());
+            }
         }
 
         if mint.get_extension::<ConfidentialMintBurn>().is_ok() {
@@ -1051,6 +1083,11 @@ impl Processor {
         if let Some(expected_decimals) = expected_decimals {
             if expected_decimals != mint.base.decimals {
                 return Err(TokenError::MintDecimalsMismatch.into());
+            }
+        }
+        if let Ok(extension) = mint.get_extension::<PausableConfig>() {
+            if extension.paused.into() {
+                return Err(TokenError::MintPaused.into());
             }
         }
         let maybe_permanent_delegate = get_permanent_delegate(&mint);
@@ -1843,6 +1880,10 @@ impl Processor {
                         accounts,
                         &input[1..],
                     )
+                }
+                PodTokenInstruction::PausableExtension => {
+                    msg!("Instruction: PausableExtension");
+                    pausable::processor::process_instruction(program_id, accounts, &input[1..])
                 }
             }
         } else if let Ok(instruction) = TokenMetadataInstruction::unpack(input) {
