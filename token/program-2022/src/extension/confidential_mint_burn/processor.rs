@@ -150,24 +150,30 @@ fn process_confidential_mint(
     accounts: &[AccountInfo],
     data: &MintInstructionData,
 ) -> ProgramResult {
+    println!("MINT 1");
     let account_info_iter = &mut accounts.iter();
     let token_account_info = next_account_info(account_info_iter)?;
     let mint_info = next_account_info(account_info_iter)?;
+    println!("MINT 2");
 
     check_program_account(mint_info.owner)?;
     let mint_data = &mut mint_info.data.borrow_mut();
     let mut mint = PodStateWithExtensionsMut::<PodMint>::unpack(mint_data)?;
     let mint_authority = mint.base.mint_authority;
+    println!("MINT 3");
 
     let auditor_elgamal_pubkey = mint
         .get_extension::<ConfidentialTransferMint>()?
         .auditor_elgamal_pubkey;
+    println!("MINT 4");
     if let Ok(extension) = mint.get_extension::<PausableConfig>() {
         if extension.paused.into() {
             return Err(TokenError::MintPaused.into());
         }
     }
+    println!("MINT 5");
     let mint_burn_extension = mint.get_extension_mut::<ConfidentialMintBurn>()?;
+    println!("MINT 6");
 
     let proof_context = verify_mint_proof(
         account_info_iter,
@@ -175,14 +181,17 @@ fn process_confidential_mint(
         data.ciphertext_validity_proof_instruction_offset,
         data.range_proof_instruction_offset,
     )?;
+    println!("MINT 7");
 
     check_program_account(token_account_info.owner)?;
     let token_account_data = &mut token_account_info.data.borrow_mut();
     let mut token_account = PodStateWithExtensionsMut::<PodAccount>::unpack(token_account_data)?;
+    println!("MINT 8");
 
     let authority_info = next_account_info(account_info_iter)?;
     let authority_info_data_len = authority_info.data_len();
     let authority = mint_authority.ok_or(TokenError::NoAuthorityExists)?;
+    println!("MINT 9");
 
     Processor::validate_owner(
         program_id,
@@ -191,6 +200,7 @@ fn process_confidential_mint(
         authority_info_data_len,
         account_info_iter.as_slice(),
     )?;
+    println!("MINT 10");
 
     if token_account.base.is_frozen() {
         return Err(TokenError::AccountFrozen.into());
@@ -206,6 +216,7 @@ fn process_confidential_mint(
         token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
     confidential_transfer_account.valid_as_destination()?;
 
+    println!("MINT 12");
     if proof_context.mint_pubkeys.destination != confidential_transfer_account.elgamal_pubkey {
         return Err(ProgramError::InvalidInstructionData);
     }
@@ -215,6 +226,7 @@ fn process_confidential_mint(
             return Err(ProgramError::InvalidInstructionData);
         }
     }
+    println!("MINT 13");
 
     let proof_context_auditor_ciphertext_lo = proof_context
         .mint_amount_ciphertext_lo
@@ -224,6 +236,7 @@ fn process_confidential_mint(
         .mint_amount_ciphertext_hi
         .try_extract_ciphertext(2)
         .map_err(TokenError::from)?;
+    println!("MINT 14");
 
     check_auditor_ciphertext(
         &data.mint_amount_auditor_ciphertext_lo,
@@ -231,6 +244,7 @@ fn process_confidential_mint(
         &proof_context_auditor_ciphertext_lo,
         &proof_context_auditor_ciphertext_hi,
     )?;
+    println!("MINT 15");
 
     confidential_transfer_account.pending_balance_lo = ciphertext_arithmetic::add(
         &confidential_transfer_account.pending_balance_lo,
@@ -240,6 +254,7 @@ fn process_confidential_mint(
             .map_err(TokenError::from)?,
     )
     .ok_or(TokenError::CiphertextArithmeticFailed)?;
+    println!("MINT 16");
     confidential_transfer_account.pending_balance_hi = ciphertext_arithmetic::add(
         &confidential_transfer_account.pending_balance_hi,
         &proof_context
@@ -248,6 +263,7 @@ fn process_confidential_mint(
             .map_err(TokenError::from)?,
     )
     .ok_or(TokenError::CiphertextArithmeticFailed)?;
+    println!("MINT 17");
 
     confidential_transfer_account.increment_pending_balance_credit_counter()?;
 
@@ -268,6 +284,7 @@ fn process_confidential_mint(
             .map_err(|_| ProgramError::InvalidAccountData)?,
     )
     .ok_or(TokenError::CiphertextArithmeticFailed)?;
+    println!("MINT 18");
     mint_burn_extension.decryptable_supply = data.new_decryptable_supply;
 
     Ok(())
