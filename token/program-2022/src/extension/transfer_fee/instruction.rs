@@ -69,15 +69,15 @@ pub enum TransferFeeInstruction {
     ///   1. `[]` The token mint.
     ///   2. `[writable]` The destination account.
     ///   3. `[]` The source account's multisignature owner/delegate.
-    ///   4. ..4+M `[signer]` M signer accounts.
+    ///   4. `..4+M` `[signer]` M signer accounts.
     TransferCheckedWithFee {
         /// The amount of tokens to transfer.
         amount: u64,
         /// Expected number of base 10 digits to the right of the decimal place.
         decimals: u8,
         /// Expected fee assessed on this transfer, calculated off-chain based
-        /// on the transfer_fee_basis_points and maximum_fee of the mint. May
-        /// be 0 for a mint without a configured transfer fee.
+        /// on the `transfer_fee_basis_points` and `maximum_fee` of the mint.
+        /// May be 0 for a mint without a configured transfer fee.
         fee: u64,
     },
     /// Transfer all withheld tokens in the mint to an account. Signed by the
@@ -96,7 +96,7 @@ pub enum TransferFeeInstruction {
     ///   0. `[writable]` The token mint.
     ///   1. `[writable]` The destination account.
     ///   2. `[]` The mint's multisig `withdraw_withheld_authority`.
-    ///   3. ..3+M `[signer]` M signer accounts.
+    ///   3. `..3+M `[signer]` M signer accounts.
     WithdrawWithheldTokensFromMint,
     /// Transfer all withheld tokens to an account. Signed by the mint's
     /// withdraw withheld tokens authority.
@@ -110,14 +110,14 @@ pub enum TransferFeeInstruction {
     ///      `TransferFeeAmount` extension and be associated with the provided
     ///      mint.
     ///   2. `[signer]` The mint's `withdraw_withheld_authority`.
-    ///   3. ..3+N `[writable]` The source accounts to withdraw from.
+    ///   3. `..3+N` `[writable]` The source accounts to withdraw from.
     ///
     ///   * Multisignature owner/delegate
     ///   0. `[]` The token mint.
     ///   1. `[writable]` The destination account.
     ///   2. `[]` The mint's multisig `withdraw_withheld_authority`.
-    ///   3. ..3+M `[signer]` M signer accounts.
-    ///   4. 3+M+1..3+M+N `[writable]` The source accounts to withdraw from.
+    ///   3. `..3+M` `[signer]` M signer accounts.
+    ///   4. `3+M+1..3+M+N` `[writable]` The source accounts to withdraw from.
     WithdrawWithheldTokensFromAccounts {
         /// Number of token accounts harvested
         num_token_accounts: u8,
@@ -132,7 +132,7 @@ pub enum TransferFeeInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` The mint.
-    ///   1. ..1+N `[writable]` The source accounts to harvest from.
+    ///   1. `..1+N` `[writable]` The source accounts to harvest from.
     HarvestWithheldTokensToMint,
     /// Set transfer fee. Only supported for mints that include the
     /// `TransferFeeConfig` extension.
@@ -146,7 +146,7 @@ pub enum TransferFeeInstruction {
     ///   * Multisignature authority
     ///   0. `[writable]` The mint.
     ///   1. `[]` The mint's multisignature fee account owner.
-    ///   2. ..2+M `[signer]` M signer accounts.
+    ///   2. `..2+M` `[signer]` M signer accounts.
     SetTransferFee {
         /// Amount of transfer collected as fees, expressed as basis points of
         /// the transfer amount
@@ -156,7 +156,7 @@ pub enum TransferFeeInstruction {
     },
 }
 impl TransferFeeInstruction {
-    /// Unpacks a byte buffer into a TransferFeeInstruction
+    /// Unpacks a byte buffer into a `TransferFeeInstruction`
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
         use TokenError::InvalidInstruction;
 
@@ -203,7 +203,7 @@ impl TransferFeeInstruction {
         })
     }
 
-    /// Packs a TransferFeeInstruction into a byte buffer.
+    /// Packs a `TransferFeeInstruction` into a byte buffer.
     pub fn pack(&self, buffer: &mut Vec<u8>) {
         match *self {
             Self::InitializeTransferFeeConfig {

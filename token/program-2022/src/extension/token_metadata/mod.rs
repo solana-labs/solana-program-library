@@ -3,7 +3,7 @@ use {
     spl_token_metadata_interface::state::TokenMetadata,
 };
 
-/// Instruction processor for the TokenMetadata extension
+/// Instruction processor for the `TokenMetadata` extension
 pub mod processor;
 
 impl Extension for TokenMetadata {

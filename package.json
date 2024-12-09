@@ -3,7 +3,6 @@
     "workspaces": [
         "account-compression/sdk",
         "libraries/type-length-value/js",
-        "memo/js",
         "single-pool/js",
         "stake-pool/js",
         "token/js",
@@ -25,10 +24,10 @@
         "@solana/eslint-config-solana": "^4.0.0",
         "@solana/prettier-config-solana": "^0.0.5",
         "eslint-config-prettier": "^9.1.0",
-        "eslint-config-turbo": "^2.3.0",
+        "eslint-config-turbo": "^2.3.3",
         "eslint-plugin-prettier": "^5.2.1",
-        "prettier": "^3.3.3",
-        "turbo": "^2.3.0"
+        "prettier": "^3.4.2",
+        "turbo": "^2.3.3"
     },
     "engines": {
         "node": ">=14.0.0"

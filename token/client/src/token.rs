@@ -48,8 +48,9 @@ use {
                 ConfidentialTransferFeeConfig,
             },
             cpi_guard, default_account_state, group_member_pointer, group_pointer,
-            interest_bearing_mint, memo_transfer, metadata_pointer, transfer_fee, transfer_hook,
-            BaseStateWithExtensions, Extension, ExtensionType, StateWithExtensionsOwned,
+            interest_bearing_mint, memo_transfer, metadata_pointer, pausable, scaled_ui_amount,
+            transfer_fee, transfer_hook, BaseStateWithExtensions, Extension, ExtensionType,
+            StateWithExtensionsOwned,
         },
         instruction, offchain,
         solana_zk_sdk::{
@@ -201,6 +202,13 @@ pub enum ExtensionInitializationParams {
         authority: Option<Pubkey>,
         member_address: Option<Pubkey>,
     },
+    ScaledUiAmountConfig {
+        authority: Option<Pubkey>,
+        multiplier: f64,
+    },
+    PausableConfig {
+        authority: Pubkey,
+    },
     ConfidentialMintBurnMint {
         confidential_supply_pubkey: PodElGamalPubkey,
         decryptable_supply: PodAeCiphertext,
@@ -224,6 +232,8 @@ impl ExtensionInitializationParams {
             }
             Self::GroupPointer { .. } => ExtensionType::GroupPointer,
             Self::GroupMemberPointer { .. } => ExtensionType::GroupMemberPointer,
+            Self::ScaledUiAmountConfig { .. } => ExtensionType::ScaledUiAmount,
+            Self::PausableConfig { .. } => ExtensionType::Pausable,
             Self::ConfidentialMintBurnMint { .. } => ExtensionType::ConfidentialMintBurn,
         }
     }
@@ -334,6 +344,18 @@ impl ExtensionInitializationParams {
                 authority,
                 member_address,
             ),
+            Self::ScaledUiAmountConfig {
+                authority,
+                multiplier,
+            } => scaled_ui_amount::instruction::initialize(
+                token_program_id,
+                mint,
+                authority,
+                multiplier,
+            ),
+            Self::PausableConfig { authority } => {
+                pausable::instruction::initialize(token_program_id, mint, &authority)
+            }
             Self::ConfidentialMintBurnMint {
                 confidential_supply_pubkey,
                 decryptable_supply,
@@ -928,7 +950,7 @@ where
         mint_result
     }
 
-    /// Retrive mint information.
+    /// Retrieve mint information.
     pub async fn get_mint_info(&self) -> TokenResult<StateWithExtensionsOwned<Mint>> {
         let account = self.get_account(self.pubkey).await?;
         self.unpack_mint_info(account)
@@ -1696,7 +1718,7 @@ where
     }
 
     /// Reallocate a token account to be large enough for a set of
-    /// ExtensionTypes
+    /// `ExtensionType`s
     pub async fn reallocate<S: Signers>(
         &self,
         account: &Pubkey,
@@ -1757,6 +1779,48 @@ where
             &[memo_transfer::instruction::disable_required_transfer_memos(
                 &self.program_id,
                 account,
+                authority,
+                &multisig_signers,
+            )?],
+            signing_keypairs,
+        )
+        .await
+    }
+
+    /// Pause transferring, minting, and burning on the mint
+    pub async fn pause<S: Signers>(
+        &self,
+        authority: &Pubkey,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
+        self.process_ixs(
+            &[pausable::instruction::pause(
+                &self.program_id,
+                self.get_address(),
+                authority,
+                &multisig_signers,
+            )?],
+            signing_keypairs,
+        )
+        .await
+    }
+
+    /// Resume transferring, minting, and burning on the mint
+    pub async fn resume<S: Signers>(
+        &self,
+        authority: &Pubkey,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
+        self.process_ixs(
+            &[pausable::instruction::resume(
+                &self.program_id,
+                self.get_address(),
                 authority,
                 &multisig_signers,
             )?],
@@ -1826,6 +1890,31 @@ where
                 authority,
                 &multisig_signers,
                 new_rate,
+            )?],
+            signing_keypairs,
+        )
+        .await
+    }
+
+    /// Update multiplier
+    pub async fn update_multiplier<S: Signers>(
+        &self,
+        authority: &Pubkey,
+        new_multiplier: f64,
+        new_multiplier_effective_timestamp: i64,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
+        self.process_ixs(
+            &[scaled_ui_amount::instruction::update_multiplier(
+                &self.program_id,
+                self.get_address(),
+                authority,
+                &multisig_signers,
+                new_multiplier,
+                new_multiplier_effective_timestamp,
             )?],
             signing_keypairs,
         )

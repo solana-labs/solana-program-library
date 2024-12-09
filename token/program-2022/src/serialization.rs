@@ -1,7 +1,7 @@
-//! serialization module - contains helpers for serde types from other crates,
+//! Serialization module - contains helpers for serde types from other crates,
 //! deserialization visitors
 
-/// helper function to ser/deser COption wrapped values
+/// Helper function to serialize / deserialize `COption` wrapped values
 pub mod coption_fromstr {
     use {
         serde::{
@@ -16,7 +16,7 @@ pub mod coption_fromstr {
         },
     };
 
-    /// serialize values supporting Display trait wrapped in COption
+    /// Serialize values supporting `Display` trait wrapped in `COption`
     pub fn serialize<S, T>(x: &COption<T>, s: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -66,7 +66,7 @@ pub mod coption_fromstr {
         }
     }
 
-    /// deserialize values supporting Display trait wrapped in COption
+    /// Deserialize values supporting `Display` trait wrapped in `COption`
     pub fn deserialize<'de, D, T>(d: D) -> Result<COption<T>, D::Error>
     where
         D: Deserializer<'de>,
@@ -76,7 +76,7 @@ pub mod coption_fromstr {
     }
 }
 
-/// helper to ser/deser PodAeCiphertext values
+/// Helper to serialize / deserialize `PodAeCiphertext` values
 pub mod aeciphertext_fromstr {
     use {
         serde::{
@@ -87,7 +87,7 @@ pub mod aeciphertext_fromstr {
         std::{fmt, str::FromStr},
     };
 
-    /// serialize AeCiphertext values supporting Display trait
+    /// Serialize `AeCiphertext` values supporting `Display` trait
     pub fn serialize<S>(x: &PodAeCiphertext, s: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -112,7 +112,7 @@ pub mod aeciphertext_fromstr {
         }
     }
 
-    /// deserialize AeCiphertext values from str
+    /// Deserialize `AeCiphertext` values from `str`
     pub fn deserialize<'de, D>(d: D) -> Result<PodAeCiphertext, D::Error>
     where
         D: Deserializer<'de>,
@@ -121,7 +121,7 @@ pub mod aeciphertext_fromstr {
     }
 }
 
-/// helper to ser/deser PodElGamalPubkey values
+/// Helper to serialize / deserialize `PodElGamalPubkey` values
 pub mod elgamalpubkey_fromstr {
     use {
         serde::{
@@ -132,7 +132,7 @@ pub mod elgamalpubkey_fromstr {
         std::{fmt, str::FromStr},
     };
 
-    /// serialize ElGamalPubkey values supporting Display trait
+    /// Serialize `ElGamalPubkey` values supporting `Display` trait
     pub fn serialize<S>(x: &PodElGamalPubkey, s: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -157,7 +157,7 @@ pub mod elgamalpubkey_fromstr {
         }
     }
 
-    /// deserialize ElGamalPubkey values from str
+    /// Deserialize `ElGamalPubkey` values from `str`
     pub fn deserialize<'de, D>(d: D) -> Result<PodElGamalPubkey, D::Error>
     where
         D: Deserializer<'de>,
@@ -166,7 +166,7 @@ pub mod elgamalpubkey_fromstr {
     }
 }
 
-/// helper to ser/deser PodElGamalCiphertext values
+/// Helper to serialize / deserialize `PodElGamalCiphertext` values
 pub mod elgamalciphertext_fromstr {
     use {
         serde::{
@@ -177,7 +177,7 @@ pub mod elgamalciphertext_fromstr {
         std::{fmt, str::FromStr},
     };
 
-    /// serialize ElGamalCiphertext values supporting Display trait
+    /// Serialize `ElGamalCiphertext` values supporting `Display` trait
     pub fn serialize<S>(x: &PodElGamalCiphertext, s: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -202,7 +202,7 @@ pub mod elgamalciphertext_fromstr {
         }
     }
 
-    /// deserialize ElGamalCiphertext values from str
+    /// Deserialize `ElGamalCiphertext` values from `str`
     pub fn deserialize<'de, D>(d: D) -> Result<PodElGamalCiphertext, D::Error>
     where
         D: Deserializer<'de>,

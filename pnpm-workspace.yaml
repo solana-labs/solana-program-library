@@ -1,7 +1,6 @@
 packages:
   - "account-compression/sdk"
   - "libraries/type-length-value/js"
-  - "memo/js"
   - "name-service/js"
   - "single-pool/js/packages/*"
   - "stake-pool/js"

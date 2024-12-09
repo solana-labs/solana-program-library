@@ -91,10 +91,10 @@ pub enum ConfidentialTransferFeeInstruction {
     ///   3. `[]` (Optional) Record account if the accompanying proof is to be
     ///      read from a record account.
     ///   4. `[]` The mint's multisig `withdraw_withheld_authority`.
-    ///   5. ..5+M `[signer]` M signer accounts.
+    ///   5. ..`5+M` `[signer]` M signer accounts.
     ///
     /// Data expected by this instruction:
-    ///   WithdrawWithheldTokensFromMintData
+    ///   `WithdrawWithheldTokensFromMintData`
     WithdrawWithheldTokensFromMint,
 
     /// Transfer all withheld tokens to an account. Signed by the mint's
@@ -143,7 +143,7 @@ pub enum ConfidentialTransferFeeInstruction {
     ///   3. `[]` (Optional) Record account if the accompanying proof is to be
     ///      read from a record account.
     ///   4. `[signer]` The mint's `withdraw_withheld_authority`.
-    ///   5. ..3+N `[writable]` The source accounts to withdraw from.
+    ///   5. ..`5+N` `[writable]` The source accounts to withdraw from.
     ///
     ///   * Multisignature owner/delegate
     ///   0. `[]` The token mint. Must include the `TransferFeeConfig`
@@ -157,11 +157,11 @@ pub enum ConfidentialTransferFeeInstruction {
     ///   3. `[]` (Optional) Record account if the accompanying proof is to be
     ///      read from a record account.
     ///   4. `[]` The mint's multisig `withdraw_withheld_authority`.
-    ///   5. ..5+M `[signer]` M signer accounts.
-    ///   6. 5+M+1..5+M+N `[writable]` The source accounts to withdraw from.
+    ///   5. ..`5+M` `[signer]` M signer accounts.
+    ///   6. `5+M+1..5+M+N` `[writable]` The source accounts to withdraw from.
     ///
     /// Data expected by this instruction:
-    ///   WithdrawWithheldTokensFromAccountsData
+    ///   `WithdrawWithheldTokensFromAccountsData`
     WithdrawWithheldTokensFromAccounts,
 
     /// Permissionless instruction to transfer all withheld confidential tokens
@@ -175,7 +175,7 @@ pub enum ConfidentialTransferFeeInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` The mint.
-    ///   1. ..1+N `[writable]` The source accounts to harvest from.
+    ///   1. ..`1+N` `[writable]` The source accounts to harvest from.
     ///
     /// Data expected by this instruction:
     ///   None

@@ -9,7 +9,7 @@ edition = "2021"
 
 [dependencies]
 arrayref = "0.3.9"
-bytemuck = { version = "1.19.0", features = ["derive"] }
+bytemuck = { version = "1.20.0", features = ["derive"] }
 num-derive = "0.4"
 num-traits = "0.2"
 solana-account-info = "2.1.0"
@@ -31,7 +31,7 @@ crate-type = ["cdylib", "lib"]
 
 [dev-dependencies]
 solana-program = "2.1.0"
-tokio = { version = "1.41.1", features = ["full"] }
+tokio = { version = "1.42.0", features = ["full"] }
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]

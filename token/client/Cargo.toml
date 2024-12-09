@@ -10,7 +10,7 @@ version = "0.13.0"
 [dependencies]
 async-trait = "0.1"
 bincode = "1.3.2"
-bytemuck = "1.19.0"
+bytemuck = "1.20.0"
 futures = "0.3.31"
 futures-util = "0.3"
 solana-banks-interface = "2.1.0"
@@ -21,9 +21,7 @@ solana-rpc-client-api = "2.1.0"
 solana-sdk = "2.1.0"
 spl-associated-token-account-client = { version = "2.0.0", path = "../../associated-token-account/client" }
 spl-elgamal-registry = { version = "0.1.0", path = "../confidential-transfer/elgamal-registry"}
-spl-memo = { version = "6.0", path = "../../memo/program", features = [
-  "no-entrypoint",
-] }
+spl-memo = { version = "6.0", features = ["no-entrypoint"] }
 spl-record = { version = "0.3.0", path = "../../record/program", features = ["no-entrypoint"] }
 spl-token = { version = "7.0", path = "../program", features = [
   "no-entrypoint",

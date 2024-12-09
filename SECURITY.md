@@ -47,7 +47,7 @@ the Solana Mainnet Beta. Currently, this includes:
 * [associated-token-account](https://github.com/solana-labs/solana-program-library/tree/master/associated-token-account/program)
 * [feature-proposal](https://github.com/solana-labs/solana-program-library/tree/master/feature-proposal/program)
 * [governance](https://github.com/solana-labs/solana-program-library/tree/master/governance/program)
-* [memo](https://github.com/solana-labs/solana-program-library/tree/master/memo/program)
+* [memo](https://github.com/solana-program/memo)
 * [name-service](https://github.com/solana-labs/solana-program-library/tree/master/name-service/program)
 * [stake-pool](https://github.com/solana-labs/solana-program-library/tree/master/stake-pool/program)
 * [token](https://github.com/solana-labs/solana-program-library/tree/master/token/program)

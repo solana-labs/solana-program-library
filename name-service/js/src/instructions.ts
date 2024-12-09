@@ -16,7 +16,7 @@ export function createInstruction(
     nameParentOwner?: PublicKey,
 ): TransactionInstruction {
     const buffers = [
-        Buffer.from(Int8Array.from([0])),
+        Buffer.from(Uint8Array.from([0])),
         new Numberu32(hashed_name.length).toBuffer(),
         hashed_name,
         lamports.toBuffer(),
@@ -98,7 +98,7 @@ export function updateInstruction(
     parentNameKey: PublicKey | undefined,
 ): TransactionInstruction {
     const buffers = [
-        Buffer.from(Int8Array.from([1])),
+        Buffer.from(Uint8Array.from([1])),
         offset.toBuffer(),
         new Numberu32(input_data.length).toBuffer(),
         input_data,
@@ -141,7 +141,7 @@ export function transferInstruction(
     nameClassKey?: PublicKey,
     nameParent?: PublicKey,
 ): TransactionInstruction {
-    const buffers = [Buffer.from(Int8Array.from([2])), newOwnerKey.toBuffer()];
+    const buffers = [Buffer.from(Uint8Array.from([2])), newOwnerKey.toBuffer()];
 
     const data = Buffer.concat(buffers);
 
@@ -187,7 +187,7 @@ export function deleteInstruction(
     refundTargetKey: PublicKey,
     nameOwnerKey: PublicKey,
 ): TransactionInstruction {
-    const buffers = [Buffer.from(Int8Array.from([3]))];
+    const buffers = [Buffer.from(Uint8Array.from([3]))];
 
     const data = Buffer.concat(buffers);
     const keys = [
@@ -223,7 +223,7 @@ export function reallocInstruction(
     nameOwnerKey: PublicKey,
     space: Numberu32,
 ): TransactionInstruction {
-    const buffers = [Buffer.from(Int8Array.from([4])), space.toBuffer()];
+    const buffers = [Buffer.from(Uint8Array.from([4])), space.toBuffer()];
 
     const data = Buffer.concat(buffers);
     const keys = [

@@ -8,12 +8,12 @@ license = "Apache-2.0"
 edition = "2021"
 
 [dependencies]
-bytemuck = "1.19.0"
+bytemuck = "1.20.0"
 solana-curve25519 = "2.1.0"
 solana-program = "2.1.0"
 solana-zk-sdk = "2.1.0"
 spl-pod = { version = "0.5.0", path = "../../../libraries/pod" }
-thiserror = "2.0.3"
+thiserror = "2.0.6"
 
 [lib]
 crate-type = ["cdylib", "lib"]

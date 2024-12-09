@@ -106,7 +106,7 @@ impl<'a> Config<'a> {
             CommitmentConfig::confirmed(),
             DEFAULT_CONFIRM_TX_TIMEOUT,
         ));
-        let sign_only = matches.is_present(SIGN_ONLY_ARG.name);
+        let sign_only = matches.try_contains_id(SIGN_ONLY_ARG.name).unwrap_or(false);
         let program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>> = if sign_only {
             let blockhash = matches
                 .get_one::<Hash>(BLOCKHASH_ARG.name)

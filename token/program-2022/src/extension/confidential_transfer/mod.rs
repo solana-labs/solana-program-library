@@ -17,7 +17,7 @@ use {
 
 /// Maximum bit length of any deposit or transfer amount
 ///
-/// Any deposit or transfer amount must be less than 2^48
+/// Any deposit or transfer amount must be less than `2^48`
 pub const MAXIMUM_DEPOSIT_TRANSFER_AMOUNT: u64 = (u16::MAX as u64) + (1 << 16) * (u32::MAX as u64);
 
 /// Bit length of the low bits of pending balance plaintext
@@ -64,7 +64,7 @@ pub struct ConfidentialTransferMint {
     ///   `ConfidentialTransferInstruction::ConfigureAccount`)
     pub auto_approve_new_accounts: PodBool,
 
-    /// Authority to decode any transfer amount in a confidential transafer.
+    /// Authority to decode any transfer amount in a confidential transfer.
     pub auditor_elgamal_pubkey: OptionalNonZeroElGamalPubkey,
 }
 

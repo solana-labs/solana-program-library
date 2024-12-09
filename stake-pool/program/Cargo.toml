@@ -1,6 +1,6 @@
 [package]
 name = "spl-stake-pool"
-version = "2.0.0"
+version = "2.0.1"
 description = "Solana Program Library Stake Pool"
 authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
 repository = "https://github.com/solana-labs/solana-program-library"
@@ -14,7 +14,7 @@ test-sbf = []
 [dependencies]
 arrayref = "0.3.9"
 borsh = "1.5.3"
-bytemuck = "1.19"
+bytemuck = "1.20"
 num-derive = "0.4"
 num-traits = "0.2"
 num_enum = "0.7.3"

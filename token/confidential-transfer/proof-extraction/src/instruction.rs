@@ -34,7 +34,7 @@ pub fn check_zk_elgamal_proof_program_account(
 }
 
 /// If a proof is to be read from a record account, the proof instruction data
-/// must be 5 bytes: 1 byte for the proof type and 4 bytes for the u32 offset
+/// must be 5 bytes: 1 byte for the proof type and 4 bytes for the `u32` offset
 const INSTRUCTION_DATA_LENGTH_WITH_RECORD_ACCOUNT: usize = 5;
 
 /// Decodes the proof context data associated with a zero-knowledge proof

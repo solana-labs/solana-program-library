@@ -18,7 +18,7 @@ console = "0.15.8"
 futures = "0.3"
 serde = "1.0.215"
 serde_derive = "1.0.103"
-serde_json = "1.0.132"
+serde_json = "1.0.133"
 solana-account-decoder = "2.1.0"
 solana-clap-v3-utils = "2.1.0"
 solana-cli-config = "2.1.0"
@@ -39,12 +39,10 @@ spl-token-client = { version = "0.13.0", path = "../client" }
 spl-token-confidential-transfer-proof-generation = { version = "0.2.0", path = "../confidential-transfer/proof-generation" }
 spl-token-metadata-interface = { version = "0.6.0", path = "../../token-metadata/interface" }
 spl-token-group-interface = { version = "0.5.0", path = "../../token-group/interface" }
-spl-memo = { version = "6.0", path = "../../memo/program", features = [
-  "no-entrypoint",
-] }
+spl-memo = { version = "6.0", features = ["no-entrypoint"] }
 strum = "0.26"
 strum_macros = "0.26"
-tokio = "1.41"
+tokio = "1.42"
 
 [dev-dependencies]
 solana-test-validator = "2.1.0"

@@ -1,6 +1,6 @@
 //! Temporary ElGamal keypair argument parser.
 //!
-//! NOTE: this module should be remoeved in the next Solana upgrade.
+//! NOTE: this module should be removed in the next Solana upgrade.
 
 use {
     base64::{prelude::BASE64_STANDARD, Engine},

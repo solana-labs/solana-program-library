@@ -116,7 +116,7 @@ impl VerboseDisplay for CliStakePool {
         match &self.preferred_withdraw_validator_vote_address {
             None => {}
             Some(s) => {
-                writeln!(w, "Preferred Withraw Validator: {}", s)?;
+                writeln!(w, "Preferred Withdraw Validator: {}", s)?;
             }
         }
         writeln!(w, "Epoch Fee: {} of epoch rewards", &self.epoch_fee)?;
@@ -197,7 +197,7 @@ impl Display for CliStakePool {
         match &self.preferred_withdraw_validator_vote_address {
             None => {}
             Some(s) => {
-                writeln!(f, "Preferred Withraw Validator: {}", s)?;
+                writeln!(f, "Preferred Withdraw Validator: {}", s)?;
             }
         }
         writeln!(f, "Epoch Fee: {} of epoch rewards", &self.epoch_fee)?;

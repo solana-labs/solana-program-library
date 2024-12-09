@@ -12,7 +12,7 @@ no-entrypoint = []
 test-sbf = []
 
 [dependencies]
-bytemuck = { version = "1.18.0", features = ["derive"] }
+bytemuck = { version = "1.20.0", features = ["derive"] }
 solana-program = "2.1.0"
 solana-zk-sdk = "2.1.0"
 spl-pod = { version = "0.5.0", path = "../../../libraries/pod" }

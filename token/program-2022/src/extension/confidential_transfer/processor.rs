@@ -16,6 +16,7 @@ use {
                 EncryptedWithheldAmount,
             },
             memo_transfer::{check_previous_sibling_instruction_is_memo, memo_required},
+            pausable::PausableConfig,
             set_account_type,
             transfer_fee::TransferFeeConfig,
             transfer_hook, BaseStateWithExtensions, BaseStateWithExtensionsMut,
@@ -45,7 +46,7 @@ use {
     },
 };
 
-/// Processes an [InitializeMint] instruction.
+/// Processes an [`InitializeMint`] instruction.
 fn process_initialize_mint(
     accounts: &[AccountInfo],
     authority: &OptionalNonZeroPubkey,
@@ -67,7 +68,7 @@ fn process_initialize_mint(
     Ok(())
 }
 
-/// Processes an [UpdateMint] instruction.
+/// Processes an [`UpdateMint`] instruction.
 fn process_update_mint(
     accounts: &[AccountInfo],
     auto_approve_new_account: PodBool,
@@ -104,7 +105,7 @@ enum ElGamalPubkeySource<'a> {
     ElGamalRegistry(&'a ElGamalRegistry),
 }
 
-/// Processes a [ConfigureAccountWithRegistry] instruction.
+/// Processes a [`ConfigureAccountWithRegistry`] instruction.
 fn process_configure_account_with_registry(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -195,7 +196,7 @@ fn reallocate_for_configure_account_with_registry<'a>(
     Ok(())
 }
 
-/// Processes a [ConfigureAccount] instruction.
+/// Processes a [`ConfigureAccount`] instruction.
 fn process_configure_account(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -292,7 +293,7 @@ fn process_configure_account(
     Ok(())
 }
 
-/// Processes an [ApproveAccount] instruction.
+/// Processes an [`ApproveAccount`] instruction.
 fn process_approve_account(accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let token_account_info = next_account_info(account_info_iter)?;
@@ -326,7 +327,7 @@ fn process_approve_account(accounts: &[AccountInfo]) -> ProgramResult {
     }
 }
 
-/// Processes an [EmptyAccount] instruction.
+/// Processes an [`EmptyAccount`] instruction.
 fn process_empty_account(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -379,7 +380,7 @@ fn process_empty_account(
     Ok(())
 }
 
-/// Processes a [Deposit] instruction.
+/// Processes a [`Deposit`] instruction.
 #[cfg(feature = "zk-ops")]
 fn process_deposit(
     program_id: &Pubkey,
@@ -396,6 +397,12 @@ fn process_deposit(
     check_program_account(mint_info.owner)?;
     let mint_data = &mint_info.data.borrow_mut();
     let mint = PodStateWithExtensions::<PodMint>::unpack(mint_data)?;
+
+    if let Ok(extension) = mint.get_extension::<PausableConfig>() {
+        if extension.paused.into() {
+            return Err(TokenError::MintPaused.into());
+        }
+    }
 
     if expected_decimals != mint.base.decimals {
         return Err(TokenError::MintDecimalsMismatch.into());
@@ -480,7 +487,7 @@ pub fn verify_and_split_deposit_amount(amount: u64) -> Result<(u64, u64), TokenE
     Ok((deposit_amount_lo, deposit_amount_hi))
 }
 
-/// Processes a [Withdraw] instruction.
+/// Processes a [`Withdraw`] instruction.
 #[cfg(feature = "zk-ops")]
 fn process_withdraw(
     program_id: &Pubkey,
@@ -516,6 +523,12 @@ fn process_withdraw(
 
     if mint.get_extension::<ConfidentialMintBurn>().is_ok() {
         return Err(TokenError::IllegalMintBurnConversion.into());
+    }
+
+    if let Ok(extension) = mint.get_extension::<PausableConfig>() {
+        if extension.paused.into() {
+            return Err(TokenError::MintPaused.into());
+        }
     }
 
     check_program_account(token_account_info.owner)?;
@@ -584,7 +597,7 @@ fn process_withdraw(
     Ok(())
 }
 
-/// Processes a [Transfer] or [TransferWithFee] instruction.
+/// Processes a [`Transfer`] or [`TransferWithFee`] instruction.
 #[allow(clippy::too_many_arguments)]
 #[cfg(feature = "zk-ops")]
 fn process_transfer(
@@ -607,6 +620,12 @@ fn process_transfer(
     check_program_account(mint_info.owner)?;
     let mint_data = mint_info.data.borrow_mut();
     let mint = PodStateWithExtensions::<PodMint>::unpack(&mint_data)?;
+
+    if let Ok(extension) = mint.get_extension::<PausableConfig>() {
+        if extension.paused.into() {
+            return Err(TokenError::MintPaused.into());
+        }
+    }
 
     let confidential_transfer_mint = mint.get_extension::<ConfidentialTransferMint>()?;
 
@@ -1127,7 +1146,7 @@ fn process_destination_for_transfer_with_fee(
     Ok(())
 }
 
-/// Processes an [ApplyPendingBalance] instruction.
+/// Processes an [`ApplyPendingBalance`] instruction.
 #[cfg(feature = "zk-ops")]
 fn process_apply_pending_balance(
     program_id: &Pubkey,
@@ -1177,7 +1196,7 @@ fn process_apply_pending_balance(
     Ok(())
 }
 
-/// Processes a [DisableConfidentialCredits] or [EnableConfidentialCredits]
+/// Processes a [`DisableConfidentialCredits`] or [`EnableConfidentialCredits`]
 /// instruction.
 fn process_allow_confidential_credits(
     program_id: &Pubkey,
@@ -1208,8 +1227,8 @@ fn process_allow_confidential_credits(
     Ok(())
 }
 
-/// Processes an [DisableNonConfidentialCredits] or
-/// [EnableNonConfidentialCredits] instruction.
+/// Processes an [`DisableNonConfidentialCredits`] or
+/// [`EnableNonConfidentialCredits`] instruction.
 fn process_allow_non_confidential_credits(
     program_id: &Pubkey,
     accounts: &[AccountInfo],

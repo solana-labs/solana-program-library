@@ -15,6 +15,7 @@ use {
                 ConfidentialMintBurn,
             },
             confidential_transfer::{ConfidentialTransferAccount, ConfidentialTransferMint},
+            pausable::PausableConfig,
             BaseStateWithExtensions, BaseStateWithExtensionsMut, PodStateWithExtensionsMut,
         },
         instruction::{decode_instruction_data, decode_instruction_type},
@@ -37,7 +38,7 @@ use {
     spl_token_confidential_transfer_proof_extraction::instruction::verify_and_extract_context,
 };
 
-/// Processes an [InitializeMint] instruction.
+/// Processes an [`InitializeMint`] instruction.
 fn process_initialize_mint(accounts: &[AccountInfo], data: &InitializeMintData) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let mint_info = next_account_info(account_info_iter)?;
@@ -54,7 +55,7 @@ fn process_initialize_mint(accounts: &[AccountInfo], data: &InitializeMintData) 
     Ok(())
 }
 
-/// Processes an [RotateSupplyElGamal] instruction.
+/// Processes an [`RotateSupplyElGamal`] instruction.
 #[cfg(feature = "zk-ops")]
 fn process_rotate_supply_elgamal_pubkey(
     program_id: &Pubkey,
@@ -110,7 +111,7 @@ fn process_rotate_supply_elgamal_pubkey(
     Ok(())
 }
 
-/// Processes an [UpdateAuthority] instruction.
+/// Processes an [`UpdateAuthority`] instruction.
 fn process_update_decryptable_supply(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -142,7 +143,7 @@ fn process_update_decryptable_supply(
     Ok(())
 }
 
-/// Processes a [ConfidentialMint] instruction.
+/// Processes a [`ConfidentialMint`] instruction.
 #[cfg(feature = "zk-ops")]
 fn process_confidential_mint(
     program_id: &Pubkey,
@@ -161,6 +162,11 @@ fn process_confidential_mint(
     let auditor_elgamal_pubkey = mint
         .get_extension::<ConfidentialTransferMint>()?
         .auditor_elgamal_pubkey;
+    if let Ok(extension) = mint.get_extension::<PausableConfig>() {
+        if extension.paused.into() {
+            return Err(TokenError::MintPaused.into());
+        }
+    }
     let mint_burn_extension = mint.get_extension_mut::<ConfidentialMintBurn>()?;
 
     let proof_context = verify_mint_proof(
@@ -267,7 +273,7 @@ fn process_confidential_mint(
     Ok(())
 }
 
-/// Processes a [ConfidentialBurn] instruction.
+/// Processes a [`ConfidentialBurn`] instruction.
 #[cfg(feature = "zk-ops")]
 fn process_confidential_burn(
     program_id: &Pubkey,
@@ -285,6 +291,11 @@ fn process_confidential_burn(
     let auditor_elgamal_pubkey = mint
         .get_extension::<ConfidentialTransferMint>()?
         .auditor_elgamal_pubkey;
+    if let Ok(extension) = mint.get_extension::<PausableConfig>() {
+        if extension.paused.into() {
+            return Err(TokenError::MintPaused.into());
+        }
+    }
     let mint_burn_extension = mint.get_extension_mut::<ConfidentialMintBurn>()?;
 
     let proof_context = verify_burn_proof(

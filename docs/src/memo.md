@@ -20,7 +20,7 @@ document are available at:
 ## Source
 
 The Memo Program's source is available on
-[GitHub](https://github.com/solana-labs/solana-program-library)
+[GitHub](https://github.com/solana-program/memo)
 
 ## Interface
 

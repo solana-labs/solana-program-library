@@ -43,7 +43,8 @@ fn check_update_authority(
     Ok(())
 }
 
-/// Processes a [InitializeGroup](enum.TokenGroupInstruction.html) instruction.
+/// Processes a [`InitializeGroup`](enum.TokenGroupInstruction.html)
+/// instruction.
 pub fn process_initialize_group(
     _program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -95,7 +96,7 @@ pub fn process_initialize_group(
 }
 
 /// Processes an
-/// [UpdateGroupMaxSize](enum.TokenGroupInstruction.html)
+/// [`UpdateGroupMaxSize`](enum.TokenGroupInstruction.html)
 /// instruction
 pub fn process_update_group_max_size(
     _program_id: &Pubkey,
@@ -119,7 +120,7 @@ pub fn process_update_group_max_size(
 }
 
 /// Processes an
-/// [UpdateGroupAuthority](enum.TokenGroupInstruction.html)
+/// [`UpdateGroupAuthority`](enum.TokenGroupInstruction.html)
 /// instruction
 pub fn process_update_group_authority(
     _program_id: &Pubkey,
@@ -142,7 +143,7 @@ pub fn process_update_group_authority(
     Ok(())
 }
 
-/// Processes an [InitializeMember](enum.TokenGroupInstruction.html)
+/// Processes an [`InitializeMember`](enum.TokenGroupInstruction.html)
 /// instruction
 pub fn process_initialize_member(_program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
@@ -204,7 +205,7 @@ pub fn process_initialize_member(_program_id: &Pubkey, accounts: &[AccountInfo])
     Ok(())
 }
 
-/// Processes an [Instruction](enum.Instruction.html).
+/// Processes an [`Instruction`](enum.Instruction.html).
 pub fn process_instruction(
     program_id: &Pubkey,
     accounts: &[AccountInfo],

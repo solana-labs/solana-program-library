@@ -50,7 +50,7 @@ pub enum TransferHookInstruction {
     ///   * Multisignature authority
     ///   0. `[writable]` The mint.
     ///   1. `[]` The mint's transfer hook authority.
-    ///   2. ..2+M `[signer]` M signer accounts.
+    ///   2. `..2+M` `[signer]` M signer accounts.
     ///
     /// Data expected by this instruction:
     ///   `crate::extension::transfer_hook::UpdateInstructionData`

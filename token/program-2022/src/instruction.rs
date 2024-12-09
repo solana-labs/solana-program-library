@@ -34,9 +34,9 @@ use {
 pub const MIN_SIGNERS: usize = 1;
 /// Maximum number of multisignature signers (max N)
 pub const MAX_SIGNERS: usize = 11;
-/// Serialized length of a u16, for unpacking
+/// Serialized length of a `u16`, for unpacking
 const U16_BYTES: usize = 2;
-/// Serialized length of a u64, for unpacking
+/// Serialized length of a `u64`, for unpacking
 const U64_BYTES: usize = 8;
 
 /// Instructions supported by the token program.
@@ -110,8 +110,8 @@ pub enum TokenInstruction<'a> {
     ///
     ///   0. `[writable]` The multisignature account to initialize.
     ///   1. `[]` Rent sysvar
-    ///   2. ..2+N. `[]` The signer accounts, must equal to N where 1 <= N <=
-    ///      11.
+    ///   2. ..`2+N`. `[]` The signer accounts, must equal to N where `1 <= N <=
+    ///      11`.
     InitializeMultisig {
         /// The number of signers (M) required to validate this multisignature
         /// account.
@@ -140,7 +140,7 @@ pub enum TokenInstruction<'a> {
     ///   0. `[writable]` The source account.
     ///   1. `[writable]` The destination account.
     ///   2. `[]` The source account's multisignature owner/delegate.
-    ///   3. ..3+M `[signer]` M signer accounts.
+    ///   3. ..`3+M` `[signer]` M signer accounts.
     #[deprecated(
         since = "4.0.0",
         note = "please use `TransferChecked` or `TransferCheckedWithFee` instead"
@@ -163,7 +163,7 @@ pub enum TokenInstruction<'a> {
     ///   0. `[writable]` The source account.
     ///   1. `[]` The delegate.
     ///   2. `[]` The source account's multisignature owner.
-    ///   3. ..3+M `[signer]` M signer accounts
+    ///   3. ..`3+M` `[signer]` M signer accounts
     Approve {
         /// The amount of tokens the delegate is approved for.
         amount: u64,
@@ -180,7 +180,7 @@ pub enum TokenInstruction<'a> {
     ///   * Multisignature owner
     ///   0. `[writable]` The source account.
     ///   1. `[]` The source account's multisignature owner or current delegate.
-    ///   2. ..2+M `[signer]` M signer accounts
+    ///   2. ..`2+M` `[signer]` M signer accounts
     Revoke,
     /// Sets a new authority of a mint or account.
     ///
@@ -193,7 +193,7 @@ pub enum TokenInstruction<'a> {
     ///   * Multisignature authority
     ///   0. `[writable]` The mint or account to change the authority of.
     ///   1. `[]` The mint's or account's current multisignature authority.
-    ///   2. ..2+M `[signer]` M signer accounts
+    ///   2. ..`2+M` `[signer]` M signer accounts
     SetAuthority {
         /// The type of authority to update.
         authority_type: AuthorityType,
@@ -215,7 +215,7 @@ pub enum TokenInstruction<'a> {
     ///   0. `[writable]` The mint.
     ///   1. `[writable]` The account to mint tokens to.
     ///   2. `[]` The mint's multisignature mint-tokens authority.
-    ///   3. ..3+M `[signer]` M signer accounts.
+    ///   3. ..`3+M` `[signer]` M signer accounts.
     MintTo {
         /// The amount of new tokens to mint.
         amount: u64,
@@ -234,7 +234,7 @@ pub enum TokenInstruction<'a> {
     ///   0. `[writable]` The account to burn from.
     ///   1. `[writable]` The token mint.
     ///   2. `[]` The account's multisignature owner/delegate.
-    ///   3. ..3+M `[signer]` M signer accounts.
+    ///   3. ..`3+M` `[signer]` M signer accounts.
     Burn {
         /// The amount of tokens to burn.
         amount: u64,
@@ -272,10 +272,10 @@ pub enum TokenInstruction<'a> {
     ///   0. `[writable]` The account to close.
     ///   1. `[writable]` The destination account.
     ///   2. `[]` The account's multisignature owner.
-    ///   3. ..3+M `[signer]` M signer accounts.
+    ///   3. ..`3+M` `[signer]` M signer accounts.
     CloseAccount,
     // 10
-    /// Freeze an Initialized account using the Mint's freeze_authority (if
+    /// Freeze an Initialized account using the Mint's `freeze_authority` (if
     /// set).
     ///
     /// Accounts expected by this instruction:
@@ -289,9 +289,9 @@ pub enum TokenInstruction<'a> {
     ///   0. `[writable]` The account to freeze.
     ///   1. `[]` The token mint.
     ///   2. `[]` The mint's multisignature freeze authority.
-    ///   3. ..3+M `[signer]` M signer accounts.
+    ///   3. ..`3+M` `[signer]` M signer accounts.
     FreezeAccount,
-    /// Thaw a Frozen account using the Mint's freeze_authority (if set).
+    /// Thaw a Frozen account using the Mint's `freeze_authority` (if set).
     ///
     /// Accounts expected by this instruction:
     ///
@@ -304,7 +304,7 @@ pub enum TokenInstruction<'a> {
     ///   0. `[writable]` The account to freeze.
     ///   1. `[]` The token mint.
     ///   2. `[]` The mint's multisignature freeze authority.
-    ///   3. ..3+M `[signer]` M signer accounts.
+    ///   3. ..`3+M` `[signer]` M signer accounts.
     ThawAccount,
 
     /// Transfers tokens from one account to another either directly or via a
@@ -312,7 +312,7 @@ pub enum TokenInstruction<'a> {
     /// amounts of SOL and Tokens will be transferred to the destination
     /// account.
     ///
-    /// This instruction differs from Transfer in that the token mint and
+    /// This instruction differs from `Transfer` in that the token mint and
     /// decimals value is checked by the caller.  This may be useful when
     /// creating transactions offline or within a hardware wallet.
     ///
@@ -332,7 +332,7 @@ pub enum TokenInstruction<'a> {
     ///   1. `[]` The token mint.
     ///   2. `[writable]` The destination account.
     ///   3. `[]` The source account's multisignature owner/delegate.
-    ///   4. ..4+M `[signer]` M signer accounts.
+    ///   4. ..`4+M` `[signer]` M signer accounts.
     TransferChecked {
         /// The amount of tokens to transfer.
         amount: u64,
@@ -342,7 +342,7 @@ pub enum TokenInstruction<'a> {
     /// Approves a delegate.  A delegate is given the authority over tokens on
     /// behalf of the source account's owner.
     ///
-    /// This instruction differs from Approve in that the token mint and
+    /// This instruction differs from `Approve` in that the token mint and
     /// decimals value is checked by the caller.  This may be useful when
     /// creating transactions offline or within a hardware wallet.
     ///
@@ -359,7 +359,7 @@ pub enum TokenInstruction<'a> {
     ///   1. `[]` The token mint.
     ///   2. `[]` The delegate.
     ///   3. `[]` The source account's multisignature owner.
-    ///   4. ..4+M `[signer]` M signer accounts
+    ///   4. ..`4+M` `[signer]` M signer accounts
     ApproveChecked {
         /// The amount of tokens the delegate is approved for.
         amount: u64,
@@ -369,7 +369,7 @@ pub enum TokenInstruction<'a> {
     /// Mints new tokens to an account.  The native mint does not support
     /// minting.
     ///
-    /// This instruction differs from MintTo in that the decimals value is
+    /// This instruction differs from `MintTo` in that the decimals value is
     /// checked by the caller.  This may be useful when creating transactions
     /// offline or within a hardware wallet.
     ///
@@ -384,7 +384,7 @@ pub enum TokenInstruction<'a> {
     ///   0. `[writable]` The mint.
     ///   1. `[writable]` The account to mint tokens to.
     ///   2. `[]` The mint's multisignature mint-tokens authority.
-    ///   3. ..3+M `[signer]` M signer accounts.
+    ///   3. ..`3+M` `[signer]` M signer accounts.
     MintToChecked {
         /// The amount of new tokens to mint.
         amount: u64,
@@ -396,9 +396,9 @@ pub enum TokenInstruction<'a> {
     /// support accounts associated with the native mint, use `CloseAccount`
     /// instead.
     ///
-    /// This instruction differs from Burn in that the decimals value is checked
-    /// by the caller. This may be useful when creating transactions offline or
-    /// within a hardware wallet.
+    /// This instruction differs from `Burn` in that the decimals value is
+    /// checked by the caller. This may be useful when creating transactions
+    /// offline or within a hardware wallet.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -411,14 +411,14 @@ pub enum TokenInstruction<'a> {
     ///   0. `[writable]` The account to burn from.
     ///   1. `[writable]` The token mint.
     ///   2. `[]` The account's multisignature owner/delegate.
-    ///   3. ..3+M `[signer]` M signer accounts.
+    ///   3. ..`3+M` `[signer]` M signer accounts.
     BurnChecked {
         /// The amount of tokens to burn.
         amount: u64,
         /// Expected number of base 10 digits to the right of the decimal place.
         decimals: u8,
     },
-    /// Like InitializeAccount, but the owner pubkey is passed via instruction
+    /// Like `InitializeAccount`, but the owner pubkey is passed via instruction
     /// data rather than the accounts list. This variant may be preferable
     /// when using Cross Program Invocation from an instruction that does
     /// not need the owner's `AccountInfo` otherwise.
@@ -444,7 +444,7 @@ pub enum TokenInstruction<'a> {
     ///   0. `[writable]`  The native token account to sync with its underlying
     ///      lamports.
     SyncNative,
-    /// Like InitializeAccount2, but does not require the Rent sysvar to be
+    /// Like `InitializeAccount2`, but does not require the Rent sysvar to be
     /// provided
     ///
     /// Accounts expected by this instruction:
@@ -456,21 +456,22 @@ pub enum TokenInstruction<'a> {
         #[cfg_attr(feature = "serde-traits", serde(with = "As::<DisplayFromStr>"))]
         owner: Pubkey,
     },
-    /// Like InitializeMultisig, but does not require the Rent sysvar to be
+    /// Like `InitializeMultisig`, but does not require the Rent sysvar to be
     /// provided
     ///
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` The multisignature account to initialize.
-    ///   1. ..1+N. `[]` The signer accounts, must equal to N where 1 <= N <=
-    ///      11.
+    ///   1. ..`1+N`. `[]` The signer accounts, must equal to N where `1 <= N <=
+    ///      11`.
     InitializeMultisig2 {
         /// The number of signers (M) required to validate this multisignature
         /// account.
         m: u8,
     },
     // 20
-    /// Like InitializeMint, but does not require the Rent sysvar to be provided
+    /// Like `InitializeMint`, but does not require the Rent sysvar to be
+    /// provided
     ///
     /// Accounts expected by this instruction:
     ///
@@ -510,7 +511,7 @@ pub enum TokenInstruction<'a> {
     /// Data expected by this instruction:
     ///   None
     InitializeImmutableOwner,
-    /// Convert an Amount of tokens to a UiAmount `string`, using the given
+    /// Convert an Amount of tokens to a `UiAmount` string, using the given
     /// mint.
     ///
     /// Fails on an invalid mint.
@@ -525,8 +526,8 @@ pub enum TokenInstruction<'a> {
         /// The amount of tokens to convert.
         amount: u64,
     },
-    /// Convert a UiAmount of tokens to a little-endian `u64` raw Amount, using
-    /// the given mint.
+    /// Convert a `UiAmount` of tokens to a little-endian `u64` raw Amount,
+    /// using the given mint.
     ///
     /// Return data can be fetched using `sol_get_return_data` and deserializing
     /// the return data as a little-endian `u64`.
@@ -535,7 +536,7 @@ pub enum TokenInstruction<'a> {
     ///
     ///   0. `[]` The mint to calculate for
     UiAmountToAmount {
-        /// The ui_amount of tokens to convert.
+        /// The `ui_amount` of tokens to convert.
         ui_amount: &'a str,
     },
     // 25
@@ -577,7 +578,7 @@ pub enum TokenInstruction<'a> {
     /// instruction prefix
     DefaultAccountStateExtension,
     /// Check to see if a token account is large enough for a list of
-    /// ExtensionTypes, and if not, use reallocation to increase the data
+    /// `ExtensionTypes`, and if not, use reallocation to increase the data
     /// size.
     ///
     /// Accounts expected by this instruction:
@@ -593,7 +594,7 @@ pub enum TokenInstruction<'a> {
     ///   1. `[signer, writable]` The payer account to fund reallocation
     ///   2. `[]` System program for reallocation funding
     ///   3. `[]` The account's multisignature owner/delegate.
-    ///   4. ..4+M `[signer]` M signer accounts.
+    ///   4. ..`4+M` `[signer]` M signer accounts.
     Reallocate {
         /// New extension types to include in the reallocated account
         extension_types: Vec<ExtensionType>,
@@ -678,14 +679,14 @@ pub enum TokenInstruction<'a> {
     /// for further details about the extended instructions that share this
     /// instruction prefix
     ConfidentialTransferFeeExtension,
-    /// This instruction is to be used to rescue SOLs sent to any TokenProgram
+    /// This instruction is to be used to rescue SOL sent to any `TokenProgram`
     /// owned account by sending them to any other account, leaving behind only
     /// lamports for rent exemption.
     ///
     /// 0. `[writable]` Source Account owned by the token program
     /// 1. `[writable]` Destination account
     /// 2. `[signer]` Authority
-    /// 3. ..2+M `[signer]` M signer accounts.
+    /// 3. ..`3+M` `[signer]` M signer accounts.
     WithdrawExcessLamports,
     /// The common instruction prefix for metadata pointer extension
     /// instructions.
@@ -711,10 +712,15 @@ pub enum TokenInstruction<'a> {
     /// Instruction prefix for instructions to the confidential-mint-burn
     /// extension
     ConfidentialMintBurnExtension,
+    /// Instruction prefix for instructions to the scaled ui amount
+    /// extension
+    ScaledUiAmountExtension,
+    /// Instruction prefix for instructions to the pausable extension
+    PausableExtension,
 }
 impl<'a> TokenInstruction<'a> {
     /// Unpacks a byte buffer into a
-    /// [TokenInstruction](enum.TokenInstruction.html).
+    /// [`TokenInstruction`](enum.TokenInstruction.html).
     pub fn unpack(input: &'a [u8]) -> Result<Self, ProgramError> {
         use TokenError::InvalidInstruction;
 
@@ -851,11 +857,13 @@ impl<'a> TokenInstruction<'a> {
             40 => Self::GroupPointerExtension,
             41 => Self::GroupMemberPointerExtension,
             42 => Self::ConfidentialMintBurnExtension,
+            43 => Self::ScaledUiAmountExtension,
+            44 => Self::PausableExtension,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
 
-    /// Packs a [TokenInstruction](enum.TokenInstruction.html) into a byte
+    /// Packs a [`TokenInstruction`](enum.TokenInstruction.html) into a byte
     /// buffer.
     pub fn pack(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(size_of::<Self>());
@@ -1025,6 +1033,12 @@ impl<'a> TokenInstruction<'a> {
             &Self::ConfidentialMintBurnExtension => {
                 buf.push(42);
             }
+            &Self::ScaledUiAmountExtension => {
+                buf.push(43);
+            }
+            &Self::PausableExtension => {
+                buf.push(44);
+            }
         };
         buf
     }
@@ -1085,7 +1099,7 @@ impl<'a> TokenInstruction<'a> {
     }
 }
 
-/// Specifies the authority type for SetAuthority instructions
+/// Specifies the authority type for `SetAuthority` instructions
 #[repr(u8)]
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
@@ -1109,7 +1123,7 @@ pub enum AuthorityType {
     InterestRate,
     /// Authority to transfer or burn any tokens for a mint
     PermanentDelegate,
-    /// Authority to update confidential transfer mint and aprove accounts for
+    /// Authority to update confidential transfer mint and approve accounts for
     /// confidential transfers
     ConfidentialTransferMint,
     /// Authority to set the transfer hook program id
@@ -1122,6 +1136,10 @@ pub enum AuthorityType {
     GroupPointer,
     /// Authority to set the group member address
     GroupMemberPointer,
+    /// Authority to set the UI amount scale
+    ScaledUiAmount,
+    /// Authority to pause or resume minting / transferring / burning
+    Pause,
 }
 
 impl AuthorityType {
@@ -1142,6 +1160,8 @@ impl AuthorityType {
             AuthorityType::MetadataPointer => 12,
             AuthorityType::GroupPointer => 13,
             AuthorityType::GroupMemberPointer => 14,
+            AuthorityType::ScaledUiAmount => 15,
+            AuthorityType::Pause => 16,
         }
     }
 
@@ -1162,6 +1182,8 @@ impl AuthorityType {
             12 => Ok(AuthorityType::MetadataPointer),
             13 => Ok(AuthorityType::GroupPointer),
             14 => Ok(AuthorityType::GroupMemberPointer),
+            15 => Ok(AuthorityType::ScaledUiAmount),
+            16 => Ok(AuthorityType::Pause),
             _ => Err(TokenError::InvalidInstruction.into()),
         }
     }
@@ -1929,7 +1951,8 @@ pub fn initialize_permanent_delegate(
     })
 }
 
-/// Utility function that checks index is between MIN_SIGNERS and MAX_SIGNERS
+/// Utility function that checks index is between `MIN_SIGNERS` and
+/// `MAX_SIGNERS`
 pub fn is_valid_signer_index(index: usize) -> bool {
     (MIN_SIGNERS..=MAX_SIGNERS).contains(&index)
 }
@@ -1949,11 +1972,29 @@ pub fn decode_instruction_type<T: TryFrom<u8>>(input: &[u8]) -> Result<T, Progra
 /// instruction type as the first byte.  This makes the code concise and safe
 /// at the expense of clarity, allowing flows such as:
 ///
-/// match decode_instruction_type(input)? {
+/// ```
+/// use spl_token_2022::instruction::{decode_instruction_data, decode_instruction_type};
+/// use num_enum::TryFromPrimitive;
+/// use bytemuck::{Pod, Zeroable};
+///
+/// #[repr(u8)]
+/// #[derive(Clone, Copy, TryFromPrimitive)]
+/// enum InstructionType {
+///     First
+/// }
+/// #[derive(Pod, Zeroable, Copy, Clone)]
+/// #[repr(transparent)]
+/// struct FirstData {
+///     a: u8,
+/// }
+/// let input = [0, 1];
+/// match decode_instruction_type(&input).unwrap() {
 ///     InstructionType::First => {
-///         let FirstData { ... } = decode_instruction_data(input)?;
+///         let FirstData { a } = decode_instruction_data(&input).unwrap();
+///         assert_eq!(*a, 1);
 ///     }
 /// }
+/// ```
 pub fn decode_instruction_data<T: Pod>(input_with_type: &[u8]) -> Result<&T, ProgramError> {
     if input_with_type.len() != pod_get_packed_len::<T>().saturating_add(1) {
         Err(ProgramError::InvalidInstructionData)

@@ -21,10 +21,10 @@ use {
 pub enum CpiGuardInstruction {
     /// Lock certain token operations from taking place within CPI for this
     /// Account, namely:
-    /// * Transfer and Burn must go through a delegate.
-    /// * CloseAccount can only return lamports to owner.
-    /// * SetAuthority can only be used to remove an existing close authority.
-    /// * Approve is disallowed entirely.
+    /// * `Transfer` and `Burn` must go through a delegate.
+    /// * `CloseAccount` can only return lamports to owner.
+    /// * `SetAuthority` can only be used to remove an existing close authority.
+    /// * `Approve` is disallowed entirely.
     ///
     /// In addition, CPI Guard cannot be enabled or disabled via CPI.
     ///
@@ -36,7 +36,7 @@ pub enum CpiGuardInstruction {
     ///   * Multisignature authority
     ///   0. `[writable]` The account to update.
     ///   1. `[]` The account's multisignature owner.
-    ///   2. ..2+M `[signer]` M signer accounts.
+    ///   2. `..2+M` `[signer]` M signer accounts.
     Enable,
     /// Allow all token operations to happen via CPI as normal.
     ///
@@ -51,7 +51,7 @@ pub enum CpiGuardInstruction {
     ///   * Multisignature authority
     ///   0. `[writable]` The account to update.
     ///   1. `[]`  The account's multisignature owner.
-    ///   2. ..2+M `[signer]` M signer accounts.
+    ///   2. `..2+M` `[signer]` M signer accounts.
     Disable,
 }
 

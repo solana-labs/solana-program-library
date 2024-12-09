@@ -43,28 +43,28 @@
         "watch": "tsc --build --verbose --watch tsconfig.all.json"
     },
     "peerDependencies": {
-        "@solana/web3.js": "^1.95.4"
+        "@solana/web3.js": "^1.95.5"
     },
     "dependencies": {
         "@solana/codecs": "2.0.0"
     },
     "devDependencies": {
         "@solana/spl-type-length-value": "0.2.0",
-        "@solana/web3.js": "^1.95.4",
+        "@solana/web3.js": "^1.95.5",
         "@types/chai": "^5.0.1",
-        "@types/mocha": "^10.0.9",
-        "@types/node": "^22.9.0",
+        "@types/mocha": "^10.0.10",
+        "@types/node": "^22.10.1",
         "@typescript-eslint/eslint-plugin": "^8.4.0",
         "@typescript-eslint/parser": "^8.4.0",
         "chai": "^5.1.2",
         "eslint": "^8.57.0",
         "eslint-plugin-require-extensions": "^0.1.1",
         "gh-pages": "^6.2.0",
-        "mocha": "^10.8.2",
+        "mocha": "^11.0.1",
         "shx": "^0.3.4",
         "ts-node": "^10.9.2",
         "tslib": "^2.8.1",
-        "typedoc": "^0.26.11",
-        "typescript": "^5.6.3"
+        "typedoc": "^0.27.4",
+        "typescript": "^5.7.2"
     }
 }
