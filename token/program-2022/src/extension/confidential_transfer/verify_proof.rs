@@ -269,6 +269,253 @@ pub fn verify_transfer_proof(
     }
 }
 
+#[cfg(feature = "zk-ops")]
+fn verify_transfer_with_fee_proof_with_context_state(
+    account_info_iter: &mut Iter<'_, AccountInfo<'_>>,
+    fee_parameters: &TransferFee,
+) -> Result<Option<TransferWithFeeProofContextInfo>, ProgramError> {
+    // interpret `account_info` as a context state account
+    let context_state_account_info = next_account_info(account_info_iter)?;
+    check_zk_token_proof_program_account(context_state_account_info.owner)?;
+    let context_state_account_data = context_state_account_info.data.borrow();
+    let context_state = pod_from_bytes::<ProofContextState<TransferWithFeeProofContext>>(
+        &context_state_account_data,
+    )?;
+
+    if context_state.proof_type != ProofType::TransferWithFee.into() {
+        return Err(ProgramError::InvalidInstructionData);
+    }
+
+    let proof_tranfer_fee_basis_points: u16 = context_state
+        .proof_context
+        .fee_parameters
+        .fee_rate_basis_points
+        .into();
+    let proof_maximum_fee: u64 = context_state
+        .proof_context
+        .fee_parameters
+        .maximum_fee
+        .into();
+
+    // check consistency of the transfer fee parameters in the mint extension with
+    // what were used to generate the zkp, which is not checked in the
+    // `From<TransferWithFeeProofContext>` implementation for
+    // `TransferWithFeeProofContextInfo`.
+    if u16::from(fee_parameters.transfer_fee_basis_points) != proof_tranfer_fee_basis_points
+        || u64::from(fee_parameters.maximum_fee) != proof_maximum_fee
+    {
+        return Err(TokenError::FeeParametersMismatch.into());
+    }
+
+    Ok(Some(context_state.proof_context.into()))
+}
+
+#[cfg(feature = "zk-ops")]
+fn verify_transfer_with_fee_proof_with_split_context_state(
+    account_info_iter: &mut Iter<'_, AccountInfo<'_>>,
+    no_op_on_split_proof_context_state: bool,
+    close_split_context_state_on_execution: bool,
+    source_decrypt_handles: &SourceDecryptHandles,
+    fee_parameters: &TransferFee,
+) -> Result<Option<TransferWithFeeProofContextInfo>, ProgramError> {
+    let equality_proof_context_state_account_info = next_account_info(account_info_iter)?;
+    let transfer_amount_ciphertext_validity_proof_context_state_account_info =
+        next_account_info(account_info_iter)?;
+    let fee_sigma_proof_context_state_account_info = next_account_info(account_info_iter)?;
+    let fee_ciphertext_validity_proof_context_state_account_info =
+        next_account_info(account_info_iter)?;
+    let range_proof_context_state_account_info = next_account_info(account_info_iter)?;
+
+    if no_op_on_split_proof_context_state
+        && check_system_program_account(equality_proof_context_state_account_info.owner).is_ok()
+    {
+        msg!("Equality proof context state account not initialized");
+        return Ok(None);
+    }
+
+    if no_op_on_split_proof_context_state
+        && check_system_program_account(
+            transfer_amount_ciphertext_validity_proof_context_state_account_info.owner,
+        )
+        .is_ok()
+    {
+        msg!("Transfer amount ciphertext validity proof context state account not initialized");
+        return Ok(None);
+    }
+
+    if no_op_on_split_proof_context_state
+        && check_system_program_account(fee_sigma_proof_context_state_account_info.owner).is_ok()
+    {
+        msg!("Fee sigma proof context state account not initialized");
+        return Ok(None);
+    }
+
+    if no_op_on_split_proof_context_state
+        && check_system_program_account(
+            fee_ciphertext_validity_proof_context_state_account_info.owner,
+        )
+        .is_ok()
+    {
+        msg!("Fee ciphertext validity proof context state account not initialized");
+        return Ok(None);
+    }
+
+    if no_op_on_split_proof_context_state
+        && check_system_program_account(range_proof_context_state_account_info.owner).is_ok()
+    {
+        msg!("Range proof context state account not initialized");
+        return Ok(None);
+    }
+
+    let equality_proof_context = verify_equality_proof(equality_proof_context_state_account_info)?;
+    let transfer_amount_ciphertext_validity_proof_context = verify_ciphertext_validity_proof(
+        transfer_amount_ciphertext_validity_proof_context_state_account_info,
+    )?;
+    let fee_sigma_proof_context =
+        verify_fee_sigma_proof(fee_sigma_proof_context_state_account_info)?;
+    let fee_ciphertext_validity_proof_context =
+        verify_ciphertext_validity_proof(fee_ciphertext_validity_proof_context_state_account_info)?;
+    let range_proof_context =
+        verify_transfer_with_fee_range_proof(range_proof_context_state_account_info)?;
+
+    // The `TransferWithFeeProofContextInfo` constructor verifies the consistency of
+    // the individual proof context and generates a
+    // `TransferWithFeeProofInfo` struct that is used to process the rest of
+    // the token-2022 logic. The consistency check includes verifying
+    // whether the fee-related zkps were generated with respect to the correct fee
+    // parameter that is stored in the mint extension.
+    let transfer_with_fee_proof_context = TransferWithFeeProofContextInfo::verify_and_extract(
+        &equality_proof_context,
+        &transfer_amount_ciphertext_validity_proof_context,
+        &fee_sigma_proof_context,
+        &fee_ciphertext_validity_proof_context,
+        &range_proof_context,
+        source_decrypt_handles,
+        fee_parameters,
+    )?;
+
+    if close_split_context_state_on_execution {
+        let lamport_destination_account_info = next_account_info(account_info_iter)?;
+        let context_state_account_authority_info = next_account_info(account_info_iter)?;
+        let _zk_token_proof_program = next_account_info(account_info_iter)?;
+
+        msg!("Closing equality proof context state account");
+        invoke(
+            &zk_token_proof_instruction::close_context_state(
+                ContextStateInfo {
+                    context_state_account: equality_proof_context_state_account_info.key,
+                    context_state_authority: context_state_account_authority_info.key,
+                },
+                lamport_destination_account_info.key,
+            ),
+            &[
+                equality_proof_context_state_account_info.clone(),
+                lamport_destination_account_info.clone(),
+                context_state_account_authority_info.clone(),
+            ],
+        )?;
+
+        msg!("Closing transfer amount ciphertext validity proof context state account");
+        invoke(
+            &zk_token_proof_instruction::close_context_state(
+                ContextStateInfo {
+                    context_state_account:
+                        transfer_amount_ciphertext_validity_proof_context_state_account_info.key,
+                    context_state_authority: context_state_account_authority_info.key,
+                },
+                lamport_destination_account_info.key,
+            ),
+            &[
+                transfer_amount_ciphertext_validity_proof_context_state_account_info.clone(),
+                lamport_destination_account_info.clone(),
+                context_state_account_authority_info.clone(),
+            ],
+        )?;
+
+        msg!("Closing fee sigma proof context state account");
+        invoke(
+            &zk_token_proof_instruction::close_context_state(
+                ContextStateInfo {
+                    context_state_account: fee_sigma_proof_context_state_account_info.key,
+                    context_state_authority: context_state_account_authority_info.key,
+                },
+                lamport_destination_account_info.key,
+            ),
+            &[
+                fee_sigma_proof_context_state_account_info.clone(),
+                lamport_destination_account_info.clone(),
+                context_state_account_authority_info.clone(),
+            ],
+        )?;
+
+        msg!("Closing fee ciphertext validity proof context state account");
+        invoke(
+            &zk_token_proof_instruction::close_context_state(
+                ContextStateInfo {
+                    context_state_account: fee_ciphertext_validity_proof_context_state_account_info
+                        .key,
+                    context_state_authority: context_state_account_authority_info.key,
+                },
+                lamport_destination_account_info.key,
+            ),
+            &[
+                fee_ciphertext_validity_proof_context_state_account_info.clone(),
+                lamport_destination_account_info.clone(),
+                context_state_account_authority_info.clone(),
+            ],
+        )?;
+
+        msg!("Closing range proof context state account");
+        invoke(
+            &zk_token_proof_instruction::close_context_state(
+                ContextStateInfo {
+                    context_state_account: range_proof_context_state_account_info.key,
+                    context_state_authority: context_state_account_authority_info.key,
+                },
+                lamport_destination_account_info.key,
+            ),
+            &[
+                range_proof_context_state_account_info.clone(),
+                lamport_destination_account_info.clone(),
+                context_state_account_authority_info.clone(),
+            ],
+        )?;
+    }
+
+    Ok(Some(transfer_with_fee_proof_context))
+}
+
+#[cfg(feature = "zk-ops")]
+fn verify_transfer_with_fee_proof_with_sysvar(
+    account_info_iter: &mut Iter<'_, AccountInfo<'_>>,
+    proof_instruction_offset: i64,
+    fee_parameters: &TransferFee,
+) -> Result<Option<TransferWithFeeProofContextInfo>, ProgramError> {
+    // interpret `account_info` as sysvar
+    let sysvar_account_info = next_account_info(account_info_iter)?;
+    let zkp_instruction = get_instruction_relative(proof_instruction_offset, sysvar_account_info)?;
+    let proof_context = decode_proof_instruction_context::<
+        TransferWithFeeData,
+        TransferWithFeeProofContext,
+    >(ProofInstruction::VerifyTransferWithFee, &zkp_instruction)?;
+
+    let proof_tranfer_fee_basis_points: u16 =
+        proof_context.fee_parameters.fee_rate_basis_points.into();
+    let proof_maximum_fee: u64 = proof_context.fee_parameters.maximum_fee.into();
+
+    // check consistency of the transfer fee parameters in the mint extension with
+    // what were used to generate the zkp, which is not checked in the
+    // `From<TransferWithFeeProofContext>` implementation for
+    // `TransferWithFeeProofContextInfo`.
+    if u16::from(fee_parameters.transfer_fee_basis_points) != proof_tranfer_fee_basis_points
+        || u64::from(fee_parameters.maximum_fee) != proof_maximum_fee
+    {
+        return Err(TokenError::FeeParametersMismatch.into());
+    }
+
+    Ok(Some((*proof_context).into()))
+}
+
 /// Verify zero-knowledge proof needed for a [Transfer] instruction with fee and
 /// return the corresponding proof context.
 #[cfg(feature = "zk-ops")]
@@ -282,234 +529,21 @@ pub fn verify_transfer_with_fee_proof(
     fee_parameters: &TransferFee,
 ) -> Result<Option<TransferWithFeeProofContextInfo>, ProgramError> {
     if proof_instruction_offset == 0 && split_proof_context_state_accounts {
-        let equality_proof_context_state_account_info = next_account_info(account_info_iter)?;
-        let transfer_amount_ciphertext_validity_proof_context_state_account_info =
-            next_account_info(account_info_iter)?;
-        let fee_sigma_proof_context_state_account_info = next_account_info(account_info_iter)?;
-        let fee_ciphertext_validity_proof_context_state_account_info =
-            next_account_info(account_info_iter)?;
-        let range_proof_context_state_account_info = next_account_info(account_info_iter)?;
-
-        if no_op_on_split_proof_context_state
-            && check_system_program_account(equality_proof_context_state_account_info.owner).is_ok()
-        {
-            msg!("Equality proof context state account not initialized");
-            return Ok(None);
-        }
-
-        if no_op_on_split_proof_context_state
-            && check_system_program_account(
-                transfer_amount_ciphertext_validity_proof_context_state_account_info.owner,
-            )
-            .is_ok()
-        {
-            msg!("Transfer amount ciphertext validity proof context state account not initialized");
-            return Ok(None);
-        }
-
-        if no_op_on_split_proof_context_state
-            && check_system_program_account(fee_sigma_proof_context_state_account_info.owner)
-                .is_ok()
-        {
-            msg!("Fee sigma proof context state account not initialized");
-            return Ok(None);
-        }
-
-        if no_op_on_split_proof_context_state
-            && check_system_program_account(
-                fee_ciphertext_validity_proof_context_state_account_info.owner,
-            )
-            .is_ok()
-        {
-            msg!("Fee ciphertext validity proof context state account not initialized");
-            return Ok(None);
-        }
-
-        if no_op_on_split_proof_context_state
-            && check_system_program_account(range_proof_context_state_account_info.owner).is_ok()
-        {
-            msg!("Range proof context state account not initialized");
-            return Ok(None);
-        }
-
-        let equality_proof_context =
-            verify_equality_proof(equality_proof_context_state_account_info)?;
-        let transfer_amount_ciphertext_validity_proof_context = verify_ciphertext_validity_proof(
-            transfer_amount_ciphertext_validity_proof_context_state_account_info,
-        )?;
-        let fee_sigma_proof_context =
-            verify_fee_sigma_proof(fee_sigma_proof_context_state_account_info)?;
-        let fee_ciphertext_validity_proof_context = verify_ciphertext_validity_proof(
-            fee_ciphertext_validity_proof_context_state_account_info,
-        )?;
-        let range_proof_context =
-            verify_transfer_with_fee_range_proof(range_proof_context_state_account_info)?;
-
-        // The `TransferWithFeeProofContextInfo` constructor verifies the consistency of
-        // the individual proof context and generates a
-        // `TransferWithFeeProofInfo` struct that is used to process the rest of
-        // the token-2022 logic. The consistency check includes verifying
-        // whether the fee-related zkps were generated with respect to the correct fee
-        // parameter that is stored in the mint extension.
-        let transfer_with_fee_proof_context = TransferWithFeeProofContextInfo::verify_and_extract(
-            &equality_proof_context,
-            &transfer_amount_ciphertext_validity_proof_context,
-            &fee_sigma_proof_context,
-            &fee_ciphertext_validity_proof_context,
-            &range_proof_context,
+        verify_transfer_with_fee_proof_with_split_context_state(
+            account_info_iter,
+            no_op_on_split_proof_context_state,
+            close_split_context_state_on_execution,
             source_decrypt_handles,
             fee_parameters,
-        )?;
-
-        if close_split_context_state_on_execution {
-            let lamport_destination_account_info = next_account_info(account_info_iter)?;
-            let context_state_account_authority_info = next_account_info(account_info_iter)?;
-            let _zk_token_proof_program = next_account_info(account_info_iter)?;
-
-            msg!("Closing equality proof context state account");
-            invoke(
-                &zk_token_proof_instruction::close_context_state(
-                    ContextStateInfo {
-                        context_state_account: equality_proof_context_state_account_info.key,
-                        context_state_authority: context_state_account_authority_info.key,
-                    },
-                    lamport_destination_account_info.key,
-                ),
-                &[
-                    equality_proof_context_state_account_info.clone(),
-                    lamport_destination_account_info.clone(),
-                    context_state_account_authority_info.clone(),
-                ],
-            )?;
-
-            msg!("Closing transfer amount ciphertext validity proof context state account");
-            invoke(
-                &zk_token_proof_instruction::close_context_state(
-                    ContextStateInfo {
-                        context_state_account:
-                            transfer_amount_ciphertext_validity_proof_context_state_account_info.key,
-                        context_state_authority: context_state_account_authority_info.key,
-                    },
-                    lamport_destination_account_info.key,
-                ),
-                &[
-                    transfer_amount_ciphertext_validity_proof_context_state_account_info.clone(),
-                    lamport_destination_account_info.clone(),
-                    context_state_account_authority_info.clone(),
-                ],
-            )?;
-
-            msg!("Closing fee sigma proof context state account");
-            invoke(
-                &zk_token_proof_instruction::close_context_state(
-                    ContextStateInfo {
-                        context_state_account: fee_sigma_proof_context_state_account_info.key,
-                        context_state_authority: context_state_account_authority_info.key,
-                    },
-                    lamport_destination_account_info.key,
-                ),
-                &[
-                    fee_sigma_proof_context_state_account_info.clone(),
-                    lamport_destination_account_info.clone(),
-                    context_state_account_authority_info.clone(),
-                ],
-            )?;
-
-            msg!("Closing fee ciphertext validity proof context state account");
-            invoke(
-                &zk_token_proof_instruction::close_context_state(
-                    ContextStateInfo {
-                        context_state_account:
-                            fee_ciphertext_validity_proof_context_state_account_info.key,
-                        context_state_authority: context_state_account_authority_info.key,
-                    },
-                    lamport_destination_account_info.key,
-                ),
-                &[
-                    fee_ciphertext_validity_proof_context_state_account_info.clone(),
-                    lamport_destination_account_info.clone(),
-                    context_state_account_authority_info.clone(),
-                ],
-            )?;
-
-            msg!("Closing range proof context state account");
-            invoke(
-                &zk_token_proof_instruction::close_context_state(
-                    ContextStateInfo {
-                        context_state_account: range_proof_context_state_account_info.key,
-                        context_state_authority: context_state_account_authority_info.key,
-                    },
-                    lamport_destination_account_info.key,
-                ),
-                &[
-                    range_proof_context_state_account_info.clone(),
-                    lamport_destination_account_info.clone(),
-                    context_state_account_authority_info.clone(),
-                ],
-            )?;
-        }
-
-        Ok(Some(transfer_with_fee_proof_context))
+        )
     } else if proof_instruction_offset == 0 && !split_proof_context_state_accounts {
-        // interpret `account_info` as a context state account
-        let context_state_account_info = next_account_info(account_info_iter)?;
-        check_zk_token_proof_program_account(context_state_account_info.owner)?;
-        let context_state_account_data = context_state_account_info.data.borrow();
-        let context_state = pod_from_bytes::<ProofContextState<TransferWithFeeProofContext>>(
-            &context_state_account_data,
-        )?;
-
-        if context_state.proof_type != ProofType::TransferWithFee.into() {
-            return Err(ProgramError::InvalidInstructionData);
-        }
-
-        let proof_tranfer_fee_basis_points: u16 = context_state
-            .proof_context
-            .fee_parameters
-            .fee_rate_basis_points
-            .into();
-        let proof_maximum_fee: u64 = context_state
-            .proof_context
-            .fee_parameters
-            .maximum_fee
-            .into();
-
-        // check consistency of the transfer fee parameters in the mint extension with
-        // what were used to generate the zkp, which is not checked in the
-        // `From<TransferWithFeeProofContext>` implementation for
-        // `TransferWithFeeProofContextInfo`.
-        if u16::from(fee_parameters.transfer_fee_basis_points) != proof_tranfer_fee_basis_points
-            || u64::from(fee_parameters.maximum_fee) != proof_maximum_fee
-        {
-            return Err(TokenError::FeeParametersMismatch.into());
-        }
-
-        Ok(Some(context_state.proof_context.into()))
+        verify_transfer_with_fee_proof_with_context_state(account_info_iter, fee_parameters)
     } else {
-        // interpret `account_info` as sysvar
-        let sysvar_account_info = next_account_info(account_info_iter)?;
-        let zkp_instruction =
-            get_instruction_relative(proof_instruction_offset, sysvar_account_info)?;
-        let proof_context = decode_proof_instruction_context::<
-            TransferWithFeeData,
-            TransferWithFeeProofContext,
-        >(ProofInstruction::VerifyTransferWithFee, &zkp_instruction)?;
-
-        let proof_tranfer_fee_basis_points: u16 =
-            proof_context.fee_parameters.fee_rate_basis_points.into();
-        let proof_maximum_fee: u64 = proof_context.fee_parameters.maximum_fee.into();
-
-        // check consistency of the transfer fee parameters in the mint extension with
-        // what were used to generate the zkp, which is not checked in the
-        // `From<TransferWithFeeProofContext>` implementation for
-        // `TransferWithFeeProofContextInfo`.
-        if u16::from(fee_parameters.transfer_fee_basis_points) != proof_tranfer_fee_basis_points
-            || u64::from(fee_parameters.maximum_fee) != proof_maximum_fee
-        {
-            return Err(TokenError::FeeParametersMismatch.into());
-        }
-
-        Ok(Some((*proof_context).into()))
+        verify_transfer_with_fee_proof_with_sysvar(
+            account_info_iter,
+            proof_instruction_offset,
+            fee_parameters,
+        )
     }
 }
 
