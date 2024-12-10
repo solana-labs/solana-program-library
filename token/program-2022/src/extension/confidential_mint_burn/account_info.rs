@@ -52,7 +52,7 @@ impl SupplyAccountInfo {
     /// Computes the current supply from the decryptable supply and the
     /// difference between the decryptable supply and the ElGamal encrypted
     /// supply ciphertext
-    pub fn decrypt_current_supply(
+    pub fn decrypted_current_supply(
         &self,
         aes_key: &AeKey,
         elgamal_keypair: &ElGamalKeypair,
@@ -91,7 +91,7 @@ impl SupplyAccountInfo {
         new_supply_elgamal_keypair: &ElGamalKeypair,
     ) -> Result<CiphertextCiphertextEqualityProofData, TokenError> {
         let current_supply =
-            self.decrypt_current_supply(aes_key, current_supply_elgamal_keypair)?;
+            self.decrypted_current_supply(aes_key, current_supply_elgamal_keypair)?;
 
         let new_supply_opening = PedersenOpening::new_rand();
         let new_supply_ciphertext = new_supply_elgamal_keypair
@@ -119,7 +119,6 @@ impl SupplyAccountInfo {
         mint_amount: u64,
         current_supply: u64,
         supply_elgamal_keypair: &ElGamalKeypair,
-        aes_key: &AeKey,
         destination_elgamal_pubkey: &ElGamalPubkey,
         auditor_elgamal_pubkey: Option<&ElGamalPubkey>,
     ) -> Result<MintProofData, TokenError> {
@@ -133,11 +132,25 @@ impl SupplyAccountInfo {
             mint_amount,
             current_supply,
             supply_elgamal_keypair,
-            aes_key,
             destination_elgamal_pubkey,
             auditor_elgamal_pubkey,
         )
         .map_err(|e| -> TokenError { e.into() })
+    }
+
+    /// Compute the new decryptable supply.
+    pub fn new_decryptable_supply(
+        &self,
+        mint_amount: u64,
+        aes_key: &AeKey,
+        elgamal_keypair: &ElGamalKeypair, // TODO: check consistency of the order of params
+    ) -> Result<AeCiphertext, TokenError> {
+        let current_decrypted_supply = self.decrypted_current_supply(aes_key, elgamal_keypair)?;
+        let new_decrypted_available_balance = current_decrypted_supply
+            .checked_add(mint_amount)
+            .ok_or(TokenError::Overflow)?;
+
+        Ok(aes_key.encrypt(new_decrypted_available_balance))
     }
 }
 
