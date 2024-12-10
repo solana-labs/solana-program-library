@@ -8,7 +8,7 @@ license = "Apache-2.0"
 edition = "2021"
 
 [dependencies]
-chrono = "0.4.38"
+chrono = "0.4.39"
 clap = "2.33.3"
 solana-clap-utils = "2.1.0"
 solana-cli-config = "2.1.0"
