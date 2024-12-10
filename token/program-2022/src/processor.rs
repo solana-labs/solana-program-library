@@ -1903,10 +1903,6 @@ impl Processor {
         owner_account_data_len: usize,
         signers: &[AccountInfo],
     ) -> ProgramResult {
-        println!(
-            "expected owner: {expected_owner}; acc_info_owner: {}",
-            owner_account_info.key
-        );
         if expected_owner != owner_account_info.key {
             return Err(TokenError::OwnerMismatch.into());
         }
