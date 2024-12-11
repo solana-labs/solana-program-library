@@ -5,7 +5,6 @@ use {
     },
     solana_zk_sdk::{
         encryption::{
-            auth_encryption::{AeCiphertext, AeKey},
             elgamal::{ElGamalCiphertext, ElGamalKeypair, ElGamalPubkey},
             pedersen::Pedersen,
         },
@@ -28,7 +27,6 @@ pub struct MintProofData {
     pub ciphertext_validity_proof_data_with_ciphertext:
         CiphertextValidityProofWithAuditorCiphertext,
     pub range_proof_data: BatchedRangeProofU128Data,
-    pub new_decryptable_supply: AeCiphertext,
 }
 
 pub fn mint_split_proof_data(
@@ -36,7 +34,6 @@ pub fn mint_split_proof_data(
     mint_amount: u64,
     current_supply: u64,
     supply_elgamal_keypair: &ElGamalKeypair,
-    supply_aes_key: &AeKey,
     destination_elgamal_pubkey: &ElGamalPubkey,
     auditor_elgamal_pubkey: Option<&ElGamalPubkey>,
 ) -> Result<MintProofData, TokenProofGenerationError> {
@@ -161,6 +158,5 @@ pub fn mint_split_proof_data(
         equality_proof_data,
         ciphertext_validity_proof_data_with_ciphertext,
         range_proof_data,
-        new_decryptable_supply: supply_aes_key.encrypt(new_supply),
     })
 }

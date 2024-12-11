@@ -222,7 +222,6 @@ fn test_mint_validity(mint_amount: u64, supply: u64) {
     let auditor_pubkey = auditor_keypair.pubkey();
 
     let supply_keypair = ElGamalKeypair::new_rand();
-    let supply_aes_key = AeKey::new_rand();
 
     let supply_ciphertext = supply_keypair.pubkey().encrypt(supply);
 
@@ -230,13 +229,11 @@ fn test_mint_validity(mint_amount: u64, supply: u64) {
         equality_proof_data,
         ciphertext_validity_proof_data_with_ciphertext,
         range_proof_data,
-        new_decryptable_supply: _,
     } = mint_split_proof_data(
         &supply_ciphertext,
         mint_amount,
         supply,
         &supply_keypair,
-        &supply_aes_key,
         destination_pubkey,
         Some(auditor_pubkey),
     )
