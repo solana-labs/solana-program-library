@@ -14,7 +14,7 @@ serde-traits = ["dep:serde", "spl-pod/serde-traits"]
 borsh = "1.5.3"
 num-derive = "0.4"
 num-traits = "0.2"
-serde = { version = "1.0.215", optional = true }
+serde = { version = "1.0.216", optional = true }
 solana-borsh = "2.1.0"
 solana-decode-error = "2.1.0"
 solana-instruction = "2.1.0"
