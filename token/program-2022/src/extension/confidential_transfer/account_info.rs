@@ -147,7 +147,7 @@ impl ApplyPendingBalanceAccountInfo {
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct WithdrawAccountInfo {
-    /// The available balance (encrypted by `encrypiton_pubkey`)
+    /// The available balance (encrypted by `encryption_pubkey`)
     pub available_balance: EncryptedBalance,
     /// The decryptable available balance
     pub decryptable_available_balance: DecryptableBalance,
@@ -214,7 +214,7 @@ impl WithdrawAccountInfo {
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct TransferAccountInfo {
-    /// The available balance (encrypted by `encrypiton_pubkey`)
+    /// The available balance (encrypted by `encryption_pubkey`)
     pub available_balance: EncryptedBalance,
     /// The decryptable available balance
     pub decryptable_available_balance: DecryptableBalance,

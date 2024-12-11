@@ -305,7 +305,7 @@ impl ExtensionInitializationParams {
                     token_program_id,
                     mint,
                     authority,
-                    withdraw_withheld_authority_elgamal_pubkey,
+                    &withdraw_withheld_authority_elgamal_pubkey,
                 )
             }
             Self::GroupPointer {
@@ -2051,14 +2051,14 @@ where
         )
         .unwrap();
 
-        let decryptable_balance = aes_key.encrypt(0);
+        let decryptable_balance = aes_key.encrypt(0).into();
 
         self.process_ixs(
             &confidential_transfer::instruction::configure_account(
                 &self.program_id,
                 account,
                 &self.pubkey,
-                decryptable_balance.into(),
+                &decryptable_balance,
                 maximum_pending_balance_credit_counter,
                 authority,
                 &multisig_signers,
@@ -2265,7 +2265,8 @@ where
 
         let new_decryptable_available_balance = account_info
             .new_decryptable_available_balance(withdraw_amount, aes_key)
-            .map_err(|_| TokenError::AccountDecryption)?;
+            .map_err(|_| TokenError::AccountDecryption)?
+            .into();
 
         self.process_ixs(
             &confidential_transfer::instruction::withdraw(
@@ -2274,7 +2275,7 @@ where
                 &self.pubkey,
                 withdraw_amount,
                 decimals,
-                new_decryptable_available_balance.into(),
+                &new_decryptable_available_balance,
                 authority,
                 &multisig_signers,
                 equality_proof_location,
@@ -2400,14 +2401,15 @@ where
 
         let new_decryptable_available_balance = account_info
             .new_decryptable_available_balance(transfer_amount, source_aes_key)
-            .map_err(|_| TokenError::AccountDecryption)?;
+            .map_err(|_| TokenError::AccountDecryption)?
+            .into();
 
         let mut instructions = confidential_transfer::instruction::transfer(
             &self.program_id,
             source_account,
             self.get_address(),
             destination_account,
-            new_decryptable_available_balance.into(),
+            &new_decryptable_available_balance,
             &transfer_amount_auditor_ciphertext_lo,
             &transfer_amount_auditor_ciphertext_hi,
             source_authority,
@@ -2794,14 +2796,15 @@ where
 
         let new_decryptable_available_balance = account_info
             .new_decryptable_available_balance(transfer_amount, source_aes_key)
-            .map_err(|_| TokenError::AccountDecryption)?;
+            .map_err(|_| TokenError::AccountDecryption)?
+            .into();
 
         let mut instructions = confidential_transfer::instruction::transfer_with_fee(
             &self.program_id,
             source_account,
             self.get_address(),
             destination_account,
-            new_decryptable_available_balance.into(),
+            &new_decryptable_available_balance,
             &transfer_amount_auditor_ciphertext_lo,
             &transfer_amount_auditor_ciphertext_hi,
             source_authority,
@@ -2856,14 +2859,15 @@ where
         let expected_pending_balance_credit_counter = account_info.pending_balance_credit_counter();
         let new_decryptable_available_balance = account_info
             .new_decryptable_available_balance(elgamal_secret_key, aes_key)
-            .map_err(|_| TokenError::AccountDecryption)?;
+            .map_err(|_| TokenError::AccountDecryption)?
+            .into();
 
         self.process_ixs(
             &[confidential_transfer::instruction::apply_pending_balance(
                 &self.program_id,
                 account,
                 expected_pending_balance_credit_counter,
-                new_decryptable_available_balance.into(),
+                &new_decryptable_available_balance,
                 authority,
                 &multisig_signers,
             )?],

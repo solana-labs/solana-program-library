@@ -90,7 +90,7 @@ pub struct ConfidentialTransferAccount {
     /// The high 48 bits of the pending balance (encrypted by `elgamal_pubkey`)
     pub pending_balance_hi: EncryptedBalance,
 
-    /// The available balance (encrypted by `encrypiton_pubkey`)
+    /// The available balance (encrypted by `encryption_pubkey`)
     pub available_balance: EncryptedBalance,
 
     /// The decryptable available balance
