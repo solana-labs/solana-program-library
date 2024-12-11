@@ -182,8 +182,8 @@ impl BurnAccountInfo {
         burn_amount: u64,
         source_elgamal_keypair: &ElGamalKeypair,
         aes_key: &AeKey,
-        auditor_elgamal_pubkey: Option<&ElGamalPubkey>,
         supply_elgamal_pubkey: &ElGamalPubkey,
+        auditor_elgamal_pubkey: Option<&ElGamalPubkey>,
     ) -> Result<BurnProofData, TokenError> {
         let current_available_balance_ciphertext = self
             .available_balance
