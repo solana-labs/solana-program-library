@@ -52,7 +52,7 @@ impl SupplyAccountInfo {
     /// Computes the current supply from the decryptable supply and the
     /// difference between the decryptable supply and the ElGamal encrypted
     /// supply ciphertext
-    pub fn decrypt_current_supply(
+    pub fn decrypted_current_supply(
         &self,
         aes_key: &AeKey,
         elgamal_keypair: &ElGamalKeypair,
@@ -86,12 +86,12 @@ impl SupplyAccountInfo {
     /// `RotateSupplyElgamalPubkey` instruction
     pub fn generate_rotate_supply_elgamal_pubkey_proof(
         &self,
-        aes_key: &AeKey,
         current_supply_elgamal_keypair: &ElGamalKeypair,
         new_supply_elgamal_keypair: &ElGamalKeypair,
+        aes_key: &AeKey,
     ) -> Result<CiphertextCiphertextEqualityProofData, TokenError> {
         let current_supply =
-            self.decrypt_current_supply(aes_key, current_supply_elgamal_keypair)?;
+            self.decrypted_current_supply(aes_key, current_supply_elgamal_keypair)?;
 
         let new_supply_opening = PedersenOpening::new_rand();
         let new_supply_ciphertext = new_supply_elgamal_keypair
@@ -142,10 +142,10 @@ impl SupplyAccountInfo {
     pub fn new_decryptable_supply(
         &self,
         mint_amount: u64,
-        aes_key: &AeKey,
         elgamal_keypair: &ElGamalKeypair,
+        aes_key: &AeKey,
     ) -> Result<AeCiphertext, TokenError> {
-        let current_decrypted_supply = self.decrypt_current_supply(aes_key, elgamal_keypair)?;
+        let current_decrypted_supply = self.decrypted_current_supply(aes_key, elgamal_keypair)?;
         let new_decrypted_available_balance = current_decrypted_supply
             .checked_add(mint_amount)
             .ok_or(TokenError::Overflow)?;
