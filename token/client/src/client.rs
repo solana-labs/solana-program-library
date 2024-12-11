@@ -26,6 +26,7 @@ pub trait SimulateTransaction {
 /// Trait for the output of a simulation
 pub trait SimulationResult {
     fn get_compute_units_consumed(&self) -> ProgramClientResult<u64>;
+    fn err(self) -> Option<ProgramClientError>;
 }
 
 /// Extends basic `SendTransaction` trait with function `send` where client is
@@ -77,6 +78,9 @@ impl SimulationResult for BanksTransactionResultWithSimulation {
             .as_ref()
             .map(|x| x.units_consumed)
             .ok_or("No simulation results found".into())
+    }
+    fn err(self) -> Option<ProgramClientError> {
+        self.result.and_then(|r| r.err().map(|e| e.into()))
     }
 }
 
@@ -163,6 +167,15 @@ impl SimulationResult for RpcClientResponse {
             Self::Simulation(simulation_result) => simulation_result
                 .units_consumed
                 .ok_or("No simulation results found".into()),
+        }
+    }
+    fn err(self) -> Option<ProgramClientError> {
+        match self {
+            // `Transaction` is the result of an offline simulation. The error
+            // should be properly handled by a caller that supports offline
+            // signing
+            Self::Signature(_) | Self::Transaction(_) => Some("Not a simulation result".into()),
+            Self::Simulation(simulation_result) => simulation_result.err.map(|e| e.into()),
         }
     }
 }
