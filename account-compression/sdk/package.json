@@ -71,7 +71,7 @@
     "@types/node-fetch": "^2.6.12",
     "@typescript-eslint/eslint-plugin": "^8.4.0",
     "@typescript-eslint/parser": "^8.4.0",
-    "eslint": "^8.57.0",
+    "eslint": "^9.17.0",
     "eslint-config-turbo": "^2.3.3",
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-jest": "^28.9.0",
