@@ -100,10 +100,12 @@ impl<'a> Config<'a> {
                 .unwrap_or(&cli_config.json_rpc_url),
         );
         let websocket_url = solana_cli_config::Config::compute_websocket_url(&json_rpc_url);
+        let commitment_config = CommitmentConfig::from_str(&cli_config.commitment)
+            .unwrap_or_else(|_| CommitmentConfig::confirmed());
         let rpc_client = Arc::new(RpcClient::new_with_timeouts_and_commitment(
             json_rpc_url,
             DEFAULT_RPC_TIMEOUT,
-            CommitmentConfig::confirmed(),
+            commitment_config,
             DEFAULT_CONFIRM_TX_TIMEOUT,
         ));
         let sign_only = matches.try_contains_id(SIGN_ONLY_ARG.name).unwrap_or(false);
