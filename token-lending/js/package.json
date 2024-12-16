@@ -43,7 +43,7 @@
     "devDependencies": {
         "@rollup/plugin-commonjs": "^28.0.1",
         "@rollup/plugin-node-resolve": "^15.3.0",
-        "@rollup/plugin-typescript": "^12.1.1",
+        "@rollup/plugin-typescript": "^12.1.2",
         "@solana/spl-token": "0.4.9",
         "@solana/web3.js": "^1.95.5",
         "@types/eslint": "^8.56.7",
