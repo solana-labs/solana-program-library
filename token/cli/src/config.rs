@@ -116,12 +116,12 @@ impl<'a> Config<'a> {
                 .unwrap_or_default();
             Arc::new(ProgramOfflineClient::new(
                 blockhash,
-                ProgramRpcClientSendTransaction,
+                ProgramRpcClientSendTransaction::new(),
             ))
         } else {
             Arc::new(ProgramRpcClient::new(
                 rpc_client.clone(),
-                ProgramRpcClientSendTransaction,
+                ProgramRpcClientSendTransaction::new(),
             ))
         };
         Self::new_with_clients_and_ws_url(
