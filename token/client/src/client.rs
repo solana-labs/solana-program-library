@@ -125,6 +125,18 @@ pub struct ProgramRpcClientSendTransaction {
     confirm: bool,
 }
 
+impl ProgramRpcClientSendTransaction {
+    /// Create an instance that sends the transaction **without** waiting for confirmation.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Create an instance that sends and confirms the transaction.
+    pub fn new_with_confirmation() -> Self {
+        Self { confirm: true }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RpcClientResponse {
     Signature(Signature),
