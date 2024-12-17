@@ -142,16 +142,19 @@ impl SendTransactionRpc for ProgramRpcClientSendTransaction {
         client: &'a RpcClient,
         transaction: &'a Transaction,
     ) -> BoxFuture<'a, ProgramClientResult<Self::Output>> {
+        let confirm = self.confirm;
         Box::pin(async move {
             if !transaction.is_signed() {
                 return Err("Cannot send transaction: not fully signed".into());
             }
 
-            client
-                .send_and_confirm_transaction(transaction)
-                .await
-                .map(RpcClientResponse::Signature)
-                .map_err(Into::into)
+            if confirm {
+                client.send_and_confirm_transaction(transaction).await
+            } else {
+                client.send_transaction(transaction).await
+            }
+            .map(RpcClientResponse::Signature)
+            .map_err(Into::into)
         })
     }
 }
