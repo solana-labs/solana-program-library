@@ -120,7 +120,10 @@ pub trait SimulateTransactionRpc: SimulateTransaction {
 }
 
 #[derive(Debug, Clone, Copy, Default)]
-pub struct ProgramRpcClientSendTransaction;
+pub struct ProgramRpcClientSendTransaction {
+    /// Confirm the transaction after sending it
+    confirm: bool,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RpcClientResponse {
