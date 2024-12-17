@@ -126,7 +126,8 @@ pub struct ProgramRpcClientSendTransaction {
 }
 
 impl ProgramRpcClientSendTransaction {
-    /// Create an instance that sends the transaction **without** waiting for confirmation.
+    /// Create an instance that sends the transaction **without** waiting for
+    /// confirmation.
     pub fn new() -> Self {
         Self::default()
     }
