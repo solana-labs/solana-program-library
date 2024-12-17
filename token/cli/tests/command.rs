@@ -190,9 +190,11 @@ fn test_config_with_default_signer<'a>(
 ) -> Config<'a> {
     let websocket_url = test_validator.rpc_pubsub_url();
     let rpc_client = Arc::new(test_validator.get_async_rpc_client());
-    let program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>> = Arc::new(
-        ProgramRpcClient::new(rpc_client.clone(), ProgramRpcClientSendTransaction),
-    );
+    let program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>> =
+        Arc::new(ProgramRpcClient::new(
+            rpc_client.clone(),
+            ProgramRpcClientSendTransaction::new_with_confirmation(),
+        ));
     Config {
         rpc_client,
         program_client,
@@ -219,9 +221,11 @@ fn test_config_without_default_signer<'a>(
 ) -> Config<'a> {
     let websocket_url = test_validator.rpc_pubsub_url();
     let rpc_client = Arc::new(test_validator.get_async_rpc_client());
-    let program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>> = Arc::new(
-        ProgramRpcClient::new(rpc_client.clone(), ProgramRpcClientSendTransaction),
-    );
+    let program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>> =
+        Arc::new(ProgramRpcClient::new(
+            rpc_client.clone(),
+            ProgramRpcClientSendTransaction::new_with_confirmation(),
+        ));
     Config {
         rpc_client,
         program_client,
@@ -3132,7 +3136,7 @@ async fn do_offline_multisig_transfer(
         let offline_program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>> =
             Arc::new(ProgramOfflineClient::new(
                 blockhash,
-                ProgramRpcClientSendTransaction,
+                ProgramRpcClientSendTransaction::new_with_confirmation(),
             ));
         let mut args = vec![
             "spl-token".to_string(),
@@ -3192,9 +3196,11 @@ async fn do_offline_multisig_transfer(
         assert!(!absent_signers.contains(&token.to_string()));
 
         // now send the transaction
-        let rpc_program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>> = Arc::new(
-            ProgramRpcClient::new(config.rpc_client.clone(), ProgramRpcClientSendTransaction),
-        );
+        let rpc_program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>> =
+            Arc::new(ProgramRpcClient::new(
+                config.rpc_client.clone(),
+                ProgramRpcClientSendTransaction::new_with_confirmation(),
+            ));
         config.program_client = rpc_program_client;
         let mut args = vec![
             "spl-token".to_string(),
@@ -3849,9 +3855,11 @@ async fn transfer_hook(test_validator: &TestValidator, payer: &Keypair) {
     // Make sure that parsing transfer hook accounts works
     let real_program_client = config.program_client;
     let blockhash = Hash::default();
-    let program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>> = Arc::new(
-        ProgramOfflineClient::new(blockhash, ProgramRpcClientSendTransaction),
-    );
+    let program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>> =
+        Arc::new(ProgramOfflineClient::new(
+            blockhash,
+            ProgramRpcClientSendTransaction::new_with_confirmation(),
+        ));
     config.program_client = program_client;
     let _result = exec_test_cmd(
         &config,
@@ -3965,9 +3973,11 @@ async fn transfer_hook_with_transfer_fee(test_validator: &TestValidator, payer: 
 
     // Make sure that parsing transfer hook accounts and expected-fee works
     let blockhash = Hash::default();
-    let program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>> = Arc::new(
-        ProgramOfflineClient::new(blockhash, ProgramRpcClientSendTransaction),
-    );
+    let program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>> =
+        Arc::new(ProgramOfflineClient::new(
+            blockhash,
+            ProgramRpcClientSendTransaction::new_with_confirmation(),
+        ));
     config.program_client = program_client;
 
     let _result = exec_test_cmd(

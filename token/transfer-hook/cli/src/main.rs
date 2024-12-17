@@ -601,7 +601,7 @@ mod test {
         let rpc_client = Arc::new(test_validator.get_async_rpc_client());
         let client = Arc::new(ProgramRpcClient::new(
             rpc_client.clone(),
-            ProgramRpcClientSendTransaction,
+            ProgramRpcClientSendTransaction::new_with_confirmation(),
         ));
 
         let token = Token::new(
