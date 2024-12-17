@@ -14,7 +14,7 @@ walkdir = "2"
 [dependencies]
 base64 = "0.22.1"
 clap = "3.2.23"
-console = "0.15.9"
+console = "0.15.10"
 futures = "0.3"
 serde = "1.0.216"
 serde_derive = "1.0.103"
