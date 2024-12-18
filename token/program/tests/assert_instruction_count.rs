@@ -1,332 +1,201 @@
 #![cfg(feature = "test-sbf")]
 
-mod action;
+mod setup;
+
 use {
-    solana_program_test::{processor, tokio, ProgramTest},
+    mollusk_svm::{result::Check, Mollusk},
     solana_sdk::{
+        account::{AccountSharedData, ReadableAccount},
         program_pack::Pack,
         pubkey::Pubkey,
-        signature::{Keypair, Signer},
-        system_instruction,
-        transaction::Transaction,
     },
     spl_token::{
         id, instruction,
-        processor::Processor,
         state::{Account, Mint},
     },
 };
 
 const TRANSFER_AMOUNT: u64 = 1_000_000_000_000_000;
 
-#[tokio::test]
-async fn initialize_mint() {
-    let mut pt = ProgramTest::new("spl_token", id(), processor!(Processor::process));
-    pt.set_compute_max_units(5_000); // last known 2252
-    let (banks_client, payer, recent_blockhash) = pt.start().await;
+#[test]
+fn initialize_mint() {
+    let mut mollusk = Mollusk::new(&id(), "spl_token");
+    mollusk.compute_budget.compute_unit_limit = 5_000; // last known 2252
 
-    let owner_key = Pubkey::new_unique();
-    let mint = Keypair::new();
+    let owner = Pubkey::new_unique();
+    let mint = Pubkey::new_unique();
     let decimals = 9;
 
-    let rent = banks_client.get_rent().await.unwrap();
-    let mint_rent = rent.minimum_balance(Mint::LEN);
-    let transaction = Transaction::new_signed_with_payer(
-        &[system_instruction::create_account(
-            &payer.pubkey(),
-            &mint.pubkey(),
-            mint_rent,
-            Mint::LEN as u64,
-            &id(),
-        )],
-        Some(&payer.pubkey()),
-        &[&payer, &mint],
-        recent_blockhash,
-    );
-    banks_client.process_transaction(transaction).await.unwrap();
+    let mint_account = {
+        let space = Mint::LEN;
+        let lamports = mollusk.sysvars.rent.minimum_balance(space);
+        AccountSharedData::new(lamports, space, &id())
+    };
 
-    let transaction = Transaction::new_signed_with_payer(
+    mollusk.process_and_validate_instruction(
+        &instruction::initialize_mint(&id(), &mint, &owner, None, decimals).unwrap(),
         &[
-            instruction::initialize_mint(&id(), &mint.pubkey(), &owner_key, None, decimals)
-                .unwrap(),
+            (mint, mint_account),
+            mollusk.sysvars.keyed_account_for_rent_sysvar(),
         ],
-        Some(&payer.pubkey()),
-        &[&payer],
-        recent_blockhash,
+        &[
+            Check::success(),
+            Check::account(&mint)
+                .data(setup::setup_mint_account(Some(&owner), None, 0, decimals).data())
+                .build(),
+        ],
     );
-    banks_client.process_transaction(transaction).await.unwrap();
 }
 
-#[tokio::test]
-async fn initialize_account() {
-    let mut pt = ProgramTest::new("spl_token", id(), processor!(Processor::process));
-    pt.set_compute_max_units(6_000); // last known 3284
-    let (mut banks_client, payer, recent_blockhash) = pt.start().await;
+#[test]
+fn initialize_account() {
+    let mut mollusk = Mollusk::new(&id(), "spl_token");
+    mollusk.compute_budget.compute_unit_limit = 6_000; // last known 3284
 
-    let owner = Keypair::new();
-    let mint = Keypair::new();
-    let account = Keypair::new();
+    let owner = Pubkey::new_unique();
+    let mint = Pubkey::new_unique();
+    let account = Pubkey::new_unique();
     let decimals = 9;
 
-    action::create_mint(
-        &mut banks_client,
-        &payer,
-        recent_blockhash,
-        &mint,
-        &owner.pubkey(),
-        decimals,
-    )
-    .await
-    .unwrap();
-    let rent = banks_client.get_rent().await.unwrap();
-    let account_rent = rent.minimum_balance(Account::LEN);
-    let transaction = Transaction::new_signed_with_payer(
-        &[system_instruction::create_account(
-            &payer.pubkey(),
-            &account.pubkey(),
-            account_rent,
-            Account::LEN as u64,
-            &id(),
-        )],
-        Some(&payer.pubkey()),
-        &[&payer, &account],
-        recent_blockhash,
-    );
-    banks_client.process_transaction(transaction).await.unwrap();
+    let mint_account = setup::setup_mint_account(None, None, 0, decimals);
+    let token_account = {
+        let space = Account::LEN;
+        let lamports = mollusk.sysvars.rent.minimum_balance(space);
+        AccountSharedData::new(lamports, space, &id())
+    };
 
-    let transaction = Transaction::new_signed_with_payer(
-        &[instruction::initialize_account(
-            &id(),
-            &account.pubkey(),
-            &mint.pubkey(),
-            &owner.pubkey(),
-        )
-        .unwrap()],
-        Some(&payer.pubkey()),
-        &[&payer],
-        recent_blockhash,
+    mollusk.process_and_validate_instruction(
+        &instruction::initialize_account(&id(), &account, &mint, &owner).unwrap(),
+        &[
+            (account, token_account),
+            (mint, mint_account),
+            (owner, AccountSharedData::default()),
+            mollusk.sysvars.keyed_account_for_rent_sysvar(),
+        ],
+        &[
+            Check::success(),
+            Check::account(&account)
+                .data(setup::setup_token_account(&mint, &owner, 0).data())
+                .build(),
+        ],
     );
-    banks_client.process_transaction(transaction).await.unwrap();
 }
 
-#[tokio::test]
-async fn mint_to() {
-    let mut pt = ProgramTest::new("spl_token", id(), processor!(Processor::process));
-    pt.set_compute_max_units(6_000); // last known 2668
-    let (mut banks_client, payer, recent_blockhash) = pt.start().await;
+#[test]
+fn mint_to() {
+    let mut mollusk = Mollusk::new(&id(), "spl_token");
+    mollusk.compute_budget.compute_unit_limit = 6_000; // last known 2668
 
-    let owner = Keypair::new();
-    let mint = Keypair::new();
-    let account = Keypair::new();
+    let owner = Pubkey::new_unique();
+    let mint = Pubkey::new_unique();
+    let account = Pubkey::new_unique();
     let decimals = 9;
 
-    action::create_mint(
-        &mut banks_client,
-        &payer,
-        recent_blockhash,
-        &mint,
-        &owner.pubkey(),
-        decimals,
-    )
-    .await
-    .unwrap();
-    action::create_account(
-        &mut banks_client,
-        &payer,
-        recent_blockhash,
-        &account,
-        &mint.pubkey(),
-        &owner.pubkey(),
-    )
-    .await
-    .unwrap();
+    let mint_account = setup::setup_mint_account(Some(&owner), None, 0, decimals);
+    let token_account = setup::setup_token_account(&mint, &owner, 0);
 
-    let transaction = Transaction::new_signed_with_payer(
-        &[instruction::mint_to(
-            &id(),
-            &mint.pubkey(),
-            &account.pubkey(),
-            &owner.pubkey(),
-            &[],
-            TRANSFER_AMOUNT,
-        )
-        .unwrap()],
-        Some(&payer.pubkey()),
-        &[&payer, &owner],
-        recent_blockhash,
+    mollusk.process_and_validate_instruction(
+        &instruction::mint_to(&id(), &mint, &account, &owner, &[], TRANSFER_AMOUNT).unwrap(),
+        &[
+            (mint, mint_account),
+            (account, token_account),
+            (owner, AccountSharedData::default()),
+        ],
+        &[
+            Check::success(),
+            Check::account(&mint)
+                .data(
+                    setup::setup_mint_account(Some(&owner), None, TRANSFER_AMOUNT, decimals).data(),
+                )
+                .build(),
+            Check::account(&account)
+                .data(setup::setup_token_account(&mint, &owner, TRANSFER_AMOUNT).data())
+                .build(),
+        ],
     );
-    banks_client.process_transaction(transaction).await.unwrap();
 }
 
-#[tokio::test]
-async fn transfer() {
-    let mut pt = ProgramTest::new("spl_token", id(), processor!(Processor::process));
-    pt.set_compute_max_units(7_000); // last known 2972
-    let (mut banks_client, payer, recent_blockhash) = pt.start().await;
+#[test]
+fn transfer() {
+    let mut mollusk = Mollusk::new(&id(), "spl_token");
+    mollusk.compute_budget.compute_unit_limit = 7_000; // last known 2972
 
-    let owner = Keypair::new();
-    let mint = Keypair::new();
-    let source = Keypair::new();
-    let destination = Keypair::new();
-    let decimals = 9;
+    let owner = Pubkey::new_unique();
+    let mint = Pubkey::new_unique();
+    let source = Pubkey::new_unique();
+    let destination = Pubkey::new_unique();
 
-    action::create_mint(
-        &mut banks_client,
-        &payer,
-        recent_blockhash,
-        &mint,
-        &owner.pubkey(),
-        decimals,
-    )
-    .await
-    .unwrap();
-    action::create_account(
-        &mut banks_client,
-        &payer,
-        recent_blockhash,
-        &source,
-        &mint.pubkey(),
-        &owner.pubkey(),
-    )
-    .await
-    .unwrap();
-    action::create_account(
-        &mut banks_client,
-        &payer,
-        recent_blockhash,
-        &destination,
-        &mint.pubkey(),
-        &owner.pubkey(),
-    )
-    .await
-    .unwrap();
+    let source_token_account = setup::setup_token_account(&mint, &owner, TRANSFER_AMOUNT);
+    let destination_token_account = setup::setup_token_account(&mint, &owner, 0);
 
-    action::mint_to(
-        &mut banks_client,
-        &payer,
-        recent_blockhash,
-        &mint.pubkey(),
-        &source.pubkey(),
-        &owner,
-        TRANSFER_AMOUNT,
-    )
-    .await
-    .unwrap();
-
-    action::transfer(
-        &mut banks_client,
-        &payer,
-        recent_blockhash,
-        &source.pubkey(),
-        &destination.pubkey(),
-        &owner,
-        TRANSFER_AMOUNT,
-    )
-    .await
-    .unwrap();
-}
-
-#[tokio::test]
-async fn burn() {
-    let mut pt = ProgramTest::new("spl_token", id(), processor!(Processor::process));
-    pt.set_compute_max_units(6_000); // last known 2655
-    let (mut banks_client, payer, recent_blockhash) = pt.start().await;
-
-    let owner = Keypair::new();
-    let mint = Keypair::new();
-    let account = Keypair::new();
-    let decimals = 9;
-
-    action::create_mint(
-        &mut banks_client,
-        &payer,
-        recent_blockhash,
-        &mint,
-        &owner.pubkey(),
-        decimals,
-    )
-    .await
-    .unwrap();
-    action::create_account(
-        &mut banks_client,
-        &payer,
-        recent_blockhash,
-        &account,
-        &mint.pubkey(),
-        &owner.pubkey(),
-    )
-    .await
-    .unwrap();
-
-    action::mint_to(
-        &mut banks_client,
-        &payer,
-        recent_blockhash,
-        &mint.pubkey(),
-        &account.pubkey(),
-        &owner,
-        TRANSFER_AMOUNT,
-    )
-    .await
-    .unwrap();
-
-    action::burn(
-        &mut banks_client,
-        &payer,
-        recent_blockhash,
-        &mint.pubkey(),
-        &account.pubkey(),
-        &owner,
-        TRANSFER_AMOUNT,
-    )
-    .await
-    .unwrap();
-}
-
-#[tokio::test]
-async fn close_account() {
-    let mut pt = ProgramTest::new("spl_token", id(), processor!(Processor::process));
-    pt.set_compute_max_units(6_000); // last known 1783
-    let (mut banks_client, payer, recent_blockhash) = pt.start().await;
-
-    let owner = Keypair::new();
-    let mint = Keypair::new();
-    let account = Keypair::new();
-    let decimals = 9;
-
-    action::create_mint(
-        &mut banks_client,
-        &payer,
-        recent_blockhash,
-        &mint,
-        &owner.pubkey(),
-        decimals,
-    )
-    .await
-    .unwrap();
-    action::create_account(
-        &mut banks_client,
-        &payer,
-        recent_blockhash,
-        &account,
-        &mint.pubkey(),
-        &owner.pubkey(),
-    )
-    .await
-    .unwrap();
-
-    let transaction = Transaction::new_signed_with_payer(
-        &[instruction::close_account(
-            &id(),
-            &account.pubkey(),
-            &owner.pubkey(),
-            &owner.pubkey(),
-            &[],
-        )
-        .unwrap()],
-        Some(&payer.pubkey()),
-        &[&payer, &owner],
-        recent_blockhash,
+    mollusk.process_and_validate_instruction(
+        &instruction::transfer(&id(), &source, &destination, &owner, &[], TRANSFER_AMOUNT).unwrap(),
+        &[
+            (source, source_token_account),
+            (destination, destination_token_account),
+            (owner, AccountSharedData::default()),
+        ],
+        &[
+            Check::success(),
+            Check::account(&source)
+                .data(setup::setup_token_account(&mint, &owner, 0).data())
+                .build(),
+            Check::account(&destination)
+                .data(setup::setup_token_account(&mint, &owner, TRANSFER_AMOUNT).data())
+                .build(),
+        ],
     );
-    banks_client.process_transaction(transaction).await.unwrap();
+}
+
+#[test]
+fn burn() {
+    let mut mollusk = Mollusk::new(&id(), "spl_token");
+    mollusk.compute_budget.compute_unit_limit = 6_000; // last known 2655
+
+    let owner = Pubkey::new_unique();
+    let mint = Pubkey::new_unique();
+    let account = Pubkey::new_unique();
+    let decimals = 9;
+
+    let mint_account = setup::setup_mint_account(None, None, TRANSFER_AMOUNT, decimals);
+    let token_account = setup::setup_token_account(&mint, &owner, TRANSFER_AMOUNT);
+
+    mollusk.process_and_validate_instruction(
+        &instruction::burn(&id(), &account, &mint, &owner, &[], TRANSFER_AMOUNT).unwrap(),
+        &[
+            (mint, mint_account),
+            (account, token_account),
+            (owner, AccountSharedData::default()),
+        ],
+        &[
+            Check::success(),
+            Check::account(&account)
+                .data(setup::setup_token_account(&mint, &owner, 0).data())
+                .build(),
+        ],
+    );
+}
+
+#[test]
+fn close_account() {
+    let mut mollusk = Mollusk::new(&id(), "spl_token");
+    mollusk.compute_budget.compute_unit_limit = 6_000; // last known 1783
+
+    let owner = Pubkey::new_unique();
+    let mint = Pubkey::new_unique();
+    let account = Pubkey::new_unique();
+    let decimals = 9;
+
+    let mint_account = setup::setup_mint_account(None, None, 0, decimals);
+    let token_account = setup::setup_token_account(&mint, &owner, 0);
+
+    mollusk.process_and_validate_instruction(
+        &instruction::close_account(&id(), &account, &owner, &owner, &[]).unwrap(),
+        &[
+            (mint, mint_account),
+            (account, token_account),
+            (owner, AccountSharedData::default()),
+        ],
+        &[Check::success(), Check::account(&account).closed().build()],
+    );
 }
