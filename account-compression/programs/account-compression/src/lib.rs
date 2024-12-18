@@ -240,7 +240,7 @@ pub mod spl_account_compression {
     /// The canopy should be filled with all the nodes that are to the left of the rightmost
     /// leaf of the tree before calling `init_prepared_tree_with_root`. The canopy should not
     /// contain any nodes to the right of the rightmost leaf of the tree.
-    /// This instruction calculates and filles in all the canopy nodes "above" the provided ones.
+    /// This instruction calculates and fills in all the canopy nodes "above" the provided ones.
     /// The validation of the canopy is done in the `init_prepared_tree_with_root` instruction.
     pub fn append_canopy_nodes(
         ctx: Context<Modify>,
@@ -309,7 +309,7 @@ pub mod spl_account_compression {
         let (tree_bytes, canopy_bytes) = rest.split_at_mut(merkle_tree_size);
         // check the canopy root matches the tree root
         check_canopy_root(canopy_bytes, &root, header.get_max_depth())?;
-        // verify the canopy does not conain any nodes to the right of the rightmost leaf
+        // verify the canopy does not contain any nodes to the right of the rightmost leaf
         check_canopy_no_nodes_to_right_of_index(
             canopy_bytes,
             header.get_max_depth(),
