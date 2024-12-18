@@ -21,7 +21,7 @@ export class MerkleTree {
     /**
      * Please use `MerkleTree.sparseMerkleTreeFromLeaves` to
      * create trees instead. This method is exposed for testing purposes,
-     * and for those that are familiar with the MerkleTree data structure.
+     * and for those who are familiar with the MerkleTree data structure.
      * @param leaves leaf nodes of the tree
      */
     constructor(leaves: Buffer[]) {
