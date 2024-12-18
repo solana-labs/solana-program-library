@@ -7,7 +7,7 @@
 //! and buffer size from the header information stored on-chain. Usage of the
 //! macros directly is discouraged, as they have huge match statements with
 //! every case taking it's own stack frame. Instead, use the exported functions
-//! from this module and refenrece or Box the arguments to the functions to
+//! from this module and reference or Box the arguments to the functions to
 //! avoid the stack frame explosion.
 
 pub use crate::error::AccountCompressionError;
@@ -87,7 +87,7 @@ pub fn merkle_tree_append_leaf(
     merkle_tree_apply_fn_mut!(header, tree_id, tree_bytes, append, *args)
 }
 
-/// Checks whether the tree in not initialized yet without doing the deserialization. A rought
+/// Checks whether the tree in not initialized yet without doing the deserialization. A rough
 /// equivalent to deserializing the tree and calling is_initialized() on it without the heavy
 /// lifting with macros. An empty account is a zero'd account. The tree is considered empty if the
 /// tree_bytes are all 0. A regular non-batch initialized tree is initialized early on when the
