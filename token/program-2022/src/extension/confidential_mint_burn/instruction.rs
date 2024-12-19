@@ -421,7 +421,7 @@ pub fn confidential_mint_with_split_proofs(
 ) -> Result<Vec<Instruction>, ProgramError> {
     check_program_account(token_program_id)?;
     let mut accounts = vec![AccountMeta::new(*token_account, false)];
-    // we only need write lock to adjust confidential suppy on
+    // we only need write lock to adjust confidential supply on
     // mint if a value for supply_elgamal_pubkey has been set
     if supply_elgamal_pubkey.is_some() {
         accounts.push(AccountMeta::new(*mint, false));
