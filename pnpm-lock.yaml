@@ -10,7 +10,7 @@ importers:
     devDependencies:
       '@solana/eslint-config-solana':
         specifier: ^4.0.0
-        version: 4.0.0(@eslint/js@9.13.0)(@types/eslint__js@8.42.3)(eslint-plugin-jest@28.9.0)(eslint-plugin-react-hooks@5.0.0)(eslint-plugin-simple-import-sort@12.1.1)(eslint-plugin-sort-keys-fix@1.1.2)(eslint-plugin-typescript-sort-keys@3.3.0)(eslint@9.13.0)(globals@15.11.0)(jest@30.0.0-alpha.6)(typescript-eslint@8.12.2)(typescript@5.7.2)
+        version: 4.0.0(@eslint/js@9.13.0)(@types/eslint__js@8.42.3)(eslint-plugin-jest@28.10.0)(eslint-plugin-react-hooks@5.0.0)(eslint-plugin-simple-import-sort@12.1.1)(eslint-plugin-sort-keys-fix@1.1.2)(eslint-plugin-typescript-sort-keys@3.3.0)(eslint@9.13.0)(globals@15.11.0)(jest@30.0.0-alpha.6)(typescript-eslint@8.12.2)(typescript@5.7.2)
       '@solana/prettier-config-solana':
         specifier: ^0.0.5
         version: 0.0.5(prettier@3.4.2)
@@ -62,7 +62,7 @@ importers:
         version: 0.20.1
       '@solana/eslint-config-solana':
         specifier: ^3.0.3
-        version: 3.0.6(@typescript-eslint/eslint-plugin@8.12.2)(@typescript-eslint/parser@8.12.2)(eslint-plugin-jest@28.9.0)(eslint-plugin-react-hooks@4.6.2)(eslint-plugin-simple-import-sort@12.1.1)(eslint-plugin-sort-keys-fix@1.1.2)(eslint-plugin-typescript-sort-keys@3.3.0)(eslint@8.57.0)(typescript@5.7.2)
+        version: 3.0.6(@typescript-eslint/eslint-plugin@8.12.2)(@typescript-eslint/parser@8.12.2)(eslint-plugin-jest@28.10.0)(eslint-plugin-react-hooks@4.6.2)(eslint-plugin-simple-import-sort@12.1.1)(eslint-plugin-sort-keys-fix@1.1.2)(eslint-plugin-typescript-sort-keys@3.3.0)(eslint@8.57.0)(typescript@5.7.2)
       '@types/bn.js':
         specifier: ^5.1.6
         version: 5.1.6
@@ -91,8 +91,8 @@ importers:
         specifier: ^2.31.0
         version: 2.31.0(@typescript-eslint/parser@8.12.2)(eslint@8.57.0)
       eslint-plugin-jest:
-        specifier: ^28.9.0
-        version: 28.9.0(@typescript-eslint/eslint-plugin@8.12.2)(eslint@8.57.0)(jest@29.7.0)(typescript@5.7.2)
+        specifier: ^28.10.0
+        version: 28.10.0(@typescript-eslint/eslint-plugin@8.12.2)(eslint@8.57.0)(jest@29.7.0)(typescript@5.7.2)
       eslint-plugin-mocha:
         specifier: ^10.5.0
         version: 10.5.0(eslint@8.57.0)
@@ -2609,7 +2609,7 @@ packages:
       commander: 12.1.0
       typescript: 5.7.2
 
-  /@solana/eslint-config-solana@3.0.6(@typescript-eslint/eslint-plugin@8.12.2)(@typescript-eslint/parser@8.12.2)(eslint-plugin-jest@28.9.0)(eslint-plugin-react-hooks@4.6.2)(eslint-plugin-simple-import-sort@12.1.1)(eslint-plugin-sort-keys-fix@1.1.2)(eslint-plugin-typescript-sort-keys@3.3.0)(eslint@8.57.0)(typescript@5.7.2):
+  /@solana/eslint-config-solana@3.0.6(@typescript-eslint/eslint-plugin@8.12.2)(@typescript-eslint/parser@8.12.2)(eslint-plugin-jest@28.10.0)(eslint-plugin-react-hooks@4.6.2)(eslint-plugin-simple-import-sort@12.1.1)(eslint-plugin-sort-keys-fix@1.1.2)(eslint-plugin-typescript-sort-keys@3.3.0)(eslint@8.57.0)(typescript@5.7.2):
     resolution: {integrity: sha512-3u024DkukJCfzUfOgN1EmWzVZLaZtgRLJ52FEdQmIG8NYOzLpaIJFgQvjYXWQlnK6ycIcSn/MesHG6sbKkMtTQ==}
     peerDependencies:
       '@typescript-eslint/eslint-plugin': ^7.0.0
@@ -2625,7 +2625,7 @@ packages:
       '@typescript-eslint/eslint-plugin': 8.12.2(@typescript-eslint/parser@8.12.2)(eslint@8.57.0)(typescript@5.7.2)
       '@typescript-eslint/parser': 8.12.2(eslint@8.57.0)(typescript@5.7.2)
       eslint: 8.57.0
-      eslint-plugin-jest: 28.9.0(@typescript-eslint/eslint-plugin@8.12.2)(eslint@8.57.0)(jest@29.7.0)(typescript@5.7.2)
+      eslint-plugin-jest: 28.10.0(@typescript-eslint/eslint-plugin@8.12.2)(eslint@8.57.0)(jest@29.7.0)(typescript@5.7.2)
       eslint-plugin-react-hooks: 4.6.2(eslint@8.57.0)
       eslint-plugin-simple-import-sort: 12.1.1(eslint@8.57.0)
       eslint-plugin-sort-keys-fix: 1.1.2
@@ -2633,7 +2633,7 @@ packages:
       typescript: 5.7.2
     dev: true
 
-  /@solana/eslint-config-solana@4.0.0(@eslint/js@9.13.0)(@types/eslint__js@8.42.3)(eslint-plugin-jest@28.9.0)(eslint-plugin-react-hooks@5.0.0)(eslint-plugin-simple-import-sort@12.1.1)(eslint-plugin-sort-keys-fix@1.1.2)(eslint-plugin-typescript-sort-keys@3.3.0)(eslint@9.13.0)(globals@15.11.0)(jest@30.0.0-alpha.6)(typescript-eslint@8.12.2)(typescript@5.7.2):
+  /@solana/eslint-config-solana@4.0.0(@eslint/js@9.13.0)(@types/eslint__js@8.42.3)(eslint-plugin-jest@28.10.0)(eslint-plugin-react-hooks@5.0.0)(eslint-plugin-simple-import-sort@12.1.1)(eslint-plugin-sort-keys-fix@1.1.2)(eslint-plugin-typescript-sort-keys@3.3.0)(eslint@9.13.0)(globals@15.11.0)(jest@30.0.0-alpha.6)(typescript-eslint@8.12.2)(typescript@5.7.2):
     resolution: {integrity: sha512-kDhd7uOsby+7Gffenn0EBeE692s2cwPe0/Lv1BsdfeniDM4NxBcfIXLQFB8iCCvdFWrO9b+0SMuGrhRHdgTDQQ==}
     peerDependencies:
       '@eslint/js': ^9.13.0
@@ -2652,7 +2652,7 @@ packages:
       '@eslint/js': 9.13.0
       '@types/eslint__js': 8.42.3
       eslint: 9.13.0
-      eslint-plugin-jest: 28.9.0(eslint@9.13.0)(jest@30.0.0-alpha.6)(typescript@5.7.2)
+      eslint-plugin-jest: 28.10.0(eslint@9.13.0)(jest@30.0.0-alpha.6)(typescript@5.7.2)
       eslint-plugin-react-hooks: 5.0.0(eslint@9.13.0)
       eslint-plugin-simple-import-sort: 12.1.1(eslint@9.13.0)
       eslint-plugin-sort-keys-fix: 1.1.2
@@ -5042,8 +5042,8 @@ packages:
       - supports-color
     dev: true
 
-  /eslint-plugin-jest@28.9.0(@typescript-eslint/eslint-plugin@8.12.2)(eslint@8.57.0)(jest@29.7.0)(typescript@5.7.2):
-    resolution: {integrity: sha512-rLu1s1Wf96TgUUxSw6loVIkNtUjq1Re7A9QdCCHSohnvXEBAjuL420h0T/fMmkQlNsQP2GhQzEUpYHPfxBkvYQ==}
+  /eslint-plugin-jest@28.10.0(@typescript-eslint/eslint-plugin@8.12.2)(eslint@8.57.0)(jest@29.7.0)(typescript@5.7.2):
+    resolution: {integrity: sha512-hyMWUxkBH99HpXT3p8hc7REbEZK3D+nk8vHXGgpB+XXsi0gO4PxMSP+pjfUzb67GnV9yawV9a53eUmcde1CCZA==}
     engines: {node: ^16.10.0 || ^18.12.0 || >=20.0.0}
     peerDependencies:
       '@typescript-eslint/eslint-plugin': ^6.0.0 || ^7.0.0 || ^8.0.0
@@ -5064,8 +5064,8 @@ packages:
       - typescript
     dev: true
 
-  /eslint-plugin-jest@28.9.0(eslint@9.13.0)(jest@30.0.0-alpha.6)(typescript@5.7.2):
-    resolution: {integrity: sha512-rLu1s1Wf96TgUUxSw6loVIkNtUjq1Re7A9QdCCHSohnvXEBAjuL420h0T/fMmkQlNsQP2GhQzEUpYHPfxBkvYQ==}
+  /eslint-plugin-jest@28.10.0(eslint@9.13.0)(jest@30.0.0-alpha.6)(typescript@5.7.2):
+    resolution: {integrity: sha512-hyMWUxkBH99HpXT3p8hc7REbEZK3D+nk8vHXGgpB+XXsi0gO4PxMSP+pjfUzb67GnV9yawV9a53eUmcde1CCZA==}
     engines: {node: ^16.10.0 || ^18.12.0 || >=20.0.0}
     peerDependencies:
       '@typescript-eslint/eslint-plugin': ^6.0.0 || ^7.0.0 || ^8.0.0
