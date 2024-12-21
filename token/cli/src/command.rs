@@ -6,6 +6,7 @@ use {
         config::{Config, MintInfo},
         encryption_keypair::*,
         output::*,
+        print_error_and_exit,
         sort::{sort_and_parse_token_accounts, AccountFilter},
     },
     clap::{value_t, value_t_or_exit, ArgMatches},
@@ -17,7 +18,7 @@ use {
         UiAccountData,
     },
     solana_clap_v3_utils::{
-        input_parsers::{pubkey_of_signer, pubkeys_of_multiple_signers, Amount},
+        input_parsers::{pubkey_of_signer, signer::SignerSource, Amount},
         keypair::signer_from_path,
     },
     solana_cli_output::{
@@ -78,11 +79,6 @@ use {
     spl_token_metadata_interface::state::{Field, TokenMetadata},
     std::{collections::HashMap, fmt::Display, process::exit, rc::Rc, str::FromStr, sync::Arc},
 };
-
-fn print_error_and_exit<T, E: Display>(e: E) -> T {
-    eprintln!("error: {}", e);
-    exit(1)
-}
 
 fn amount_to_raw_amount(amount: Amount, decimals: u8, all_amount: Option<u64>, name: &str) -> u64 {
     match amount {
@@ -3566,9 +3562,15 @@ pub async fn process_command<'a>(
                 config.pubkey_or_default(arg_matches, "mint_authority", &mut wallet_manager)?;
             let memo = value_t!(arg_matches, "memo", String).ok();
             let rate_bps = value_t!(arg_matches, "interest_rate", i16).ok();
-            let metadata_address = value_t!(arg_matches, "metadata_address", Pubkey).ok();
-            let group_address = value_t!(arg_matches, "group_address", Pubkey).ok();
-            let member_address = value_t!(arg_matches, "member_address", Pubkey).ok();
+            let metadata_address =
+                SignerSource::try_get_pubkey(arg_matches, "metadata_address", &mut wallet_manager)
+                    .unwrap();
+            let group_address =
+                SignerSource::try_get_pubkey(arg_matches, "group_address", &mut wallet_manager)
+                    .unwrap();
+            let member_address =
+                SignerSource::try_get_pubkey(arg_matches, "member_address", &mut wallet_manager)
+                    .unwrap();
 
             let transfer_fee = arg_matches.values_of("transfer_fee").map(|mut v| {
                 println_display(config,"transfer-fee has been deprecated and will be removed in a future release. Please specify --transfer-fee-basis-points and --transfer-fee-maximum-fee with a UI amount".to_string());
@@ -3605,7 +3607,8 @@ pub async fn process_command<'a>(
                         _ => unreachable!(),
                     });
             let transfer_hook_program_id =
-                pubkey_of_signer(arg_matches, "transfer_hook", &mut wallet_manager).unwrap();
+                SignerSource::try_get_pubkey(arg_matches, "transfer_hook", &mut wallet_manager)
+                    .unwrap();
 
             let confidential_transfer_auto_approve = arg_matches
                 .value_of("enable_confidential_transfers")
@@ -3637,9 +3640,10 @@ pub async fn process_command<'a>(
             .await
         }
         (CommandName::SetInterestRate, arg_matches) => {
-            let token_pubkey = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
-                .unwrap()
-                .unwrap();
+            let token_pubkey =
+                SignerSource::try_get_pubkey(arg_matches, "token", &mut wallet_manager)
+                    .unwrap()
+                    .unwrap();
             let rate_bps = value_t_or_exit!(arg_matches, "rate", i16);
             let (rate_authority_signer, rate_authority_pubkey) =
                 config.signer_or_default(arg_matches, "rate_authority", &mut wallet_manager);
@@ -3655,11 +3659,13 @@ pub async fn process_command<'a>(
             .await
         }
         (CommandName::SetTransferHook, arg_matches) => {
-            let token_pubkey = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
-                .unwrap()
-                .unwrap();
+            let token_pubkey =
+                SignerSource::try_get_pubkey(arg_matches, "token", &mut wallet_manager)
+                    .unwrap()
+                    .unwrap();
             let new_program_id =
-                pubkey_of_signer(arg_matches, "new_program_id", &mut wallet_manager).unwrap();
+                SignerSource::try_get_pubkey(arg_matches, "new_program_id", &mut wallet_manager)
+                    .unwrap();
             let (authority_signer, authority_pubkey) =
                 config.signer_or_default(arg_matches, "authority", &mut wallet_manager);
             let bulk_signers = vec![authority_signer];
@@ -3674,9 +3680,10 @@ pub async fn process_command<'a>(
             .await
         }
         (CommandName::InitializeMetadata, arg_matches) => {
-            let token_pubkey = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
-                .unwrap()
-                .unwrap();
+            let token_pubkey =
+                SignerSource::try_get_pubkey(arg_matches, "token", &mut wallet_manager)
+                    .unwrap()
+                    .unwrap();
             let name = arg_matches.value_of("name").unwrap().to_string();
             let symbol = arg_matches.value_of("symbol").unwrap().to_string();
             let uri = arg_matches.value_of("uri").unwrap().to_string();
@@ -3699,9 +3706,10 @@ pub async fn process_command<'a>(
             .await
         }
         (CommandName::UpdateMetadata, arg_matches) => {
-            let token_pubkey = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
-                .unwrap()
-                .unwrap();
+            let token_pubkey =
+                SignerSource::try_get_pubkey(arg_matches, "token", &mut wallet_manager)
+                    .unwrap()
+                    .unwrap();
             let (authority_signer, authority) =
                 config.signer_or_default(arg_matches, "authority", &mut wallet_manager);
             let field = arg_matches.value_of("field").unwrap();
@@ -3729,9 +3737,10 @@ pub async fn process_command<'a>(
             .await
         }
         (CommandName::InitializeGroup, arg_matches) => {
-            let token_pubkey = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
-                .unwrap()
-                .unwrap();
+            let token_pubkey =
+                SignerSource::try_get_pubkey(arg_matches, "token", &mut wallet_manager)
+                    .unwrap()
+                    .unwrap();
             let max_size = *arg_matches.get_one::<u64>("max_size").unwrap();
             let (mint_authority_signer, mint_authority) =
                 config.signer_or_default(arg_matches, "mint_authority", &mut wallet_manager);
@@ -3750,9 +3759,10 @@ pub async fn process_command<'a>(
             .await
         }
         (CommandName::UpdateGroupMaxSize, arg_matches) => {
-            let token_pubkey = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
-                .unwrap()
-                .unwrap();
+            let token_pubkey =
+                SignerSource::try_get_pubkey(arg_matches, "token", &mut wallet_manager)
+                    .unwrap()
+                    .unwrap();
             let new_max_size = *arg_matches.get_one::<u64>("new_max_size").unwrap();
             let (update_authority_signer, update_authority) =
                 config.signer_or_default(arg_matches, "update_authority", &mut wallet_manager);
@@ -3768,11 +3778,12 @@ pub async fn process_command<'a>(
             .await
         }
         (CommandName::InitializeMember, arg_matches) => {
-            let member_token_pubkey = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
-                .unwrap()
-                .unwrap();
+            let member_token_pubkey =
+                SignerSource::try_get_pubkey(arg_matches, "token", &mut wallet_manager)
+                    .unwrap()
+                    .unwrap();
             let group_token_pubkey =
-                pubkey_of_signer(arg_matches, "group_token", &mut wallet_manager)
+                SignerSource::try_get_pubkey(arg_matches, "group_token", &mut wallet_manager)
                     .unwrap()
                     .unwrap();
             let (mint_authority_signer, mint_authority) =
@@ -3796,7 +3807,7 @@ pub async fn process_command<'a>(
             .await
         }
         (CommandName::CreateAccount, arg_matches) => {
-            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+            let token = SignerSource::try_get_pubkey(arg_matches, "token", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
 
@@ -3825,9 +3836,9 @@ pub async fn process_command<'a>(
                 .map(|v: &String| v.parse::<u8>().unwrap())
                 .unwrap();
             let multisig_members =
-                pubkeys_of_multiple_signers(arg_matches, "multisig_member", &mut wallet_manager)
+                SignerSource::try_get_pubkeys(arg_matches, "multisig_member", &mut wallet_manager)
                     .unwrap_or_else(print_error_and_exit)
-                    .unwrap();
+                    .unwrap_or_default();
             if minimum_signers as usize > multisig_members.len() {
                 eprintln!(
                     "error: MINIMUM_SIGNERS cannot be greater than the number \
@@ -3842,7 +3853,7 @@ pub async fn process_command<'a>(
             command_create_multisig(config, signer, minimum_signers, multisig_members).await
         }
         (CommandName::Authorize, arg_matches) => {
-            let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager)
+            let address = SignerSource::try_get_pubkey(arg_matches, "address", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
             let authority_type = arg_matches.value_of("authority_type").unwrap();
@@ -3855,7 +3866,8 @@ pub async fn process_command<'a>(
             }
 
             let new_authority =
-                pubkey_of_signer(arg_matches, "new_authority", &mut wallet_manager).unwrap();
+                SignerSource::try_get_pubkey(arg_matches, "new_authority", &mut wallet_manager)
+                    .unwrap();
             let force_authorize = arg_matches.is_present("force");
             command_authorize(
                 config,
@@ -3869,14 +3881,16 @@ pub async fn process_command<'a>(
             .await
         }
         (CommandName::Transfer, arg_matches) => {
-            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+            let token = SignerSource::try_get_pubkey(arg_matches, "token", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
             let amount = *arg_matches.get_one::<Amount>("amount").unwrap();
-            let recipient = pubkey_of_signer(arg_matches, "recipient", &mut wallet_manager)
-                .unwrap()
-                .unwrap();
-            let sender = pubkey_of_signer(arg_matches, "from", &mut wallet_manager).unwrap();
+            let recipient =
+                SignerSource::try_get_pubkey(arg_matches, "recipient", &mut wallet_manager)
+                    .unwrap()
+                    .unwrap();
+            let sender =
+                SignerSource::try_get_pubkey(arg_matches, "from", &mut wallet_manager).unwrap();
 
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
@@ -3921,11 +3935,13 @@ pub async fn process_command<'a>(
             let use_unchecked_instruction = arg_matches.is_present("use_unchecked_instruction");
             let expected_fee = arg_matches.get_one::<Amount>("expected_fee").copied();
             let memo = value_t!(arg_matches, "memo", String).ok();
-            let transfer_hook_accounts = arg_matches.values_of("transfer_hook_account").map(|v| {
-                v.into_iter()
-                    .map(|s| parse_transfer_hook_account(s).unwrap())
-                    .collect::<Vec<_>>()
-            });
+            let transfer_hook_accounts = arg_matches
+                .get_many::<TransferHookAccount>("transfer_hook_account")
+                .map(|v| {
+                    v.into_iter()
+                        .map(|account| account.create_account_meta())
+                        .collect::<Vec<_>>()
+                });
 
             command_transfer(
                 config,
@@ -3950,7 +3966,7 @@ pub async fn process_command<'a>(
             .await
         }
         (CommandName::Burn, arg_matches) => {
-            let account = pubkey_of_signer(arg_matches, "account", &mut wallet_manager)
+            let account = SignerSource::try_get_pubkey(arg_matches, "account", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
 
@@ -3988,18 +4004,19 @@ pub async fn process_command<'a>(
                 push_signer_with_dedup(mint_authority_signer, &mut bulk_signers);
             }
 
-            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+            let token = SignerSource::try_get_pubkey(arg_matches, "token", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
             let amount = *arg_matches.get_one::<Amount>("amount").unwrap();
             let mint_decimals = arg_matches.get_one::<u8>(MINT_DECIMALS_ARG.name).copied();
             let mint_info = config.get_mint_info(&token, mint_decimals).await?;
             let recipient = if let Some(address) =
-                pubkey_of_signer(arg_matches, "recipient", &mut wallet_manager).unwrap()
+                SignerSource::try_get_pubkey(arg_matches, "recipient", &mut wallet_manager).unwrap()
             {
                 address
             } else if let Some(address) =
-                pubkey_of_signer(arg_matches, "recipient_owner", &mut wallet_manager).unwrap()
+                SignerSource::try_get_pubkey(arg_matches, "recipient_owner", &mut wallet_manager)
+                    .unwrap()
             {
                 get_associated_token_address_with_program_id(&address, &token, &config.program_id)
             } else {
@@ -4033,7 +4050,7 @@ pub async fn process_command<'a>(
                 push_signer_with_dedup(freeze_authority_signer, &mut bulk_signers);
             }
 
-            let account = pubkey_of_signer(arg_matches, "account", &mut wallet_manager)
+            let account = SignerSource::try_get_pubkey(arg_matches, "account", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
             let mint_address =
@@ -4054,7 +4071,7 @@ pub async fn process_command<'a>(
                 push_signer_with_dedup(freeze_authority_signer, &mut bulk_signers);
             }
 
-            let account = pubkey_of_signer(arg_matches, "account", &mut wallet_manager)
+            let account = SignerSource::try_get_pubkey(arg_matches, "account", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
             let mint_address =
@@ -4098,7 +4115,8 @@ pub async fn process_command<'a>(
                 config.signer_or_default(arg_matches, "wallet_keypair", &mut wallet_manager);
             push_signer_with_dedup(wallet_signer, &mut bulk_signers);
 
-            let account = pubkey_of_signer(arg_matches, "account", &mut wallet_manager).unwrap();
+            let account =
+                SignerSource::try_get_pubkey(arg_matches, "account", &mut wallet_manager).unwrap();
             command_unwrap(config, wallet_address, account, bulk_signers).await
         }
         (CommandName::Approve, arg_matches) => {
@@ -4108,15 +4126,20 @@ pub async fn process_command<'a>(
                 push_signer_with_dedup(owner_signer, &mut bulk_signers);
             }
 
-            let account = pubkey_of_signer(arg_matches, "account", &mut wallet_manager)
+            let account = SignerSource::try_get_pubkey(arg_matches, "account", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
             let amount = *arg_matches.get_one::<Amount>("amount").unwrap();
-            let delegate = pubkey_of_signer(arg_matches, "delegate", &mut wallet_manager)
-                .unwrap()
-                .unwrap();
-            let mint_address =
-                pubkey_of_signer(arg_matches, MINT_ADDRESS_ARG.name, &mut wallet_manager).unwrap();
+            let delegate =
+                SignerSource::try_get_pubkey(arg_matches, "delegate", &mut wallet_manager)
+                    .unwrap()
+                    .unwrap();
+            let mint_address = SignerSource::try_get_pubkey(
+                arg_matches,
+                MINT_ADDRESS_ARG.name,
+                &mut wallet_manager,
+            )
+            .unwrap();
             let mint_decimals = arg_matches
                 .get_one(MINT_DECIMALS_ARG.name)
                 .map(|v: &String| v.parse::<u8>().unwrap());
@@ -4141,7 +4164,7 @@ pub async fn process_command<'a>(
                 push_signer_with_dedup(owner_signer, &mut bulk_signers);
             }
 
-            let account = pubkey_of_signer(arg_matches, "account", &mut wallet_manager)
+            let account = SignerSource::try_get_pubkey(arg_matches, "account", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
             let delegate_address =
@@ -4171,7 +4194,7 @@ pub async fn process_command<'a>(
             command_close(config, address, close_authority, recipient, bulk_signers).await
         }
         (CommandName::CloseMint, arg_matches) => {
-            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+            let token = SignerSource::try_get_pubkey(arg_matches, "token", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
             let (close_authority_signer, close_authority) =
@@ -4191,13 +4214,14 @@ pub async fn process_command<'a>(
             command_balance(config, address).await
         }
         (CommandName::Supply, arg_matches) => {
-            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+            let token = SignerSource::try_get_pubkey(arg_matches, "token", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
             command_supply(config, token).await
         }
         (CommandName::Accounts, arg_matches) => {
-            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager).unwrap();
+            let token =
+                SignerSource::try_get_pubkey(arg_matches, "token", &mut wallet_manager).unwrap();
             let owner = config.pubkey_or_default(arg_matches, "owner", &mut wallet_manager)?;
             let filter = if arg_matches.is_present("delegated") {
                 AccountFilter::Delegated
@@ -4217,7 +4241,8 @@ pub async fn process_command<'a>(
             .await
         }
         (CommandName::Address, arg_matches) => {
-            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager).unwrap();
+            let token =
+                SignerSource::try_get_pubkey(arg_matches, "token", &mut wallet_manager).unwrap();
             let owner = config.pubkey_or_default(arg_matches, "owner", &mut wallet_manager)?;
             command_address(config, token, owner).await
         }
@@ -4228,13 +4253,13 @@ pub async fn process_command<'a>(
             command_display(config, address).await
         }
         (CommandName::MultisigInfo, arg_matches) => {
-            let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager)
+            let address = SignerSource::try_get_pubkey(arg_matches, "address", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
             command_display(config, address).await
         }
         (CommandName::Display, arg_matches) => {
-            let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager)
+            let address = SignerSource::try_get_pubkey(arg_matches, "address", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
             command_display(config, address).await
@@ -4325,7 +4350,7 @@ pub async fn process_command<'a>(
         }
         (CommandName::UpdateDefaultAccountState, arg_matches) => {
             // Since account is required argument it will always be present
-            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+            let token = SignerSource::try_get_pubkey(arg_matches, "token", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
             let (freeze_authority_signer, freeze_authority) =
@@ -4350,7 +4375,7 @@ pub async fn process_command<'a>(
         }
         (CommandName::UpdateMetadataAddress, arg_matches) => {
             // Since account is required argument it will always be present
-            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+            let token = SignerSource::try_get_pubkey(arg_matches, "token", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
 
@@ -4359,7 +4384,9 @@ pub async fn process_command<'a>(
             if config.multisigner_pubkeys.is_empty() {
                 push_signer_with_dedup(authority_signer, &mut bulk_signers);
             }
-            let metadata_address = value_t!(arg_matches, "metadata_address", Pubkey).ok();
+            let metadata_address =
+                SignerSource::try_get_pubkey(arg_matches, "metadata_address", &mut wallet_manager)
+                    .unwrap();
 
             command_update_pointer_address(
                 config,
@@ -4373,7 +4400,7 @@ pub async fn process_command<'a>(
         }
         (CommandName::UpdateGroupAddress, arg_matches) => {
             // Since account is required argument it will always be present
-            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+            let token = SignerSource::try_get_pubkey(arg_matches, "token", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
 
@@ -4382,7 +4409,9 @@ pub async fn process_command<'a>(
             if config.multisigner_pubkeys.is_empty() {
                 push_signer_with_dedup(authority_signer, &mut bulk_signers);
             }
-            let group_address = value_t!(arg_matches, "group_address", Pubkey).ok();
+            let group_address =
+                SignerSource::try_get_pubkey(arg_matches, "group_address", &mut wallet_manager)
+                    .unwrap();
 
             command_update_pointer_address(
                 config,
@@ -4396,7 +4425,7 @@ pub async fn process_command<'a>(
         }
         (CommandName::UpdateMemberAddress, arg_matches) => {
             // Since account is required argument it will always be present
-            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+            let token = SignerSource::try_get_pubkey(arg_matches, "token", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
 
@@ -4405,7 +4434,9 @@ pub async fn process_command<'a>(
             if config.multisigner_pubkeys.is_empty() {
                 push_signer_with_dedup(authority_signer, &mut bulk_signers);
             }
-            let member_address = value_t!(arg_matches, "member_address", Pubkey).ok();
+            let member_address =
+                SignerSource::try_get_pubkey(arg_matches, "member_address", &mut wallet_manager)
+                    .unwrap();
 
             command_update_pointer_address(
                 config,
@@ -4428,15 +4459,14 @@ pub async fn process_command<'a>(
             }
             // Since destination is required it will always be present
             let destination_token_account =
-                pubkey_of_signer(arg_matches, "account", &mut wallet_manager)
+                SignerSource::try_get_pubkey(arg_matches, "account", &mut wallet_manager)
                     .unwrap()
                     .unwrap();
             let include_mint = arg_matches.is_present("include_mint");
-            let source_accounts = arg_matches
-                .values_of("source")
-                .unwrap_or_default()
-                .map(|s| Pubkey::from_str(s).unwrap_or_else(print_error_and_exit))
-                .collect::<Vec<_>>();
+            let source_accounts =
+                SignerSource::try_get_pubkeys(arg_matches, "source", &mut wallet_manager)
+                    .unwrap()
+                    .unwrap_or_default();
             command_withdraw_withheld_tokens(
                 config,
                 destination_token_account,
@@ -4448,9 +4478,10 @@ pub async fn process_command<'a>(
             .await
         }
         (CommandName::SetTransferFee, arg_matches) => {
-            let token_pubkey = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
-                .unwrap()
-                .unwrap();
+            let token_pubkey =
+                SignerSource::try_get_pubkey(arg_matches, "token", &mut wallet_manager)
+                    .unwrap()
+                    .unwrap();
             let transfer_fee_basis_points =
                 value_t_or_exit!(arg_matches, "transfer_fee_basis_points", u16);
             let maximum_fee = *arg_matches.get_one::<Amount>("maximum_fee").unwrap();
@@ -4485,9 +4516,10 @@ pub async fn process_command<'a>(
                 .await
         }
         (CommandName::UpdateConfidentialTransferSettings, arg_matches) => {
-            let token_pubkey = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
-                .unwrap()
-                .unwrap();
+            let token_pubkey =
+                SignerSource::try_get_pubkey(arg_matches, "token", &mut wallet_manager)
+                    .unwrap()
+                    .unwrap();
 
             let auto_approve = arg_matches.value_of("approve_policy").map(|b| b == "auto");
 
@@ -4515,12 +4547,14 @@ pub async fn process_command<'a>(
             .await
         }
         (CommandName::ConfigureConfidentialTransferAccount, arg_matches) => {
-            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager).unwrap();
+            let token =
+                SignerSource::try_get_pubkey(arg_matches, "token", &mut wallet_manager).unwrap();
 
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
 
-            let account = pubkey_of_signer(arg_matches, "address", &mut wallet_manager).unwrap();
+            let account =
+                SignerSource::try_get_pubkey(arg_matches, "address", &mut wallet_manager).unwrap();
 
             // Deriving ElGamal and AES key from signer. Custom ElGamal and AES keys will be
             // supported in the future once upgrading to clap-v3.
@@ -4561,12 +4595,14 @@ pub async fn process_command<'a>(
         | (c @ CommandName::DisableConfidentialCredits, arg_matches)
         | (c @ CommandName::EnableNonConfidentialCredits, arg_matches)
         | (c @ CommandName::DisableNonConfidentialCredits, arg_matches) => {
-            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager).unwrap();
+            let token =
+                SignerSource::try_get_pubkey(arg_matches, "token", &mut wallet_manager).unwrap();
 
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
 
-            let account = pubkey_of_signer(arg_matches, "address", &mut wallet_manager).unwrap();
+            let account =
+                SignerSource::try_get_pubkey(arg_matches, "address", &mut wallet_manager).unwrap();
 
             if config.multisigner_pubkeys.is_empty() {
                 push_signer_with_dedup(owner_signer, &mut bulk_signers);
@@ -4593,11 +4629,12 @@ pub async fn process_command<'a>(
         }
         (c @ CommandName::DepositConfidentialTokens, arg_matches)
         | (c @ CommandName::WithdrawConfidentialTokens, arg_matches) => {
-            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+            let token = SignerSource::try_get_pubkey(arg_matches, "token", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
             let amount = *arg_matches.get_one::<Amount>("amount").unwrap();
-            let account = pubkey_of_signer(arg_matches, "address", &mut wallet_manager).unwrap();
+            let account =
+                SignerSource::try_get_pubkey(arg_matches, "address", &mut wallet_manager).unwrap();
 
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
@@ -4645,12 +4682,14 @@ pub async fn process_command<'a>(
             .await
         }
         (CommandName::ApplyPendingBalance, arg_matches) => {
-            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager).unwrap();
+            let token =
+                SignerSource::try_get_pubkey(arg_matches, "token", &mut wallet_manager).unwrap();
 
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
 
-            let account = pubkey_of_signer(arg_matches, "address", &mut wallet_manager).unwrap();
+            let account =
+                SignerSource::try_get_pubkey(arg_matches, "address", &mut wallet_manager).unwrap();
 
             // Deriving ElGamal and AES key from signer. Custom ElGamal and AES keys will be
             // supported in the future once upgrading to clap-v3.
