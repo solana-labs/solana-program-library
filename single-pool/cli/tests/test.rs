@@ -56,7 +56,7 @@ async fn setup(initialize: bool) -> Env {
     let rpc_client = Arc::new(validator.get_async_rpc_client());
     let program_client: PClient = Arc::new(ProgramRpcClient::new(
         rpc_client.clone(),
-        ProgramRpcClientSendTransaction,
+        ProgramRpcClientSendTransaction::new_with_confirmation(),
     ));
 
     // write the payer to disk

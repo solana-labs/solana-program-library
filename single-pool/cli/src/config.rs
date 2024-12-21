@@ -65,7 +65,7 @@ impl Config {
         // and program client
         let program_client = Arc::new(ProgramRpcClient::new(
             rpc_client.clone(),
-            ProgramRpcClientSendTransaction,
+            ProgramRpcClientSendTransaction::new_with_confirmation(),
         ));
 
         // resolve default signer
