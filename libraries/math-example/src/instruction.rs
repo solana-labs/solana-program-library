@@ -40,7 +40,7 @@ pub enum MathInstruction {
     U64Multiply {
         /// The multiplicand
         multiplicand: u64,
-        /// The multipier
+        /// The multiplier
         multiplier: u64,
     },
     /// Divide two u64 values
@@ -58,7 +58,7 @@ pub enum MathInstruction {
     F32Multiply {
         /// The multiplicand
         multiplicand: f32,
-        /// The multipier
+        /// The multiplier
         multiplier: f32,
     },
     /// Divide two float values
@@ -113,7 +113,7 @@ pub enum MathInstruction {
     U128Multiply {
         /// The multiplicand
         multiplicand: u128,
-        /// The multipier
+        /// The multiplier
         multiplier: u128,
     },
     /// Divide two u128 values
@@ -131,7 +131,7 @@ pub enum MathInstruction {
     F64Multiply {
         /// The multiplicand
         multiplicand: f64,
-        /// The multipier
+        /// The multiplier
         multiplier: f64,
     },
     /// Divide two f64 values
