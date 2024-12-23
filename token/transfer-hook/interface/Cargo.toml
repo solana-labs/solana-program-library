@@ -9,7 +9,7 @@ edition = "2021"
 
 [dependencies]
 arrayref = "0.3.9"
-bytemuck = { version = "1.20.0", features = ["derive"] }
+bytemuck = { version = "1.21.0", features = ["derive"] }
 num-derive = "0.4"
 num-traits = "0.2"
 solana-account-info = "2.1.0"

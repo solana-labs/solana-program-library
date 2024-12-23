@@ -12,7 +12,7 @@ serde-traits = ["dep:serde"]
 test-sbf = []
 
 [dependencies]
-bytemuck = { version = "1.20.0", features = ["derive"] }
+bytemuck = { version = "1.21.0", features = ["derive"] }
 num-derive = "0.4"
 num-traits = "0.2"
 serde = { version = "1.0.216", optional = true }

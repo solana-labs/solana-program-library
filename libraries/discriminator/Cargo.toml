@@ -12,7 +12,7 @@ borsh = ["dep:borsh"]
 
 [dependencies]
 borsh = { version = "1", optional = true }
-bytemuck = { version = "1.20.0", features = ["derive"] }
+bytemuck = { version = "1.21.0", features = ["derive"] }
 solana-program-error = "2.1.0"
 solana-sha256-hasher = "2.1.0"
 spl-discriminator-derive = { version = "0.2.0", path = "./derive" }
