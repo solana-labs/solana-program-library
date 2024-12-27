@@ -57,7 +57,7 @@ impl MintProofContext {
 
         // The range proof context consists of the Pedersen commitments and bit-lengths
         // for which the range proof is proved. The commitments must consist of
-        // two commitments pertaining to the
+        // two commitments pertaining to the the
         // low bits of the mint amount, and high bits of the mint
         // amount. These commitments must be checked for bit lengths `16` and
         // and `32`.
