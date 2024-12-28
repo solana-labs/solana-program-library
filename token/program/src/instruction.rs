@@ -360,7 +360,7 @@ pub enum TokenInstruction<'a> {
     ///
     ///   0. `[writable]`  The account to initialize.
     ///   1. `[]` The mint this account will be associated with.
-    ///   3. `[]` Rent sysvar
+    ///   2. `[]` Rent sysvar
     InitializeAccount2 {
         /// The new account's owner/multisignature.
         owner: Pubkey,
