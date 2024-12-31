@@ -55,7 +55,7 @@
         "@types/mocha": "^10.0.10",
         "@types/node": "^22.10.2",
         "@typescript-eslint/eslint-plugin": "^8.4.0",
-        "@typescript-eslint/parser": "^8.4.0",
+        "@typescript-eslint/parser": "^8.19.0",
         "chai": "^5.1.2",
         "eslint": "^8.57.0",
         "eslint-plugin-require-extensions": "^0.1.1",
