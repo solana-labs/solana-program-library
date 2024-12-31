@@ -46,7 +46,7 @@
     "@types/bn.js": "^5.1.6",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.10.2",
-    "@typescript-eslint/eslint-plugin": "^8.4.0",
+    "@typescript-eslint/eslint-plugin": "^8.19.0",
     "@typescript-eslint/parser": "^8.4.0",
     "eslint": "^8.57.0",
     "eslint-plugin-eslint-comments": "^3.2.0",
