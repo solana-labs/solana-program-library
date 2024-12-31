@@ -28,6 +28,7 @@ members = [
   "feature-proposal/cli",
   "governance/addin-mock/program",
   "governance/addin-api",
+  "governance/cli",
   "governance/program",
   "governance/test-sdk",
   "governance/tools",
