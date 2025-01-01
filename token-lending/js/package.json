@@ -47,7 +47,7 @@
         "@solana/spl-token": "0.4.9",
         "@solana/web3.js": "^1.95.5",
         "@types/eslint": "^8.56.7",
-        "@types/node": "^22.10.2",
+        "@types/node": "^22.10.3",
         "@typescript-eslint/eslint-plugin": "^8.4.0",
         "@typescript-eslint/parser": "^8.4.0",
         "eslint": "^8.57.0",

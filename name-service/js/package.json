@@ -45,7 +45,7 @@
     "@jest/globals": "^29.7.0",
     "@types/bn.js": "^5.1.6",
     "@types/jest": "^29.5.14",
-    "@types/node": "^22.10.2",
+    "@types/node": "^22.10.3",
     "@typescript-eslint/eslint-plugin": "^8.4.0",
     "@typescript-eslint/parser": "^8.4.0",
     "eslint": "^8.57.0",
