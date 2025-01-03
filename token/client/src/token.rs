@@ -595,6 +595,9 @@ where
         let units_consumed = simulation_result
             .get_compute_units_consumed()
             .map_err(TokenError::Client)?;
+        if let Some(err) = simulation_result.err() {
+            return Err(TokenError::Client(err));
+        }
         // Overwrite the compute unit limit instruction with the actual units consumed
         let compute_unit_limit =
             u32::try_from(units_consumed).map_err(|x| TokenError::Client(x.into()))?;
