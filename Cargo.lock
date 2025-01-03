@@ -8066,6 +8066,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-governance-cli"
+version = "0.0.1"
+dependencies = [
+ "clap 2.34.0",
+ "solana-clap-utils",
+ "solana-cli-config",
+ "solana-client",
+ "solana-logger",
+ "solana-sdk",
+ "spl-governance",
+]
+
+[[package]]
 name = "spl-governance-test-sdk"
 version = "0.1.4"
 dependencies = [
