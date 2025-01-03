@@ -2,7 +2,7 @@
 use {
     crate::{clap_app::Error, command::CommandResult, config::Config},
     clap::ArgMatches,
-    solana_clap_v3_utils::input_parsers::{pubkey_of_signer, Amount},
+    solana_clap_v3_utils::input_parsers::{signer::SignerSource, Amount},
     solana_client::{
         nonblocking::rpc_client::RpcClient, rpc_client::RpcClient as BlockingRpcClient,
         tpu_client::TpuClient, tpu_client::TpuClientConfig,
@@ -31,7 +31,7 @@ pub(crate) async fn bench_process_command(
 
     match matches.subcommand() {
         Some(("create-accounts", arg_matches)) => {
-            let token = pubkey_of_signer(arg_matches, "token", wallet_manager)
+            let token = SignerSource::try_get_pubkey(arg_matches, "token", wallet_manager)
                 .unwrap()
                 .unwrap();
             let n = *arg_matches.get_one::<usize>("n").unwrap();
@@ -43,7 +43,7 @@ pub(crate) async fn bench_process_command(
             command_create_accounts(config, signers, &token, n, &owner).await?;
         }
         Some(("close-accounts", arg_matches)) => {
-            let token = pubkey_of_signer(arg_matches, "token", wallet_manager)
+            let token = SignerSource::try_get_pubkey(arg_matches, "token", wallet_manager)
                 .unwrap()
                 .unwrap();
             let n = *arg_matches.get_one::<usize>("n").unwrap();
@@ -54,7 +54,7 @@ pub(crate) async fn bench_process_command(
             command_close_accounts(config, signers, &token, n, &owner).await?;
         }
         Some(("deposit-into", arg_matches)) => {
-            let token = pubkey_of_signer(arg_matches, "token", wallet_manager)
+            let token = SignerSource::try_get_pubkey(arg_matches, "token", wallet_manager)
                 .unwrap()
                 .unwrap();
             let n = *arg_matches.get_one::<usize>("n").unwrap();
@@ -62,14 +62,14 @@ pub(crate) async fn bench_process_command(
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", wallet_manager);
             signers.push(owner_signer);
-            let from = pubkey_of_signer(arg_matches, "from", wallet_manager).unwrap();
+            let from = SignerSource::try_get_pubkey(arg_matches, "from", wallet_manager).unwrap();
             command_deposit_into_or_withdraw_from(
                 config, signers, &token, n, &owner, ui_amount, from, true,
             )
             .await?;
         }
         Some(("withdraw-from", arg_matches)) => {
-            let token = pubkey_of_signer(arg_matches, "token", wallet_manager)
+            let token = SignerSource::try_get_pubkey(arg_matches, "token", wallet_manager)
                 .unwrap()
                 .unwrap();
             let n = *arg_matches.get_one::<usize>("n").unwrap();
@@ -77,7 +77,7 @@ pub(crate) async fn bench_process_command(
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", wallet_manager);
             signers.push(owner_signer);
-            let to = pubkey_of_signer(arg_matches, "to", wallet_manager).unwrap();
+            let to = SignerSource::try_get_pubkey(arg_matches, "to", wallet_manager).unwrap();
             command_deposit_into_or_withdraw_from(
                 config, signers, &token, n, &owner, ui_amount, to, false,
             )
