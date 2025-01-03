@@ -74,7 +74,7 @@
         "chai-as-promised": "^8.0.1",
         "eslint": "^8.57.0",
         "eslint-plugin-require-extensions": "^0.1.1",
-        "gh-pages": "^6.2.0",
+        "gh-pages": "^6.3.0",
         "mocha": "^11.0.1",
         "process": "^0.11.10",
         "shx": "^0.3.4",

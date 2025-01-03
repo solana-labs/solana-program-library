@@ -51,7 +51,7 @@
         "@typescript-eslint/eslint-plugin": "^8.4.0",
         "@typescript-eslint/parser": "^8.4.0",
         "eslint": "^8.57.0",
-        "gh-pages": "^6.2.0",
+        "gh-pages": "^6.3.0",
         "rollup": "^4.29.1",
         "ts-node": "^10.9.2",
         "tslib": "^2.8.1",

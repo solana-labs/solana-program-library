@@ -55,7 +55,7 @@
         "chai": "^5.1.2",
         "eslint": "^8.57.0",
         "eslint-plugin-require-extensions": "^0.1.1",
-        "gh-pages": "^6.2.0",
+        "gh-pages": "^6.3.0",
         "mocha": "^11.0.1",
         "shx": "^0.3.4",
         "ts-node": "^10.9.2",
