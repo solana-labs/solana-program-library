@@ -48,7 +48,7 @@ impl<'a> SlashingProofData<'a> for DuplicateBlockProofData<'a> {
     fn verify_proof(self, slot: Slot, _node_pubkey: &Pubkey) -> Result<(), SlashingError> {
         // TODO: verify through instruction inspection that the shreds were sigverified
         // earlier in this transaction.
-        // Ed25519 Singature verification is performed on the merkle root:
+        // Ed25519 Signature verification is performed on the merkle root:
         // node_pubkey.verify_strict(merkle_root, signature).
         // We will verify that the pubkey merkle root and signature match the shred and
         // that the verification was successful.
@@ -721,7 +721,7 @@ mod tests {
 
     #[test]
     fn test_retransmitter_signature_payload_proof_invalid() {
-        // TODO: change visbility of shred::layout::set_retransmitter_signature.
+        // TODO: change visibility of shred::layout::set_retransmitter_signature.
         // Hardcode offsets for now;
         const DATA_SHRED_OFFSET: usize = 1139;
         const CODING_SHRED_OFFSET: usize = 1164;
