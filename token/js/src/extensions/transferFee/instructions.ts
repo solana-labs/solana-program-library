@@ -1,4 +1,4 @@
-import { struct, u16, u8 } from '@solana/buffer-layout';
+import { Layout, struct, u16, u8 } from '@solana/buffer-layout';
 import { u64 } from '@solana/buffer-layout-utils';
 import type { AccountMeta, Signer, PublicKey } from '@solana/web3.js';
 import { TransactionInstruction } from '@solana/web3.js';
@@ -44,6 +44,22 @@ export const initializeTransferFeeConfigInstructionData = struct<InitializeTrans
     u16('transferFeeBasisPoints'),
     u64('maximumFee'),
 ]);
+
+function computeCombinationOfSpans(combinations: number[], fields: Layout<any>[], index: number, partialResult: number): number[] {
+    if (index >= fields.length) {
+        combinations.push(partialResult);
+        return combinations;
+    }
+    if (fields[index] instanceof COptionPublicKeyLayout) {
+        computeCombinationOfSpans(fields, index + 1, partialResult + COptionPublicKeyLayout.spanWhenNull);
+        computeCombinationOfSpans(fields, index + 1, partialResult + COptionPublicKeyLayout.spanWithValue);
+    } else {
+        computeCombinationOfSpans(fields, index + 1, partialResult + fields[index].span);
+    }
+    return combinations;
+}
+
+const ALLOWED_SPANS = new Set<number>(computeCombinationOfSpans([], initializeTransferFeeConfigInstructionData.fields, 0, 0));
 
 /**
  * Construct an InitializeTransferFeeConfig instruction
@@ -115,7 +131,7 @@ export function decodeInitializeTransferFeeConfigInstruction(
     programId: PublicKey,
 ): DecodedInitializeTransferFeeConfigInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
-    if (instruction.data.length !== initializeTransferFeeConfigInstructionData.span)
+    if (!ALLOWED_SPANS.has(instruction.data.length))
         throw new TokenInvalidInstructionDataError();
 
     const {
