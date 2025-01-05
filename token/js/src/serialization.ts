@@ -1,4 +1,4 @@
-import { Layout } from '@solana/buffer-layout';
+import { Layout, Structure } from '@solana/buffer-layout';
 import { publicKey } from '@solana/buffer-layout-utils';
 import type { PublicKey } from '@solana/web3.js';
 
@@ -44,4 +44,24 @@ export class COptionPublicKeyLayout extends Layout<PublicKey | null> {
         }
         return 1 + COptionPublicKeyLayout.spanWithValue;
     }
+}
+
+function computeCombinationsOfSpans(combinations: number[], fields: Layout<any>[], index: number, partialResult: number): number[] {
+    if (index >= fields.length) {
+        combinations.push(partialResult);
+        return combinations;
+    }
+    if (fields[index] instanceof COptionPublicKeyLayout) {
+        computeCombinationsOfSpans(combinations, fields, index + 1, partialResult + COptionPublicKeyLayout.spanWhenNull);
+        computeCombinationsOfSpans(combinations, fields, index + 1, partialResult + COptionPublicKeyLayout.spanWithValue);
+    } else {
+        computeCombinationsOfSpans(combinations, fields, index + 1, partialResult + fields[index].span);
+    }
+    return combinations;
+}
+
+export getSetOfPossibleSpans(struct: Structure): Set<number {
+    return new Set<number>(
+        computeCombinationsOfSpans([], struct.fields, 0, 0)
+    );
 }

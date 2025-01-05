@@ -10,7 +10,7 @@ import {
     TokenInvalidInstructionTypeError,
 } from '../errors.js';
 import { TokenInstruction } from './types.js';
-import { COptionPublicKeyLayout } from '../serialization.js';
+import { COptionPublicKeyLayout, getSetOfPossibleSpans } from '../serialization.js';
 
 /** TODO: docs */
 export interface InitializeMintInstructionData {
@@ -20,20 +20,15 @@ export interface InitializeMintInstructionData {
     freezeAuthority: PublicKey | null;
 }
 
-const requiredFields: Layout<number | PublicKey | null>[] = [
+/** TODO: docs */
+export const initializeMintInstructionData = struct<InitializeMintInstructionData>([
     u8('instruction'),
     u8('decimals'),
     publicKey('mintAuthority'),
-];
-
-const SPAN_WITHOUT_FREEZE_AUTHORITY = struct<InitializeMintInstructionData>(requiredFields).span + COptionPublicKeyLayout.spanWhenNull;
-const SPAN_WITH_FREEZE_AUTHORITY = struct<InitializeMintInstructionData>(requiredFields).span + COptionPublicKeyLayout.spanWithValue;
-
-/** TODO: docs */
-export const initializeMintInstructionData = struct<InitializeMintInstructionData>([
-    ...requiredFields,
     new COptionPublicKeyLayout('freezeAuthority'),
 ]);
+
+const ALLOWED_SPANS = getSetOfPossibleSpans(initializeTransferFeeConfigInstructionData);
 
 /**
  * Construct an InitializeMint instruction
@@ -100,8 +95,7 @@ export function decodeInitializeMintInstruction(
     programId = TOKEN_PROGRAM_ID,
 ): DecodedInitializeMintInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
-    if (instruction.data.length !== SPAN_WITHOUT_FREEZE_AUTHORITY
-        && instruction.data.length !== SPAN_WITH_FREEZE_AUTHORITY) throw new TokenInvalidInstructionDataError();
+    if (!ALLOWED_SPANS.has(instruction.data.length)) throw new TokenInvalidInstructionDataError();
 
     const {
         keys: { mint, rent },

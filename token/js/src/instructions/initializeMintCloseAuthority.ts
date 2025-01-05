@@ -10,7 +10,7 @@ import {
     TokenUnsupportedInstructionError,
 } from '../errors.js';
 import { TokenInstruction } from './types.js';
-import { COptionPublicKeyLayout } from '../serialization.js';
+import { COptionPublicKeyLayout, getSetOfPossibleSpans } from '../serialization.js';
 
 /** TODO: docs */
 export interface InitializeMintCloseAuthorityInstructionData {
@@ -18,18 +18,13 @@ export interface InitializeMintCloseAuthorityInstructionData {
     closeAuthority: PublicKey | null;
 }
 
-const requiredFields: Layout<number>[] = [
-    u8('instruction')
-];
-
-const SPAN_WITHOUT_CLOSE_AUTHORITY = struct<InitializeMintCloseAuthorityInstructionData>(requiredFields).span + COptionPublicKeyLayout.spanWhenNull;
-const SPAN_WITH_CLOSE_AUTHORITY = struct<InitializeMintCloseAuthorityInstructionData>(requiredFields).span + COptionPublicKeyLayout.spanWithValue;
-
 /** TODO: docs */
 export const initializeMintCloseAuthorityInstructionData = struct<InitializeMintCloseAuthorityInstructionData>([
-    ...requiredFields,
+    u8('instruction'),
     new COptionPublicKeyLayout('closeAuthority'),
 ]);
+
+const ALLOWED_SPANS = getSetOfPossibleSpans(initializeTransferFeeConfigInstructionData);
 
 /**
  * Construct an InitializeMintCloseAuthority instruction
@@ -87,9 +82,7 @@ export function decodeInitializeMintCloseAuthorityInstruction(
     programId: PublicKey,
 ): DecodedInitializeMintCloseAuthorityInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
-    if (instruction.data.length !== SPAN_WITHOUT_CLOSE_AUTHORITY
-        && instruction.data.length !== SPAN_WITH_CLOSE_AUTHORITY)
-        throw new TokenInvalidInstructionDataError();
+    if (!ALLOWED_SPANS.has(instruction.data.length)) throw new TokenInvalidInstructionDataError();
 
     const {
         keys: { mint },

@@ -11,7 +11,7 @@ import {
 } from '../errors.js';
 import { addSigners } from './internal.js';
 import { TokenInstruction } from './types.js';
-import { COptionPublicKeyLayout } from '../serialization.js';
+import { COptionPublicKeyLayout, getSetOfPossibleSpans } from '../serialization.js';
 
 /** Authority types defined by the program */
 export enum AuthorityType {
@@ -39,19 +39,14 @@ export interface SetAuthorityInstructionData {
     newAuthority: PublicKey | null;
 }
 
-const requiredFields: Layout<number>[] = [
-    u8('instruction'),
-    u8('authorityType'),
-];
-
-const SPAN_WITHOUT_NEW_AUTHORITY = struct<SetAuthorityInstructionData>(requiredFields).span + COptionPublicKeyLayout.spanWhenNull;
-const SPAN_WITH_NEW_AUTHORITY = struct<SetAuthorityInstructionData>(requiredFields).span + COptionPublicKeyLayout.spanWithValue;
-
 /** TODO: docs */
 export const setAuthorityInstructionData = struct<SetAuthorityInstructionData>([
-    ...requiredFields,
+    u8('instruction'),
+    u8('authorityType'),
     new COptionPublicKeyLayout('newAuthority'),
 ]);
+
+const ALLOWED_SPANS = getSetOfPossibleSpans(initializeTransferFeeConfigInstructionData);
 
 /**
  * Construct a SetAuthority instruction
@@ -116,8 +111,7 @@ export function decodeSetAuthorityInstruction(
     programId = TOKEN_PROGRAM_ID,
 ): DecodedSetAuthorityInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
-    if (instruction.data.length !== SPAN_WITHOUT_NEW_AUTHORITY
-        && instruction.data.length !== SPAN_WITH_NEW_AUTHORITY) throw new TokenInvalidInstructionDataError();
+    if (!ALLOWED_SPANS.has(instruction.data.length)) throw new TokenInvalidInstructionDataError();
 
     const {
         keys: { account, currentAuthority, multiSigners },

@@ -12,7 +12,7 @@ import {
 } from '../../errors.js';
 import { addSigners } from '../../instructions/internal.js';
 import { TokenInstruction } from '../../instructions/types.js';
-import { COptionPublicKeyLayout } from '../../serialization.js';
+import { COptionPublicKeyLayout, getSetOfPossibleSpans } from '../../serialization.js';
 
 export enum TransferFeeInstruction {
     InitializeTransferFeeConfig = 0,
@@ -45,21 +45,7 @@ export const initializeTransferFeeConfigInstructionData = struct<InitializeTrans
     u64('maximumFee'),
 ]);
 
-function computeCombinationOfSpans(combinations: number[], fields: Layout<any>[], index: number, partialResult: number): number[] {
-    if (index >= fields.length) {
-        combinations.push(partialResult);
-        return combinations;
-    }
-    if (fields[index] instanceof COptionPublicKeyLayout) {
-        computeCombinationOfSpans(combinations, fields, index + 1, partialResult + COptionPublicKeyLayout.spanWhenNull);
-        computeCombinationOfSpans(combinations, fields, index + 1, partialResult + COptionPublicKeyLayout.spanWithValue);
-    } else {
-        computeCombinationOfSpans(combinations, fields, index + 1, partialResult + fields[index].span);
-    }
-    return combinations;
-}
-
-const ALLOWED_SPANS = new Set<number>(computeCombinationOfSpans([], initializeTransferFeeConfigInstructionData.fields, 0, 0));
+const ALLOWED_SPANS = getSetOfPossibleSpans(initializeTransferFeeConfigInstructionData);
 
 /**
  * Construct an InitializeTransferFeeConfig instruction
@@ -131,8 +117,7 @@ export function decodeInitializeTransferFeeConfigInstruction(
     programId: PublicKey,
 ): DecodedInitializeTransferFeeConfigInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
-    if (!ALLOWED_SPANS.has(instruction.data.length))
-        throw new TokenInvalidInstructionDataError();
+    if (!ALLOWED_SPANS.has(instruction.data.length)) throw new TokenInvalidInstructionDataError();
 
     const {
         keys: { mint },
