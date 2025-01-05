@@ -1,4 +1,4 @@
-import { struct, u8 } from '@solana/buffer-layout';
+import { struct, u8, Layout } from '@solana/buffer-layout';
 import { publicKey } from '@solana/buffer-layout-utils';
 import type { AccountMeta, Signer, PublicKey } from '@solana/web3.js';
 import { TransactionInstruction } from '@solana/web3.js';
@@ -39,10 +39,17 @@ export interface SetAuthorityInstructionData {
     newAuthority: PublicKey | null;
 }
 
-/** TODO: docs */
-export const setAuthorityInstructionData = struct<SetAuthorityInstructionData>([
+const requiredFields: Layout<number>[] = [
     u8('instruction'),
     u8('authorityType'),
+];
+
+const SPAN_WITHOUT_NEW_AUTHORITY = struct<SetAuthorityInstructionData>(requiredFields).span + COptionPublicKeyLayout.spanWhenNull;
+const SPAN_WITH_NEW_AUTHORITY = struct<SetAuthorityInstructionData>(requiredFields).span + COptionPublicKeyLayout.spanWithValue;
+
+/** TODO: docs */
+export const setAuthorityInstructionData = struct<SetAuthorityInstructionData>([
+    ...requiredFields,
     new COptionPublicKeyLayout('newAuthority'),
 ]);
 
@@ -109,7 +116,9 @@ export function decodeSetAuthorityInstruction(
     programId = TOKEN_PROGRAM_ID,
 ): DecodedSetAuthorityInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
-    if (instruction.data.length !== setAuthorityInstructionData.span) throw new TokenInvalidInstructionDataError();
+    // TODO fix
+    if (instruction.data.length !== SPAN_WITHOUT_NEW_AUTHORITY
+        && instruction.data.length !== SPAN_WITH_NEW_AUTHORITY) throw new TokenInvalidInstructionDataError();
 
     const {
         keys: { account, currentAuthority, multiSigners },

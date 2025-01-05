@@ -1,4 +1,4 @@
-import { struct, u8 } from '@solana/buffer-layout';
+import { struct, u8, Layout } from '@solana/buffer-layout';
 import type { AccountMeta, PublicKey } from '@solana/web3.js';
 import { TransactionInstruction } from '@solana/web3.js';
 import { programSupportsExtensions } from '../constants.js';
@@ -18,9 +18,16 @@ export interface InitializeMintCloseAuthorityInstructionData {
     closeAuthority: PublicKey | null;
 }
 
+const requiredFields: Layout<number>[] = [
+    u8('instruction')
+];
+
+const SPAN_WITHOUT_CLOSE_AUTHORITY = struct<InitializeMintCloseAuthorityInstructionData>(requiredFields).span + COptionPublicKeyLayout.spanWhenNull;
+const SPAN_WITH_CLOSE_AUTHORITY = struct<InitializeMintCloseAuthorityInstructionData>(requiredFields).span + COptionPublicKeyLayout.spanWithValue;
+
 /** TODO: docs */
 export const initializeMintCloseAuthorityInstructionData = struct<InitializeMintCloseAuthorityInstructionData>([
-    u8('instruction'),
+    ...requiredFields,
     new COptionPublicKeyLayout('closeAuthority'),
 ]);
 
@@ -80,7 +87,8 @@ export function decodeInitializeMintCloseAuthorityInstruction(
     programId: PublicKey,
 ): DecodedInitializeMintCloseAuthorityInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
-    if (instruction.data.length !== initializeMintCloseAuthorityInstructionData.span)
+    if (instruction.data.length !== SPAN_WITHOUT_CLOSE_AUTHORITY
+        && instruction.data.length !== SPAN_WITH_CLOSE_AUTHORITY)
         throw new TokenInvalidInstructionDataError();
 
     const {
