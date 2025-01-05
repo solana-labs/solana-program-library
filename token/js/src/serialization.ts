@@ -10,6 +10,14 @@ export class COptionPublicKeyLayout extends Layout<PublicKey | null> {
         this.publicKeyLayout = publicKey();
     }
 
+    static get spanWhenNull(): number {
+        return 1;
+    }
+
+    static get spanWithValue(): number {
+        return 1 + publicKey().span;
+    }
+
     decode(buffer: Uint8Array, offset: number = 0): PublicKey | null {
         const option = buffer[offset];
         if (option === 0) {
@@ -32,8 +40,8 @@ export class COptionPublicKeyLayout extends Layout<PublicKey | null> {
     getSpan(buffer?: Uint8Array, offset: number = 0): number {
         if (buffer) {
             const option = buffer[offset];
-            return option === 0 ? 1 : 1 + this.publicKeyLayout.span;
+            return option === 0 ? COptionPublicKeyLayout.spanWhenNull : 1 + COptionPublicKeyLayout.spanWithValue;
         }
-        return 1 + this.publicKeyLayout.span;
+        return 1 + COptionPublicKeyLayout.spanWithValue;
     }
 }

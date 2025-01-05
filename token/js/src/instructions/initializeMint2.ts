@@ -1,4 +1,4 @@
-import { struct, u8 } from '@solana/buffer-layout';
+import { struct, u8, Layout } from '@solana/buffer-layout';
 import { publicKey } from '@solana/buffer-layout-utils';
 import type { AccountMeta, PublicKey } from '@solana/web3.js';
 import { TransactionInstruction } from '@solana/web3.js';
@@ -20,11 +20,18 @@ export interface InitializeMint2InstructionData {
     freezeAuthority: PublicKey | null;
 }
 
-/** TODO: docs */
-export const initializeMint2InstructionData = struct<InitializeMint2InstructionData>([
+const requiredFields: Layout<number | PublicKey | null>[] = [
     u8('instruction'),
     u8('decimals'),
     publicKey('mintAuthority'),
+];
+
+const SPAN_WITHOUT_FREEZE_AUTHORITY = struct<InitializeMint2InstructionData>(requiredFields).span + COptionPublicKeyLayout.spanWhenNull;
+const SPAN_WITH_FREEZE_AUTHORITY = struct<InitializeMint2InstructionData>(requiredFields).span + COptionPublicKeyLayout.spanWithValue;
+
+/** TODO: docs */
+export const initializeMint2InstructionData = struct<InitializeMint2InstructionData>([
+    ...requiredFields,
     new COptionPublicKeyLayout('freezeAuthority'),
 ]);
 
@@ -89,7 +96,8 @@ export function decodeInitializeMint2Instruction(
     programId = TOKEN_PROGRAM_ID,
 ): DecodedInitializeMint2Instruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
-    if (instruction.data.length !== initializeMint2InstructionData.span) throw new TokenInvalidInstructionDataError();
+    if (instruction.data.length !== SPAN_WITHOUT_FREEZE_AUTHORITY
+        && instruction.data.length !== SPAN_WITH_FREEZE_AUTHORITY) throw new TokenInvalidInstructionDataError();
 
     const {
         keys: { mint },
