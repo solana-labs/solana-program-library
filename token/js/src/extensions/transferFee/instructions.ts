@@ -51,10 +51,10 @@ function computeCombinationOfSpans(combinations: number[], fields: Layout<any>[]
         return combinations;
     }
     if (fields[index] instanceof COptionPublicKeyLayout) {
-        computeCombinationOfSpans(fields, index + 1, partialResult + COptionPublicKeyLayout.spanWhenNull);
-        computeCombinationOfSpans(fields, index + 1, partialResult + COptionPublicKeyLayout.spanWithValue);
+        computeCombinationOfSpans(combinations, fields, index + 1, partialResult + COptionPublicKeyLayout.spanWhenNull);
+        computeCombinationOfSpans(combinations, fields, index + 1, partialResult + COptionPublicKeyLayout.spanWithValue);
     } else {
-        computeCombinationOfSpans(fields, index + 1, partialResult + fields[index].span);
+        computeCombinationOfSpans(combinations, fields, index + 1, partialResult + fields[index].span);
     }
     return combinations;
 }
