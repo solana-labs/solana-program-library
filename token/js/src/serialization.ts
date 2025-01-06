@@ -60,7 +60,7 @@ function computeCombinationsOfSpans(combinations: number[], fields: Layout<any>[
     return combinations;
 }
 
-export function getSetOfPossibleSpans(struct: Structure): Set<number> {
+export function getSetOfPossibleSpans(struct: Structure<any>): Set<number> {
     return new Set<number>(
         computeCombinationsOfSpans([], struct.fields, 0, 0)
     );
