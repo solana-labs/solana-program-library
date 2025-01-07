@@ -27,7 +27,7 @@ solana-zk-sdk = "2.1.0"
 thiserror = "2.0"
 
 [dev-dependencies]
-serde_json = "1.0.134"
+serde_json = "1.0.135"
 base64 = { version = "0.22.1" }
 
 [lib]
