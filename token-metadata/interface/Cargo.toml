@@ -29,7 +29,7 @@ spl-pod = { version = "0.5.0", path = "../../libraries/pod", features = [
 thiserror = "2.0"
 
 [dev-dependencies]
-serde_json = "1.0.134"
+serde_json = "1.0.135"
 solana-sha256-hasher = "2.1.0"
 
 [lib]
