@@ -120,7 +120,23 @@ pub trait SimulateTransactionRpc: SimulateTransaction {
 }
 
 #[derive(Debug, Clone, Copy, Default)]
-pub struct ProgramRpcClientSendTransaction;
+pub struct ProgramRpcClientSendTransaction {
+    /// Confirm the transaction after sending it
+    confirm: bool,
+}
+
+impl ProgramRpcClientSendTransaction {
+    /// Create an instance that sends the transaction **without** waiting for
+    /// confirmation.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Create an instance that sends and confirms the transaction.
+    pub fn new_with_confirmation() -> Self {
+        Self { confirm: true }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RpcClientResponse {
@@ -139,16 +155,19 @@ impl SendTransactionRpc for ProgramRpcClientSendTransaction {
         client: &'a RpcClient,
         transaction: &'a Transaction,
     ) -> BoxFuture<'a, ProgramClientResult<Self::Output>> {
+        let confirm = self.confirm;
         Box::pin(async move {
             if !transaction.is_signed() {
                 return Err("Cannot send transaction: not fully signed".into());
             }
 
-            client
-                .send_and_confirm_transaction(transaction)
-                .await
-                .map(RpcClientResponse::Signature)
-                .map_err(Into::into)
+            if confirm {
+                client.send_and_confirm_transaction(transaction).await
+            } else {
+                client.send_transaction(transaction).await
+            }
+            .map(RpcClientResponse::Signature)
+            .map_err(Into::into)
         })
     }
 }
