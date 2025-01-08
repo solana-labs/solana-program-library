@@ -1,8 +1,14 @@
 use {
-    crate::clap_app::{Error, COMPUTE_UNIT_LIMIT_ARG, COMPUTE_UNIT_PRICE_ARG, MULTISIG_SIGNER_ARG},
+    crate::{
+        clap_app::{Error, COMPUTE_UNIT_LIMIT_ARG, COMPUTE_UNIT_PRICE_ARG, MULTISIG_SIGNER_ARG},
+        print_error_and_exit,
+    },
     clap::ArgMatches,
     solana_clap_v3_utils::{
-        input_parsers::pubkey_of_signer,
+        input_parsers::{
+            pubkey_of_signer,
+            signer::{SignerSource, SignerSourceKind},
+        },
         input_validators::normalize_to_url_if_moniker,
         keypair::SignerFromPathConfig,
         nonce::{NONCE_ARG, NONCE_AUTHORITY_ARG},
@@ -182,13 +188,12 @@ impl<'a> Config<'a> {
             allow_null_signer: !multisigner_pubkeys.is_empty(),
         };
 
-        let default_keypair = cli_config.keypair_path.clone();
-
         let default_signer: Option<Arc<dyn Signer>> = {
-            if let Some(owner_path) = matches.try_get_one::<String>("owner").ok().flatten() {
-                signer_from_path_with_config(matches, owner_path, "owner", wallet_manager, &config)
+            if let Some(source) = matches.try_get_one::<SignerSource>("owner").ok().flatten() {
+                signer_from_source_with_config(matches, source, "owner", wallet_manager, &config)
                     .ok()
             } else {
+                let default_keypair = cli_config.keypair_path.clone();
                 signer_from_path_with_config(
                     matches,
                     &default_keypair,
@@ -198,8 +203,7 @@ impl<'a> Config<'a> {
                 )
                 .map_err(|e| {
                     if std::fs::metadata(&default_keypair).is_ok() {
-                        eprintln!("error: {}", e);
-                        exit(1);
+                        print_error_and_exit(e)
                     } else {
                         e
                     }
@@ -277,19 +281,17 @@ impl<'a> Config<'a> {
             .try_contains_id(DUMP_TRANSACTION_MESSAGE.name)
             .unwrap_or(false);
 
-        let pubkey_from_matches = |name| {
-            matches
-                .try_get_one::<String>(name)
+        let mut pubkey_from_matches = |name| {
+            SignerSource::try_get_pubkey(matches, name, wallet_manager)
                 .ok()
                 .flatten()
-                .and_then(|pubkey| Pubkey::from_str(pubkey).ok())
         };
 
         let default_program_id = spl_token::id();
         let (program_id, restrict_to_program_id) = if matches.is_present("program_2022") {
             (spl_token_2022::id(), true)
-        } else if let Some(program_id) = pubkey_from_matches("program_id") {
-            (program_id, true)
+        } else if let Some(program_id) = matches.get_one::<Pubkey>("program_id") {
+            (*program_id, true)
         } else if !sign_only {
             if let Some(address) = pubkey_from_matches("token")
                 .or_else(|| pubkey_from_matches("account"))
@@ -400,7 +402,7 @@ impl<'a> Config<'a> {
         override_name: &str,
         wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
     ) -> Result<Pubkey, Error> {
-        let token = pubkey_of_signer(arg_matches, "token", wallet_manager)
+        let token = SignerSource::try_get_pubkey(arg_matches, "token", wallet_manager)
             .map_err(|e| -> Error { e.to_string().into() })?;
         self.associated_token_address_for_token_or_override(
             arg_matches,
@@ -420,8 +422,9 @@ impl<'a> Config<'a> {
         wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
         token: Option<Pubkey>,
     ) -> Result<Pubkey, Error> {
-        if let Some(address) = pubkey_of_signer(arg_matches, override_name, wallet_manager)
-            .map_err(|e| -> Error { e.to_string().into() })?
+        if let Some(address) =
+            SignerSource::try_get_pubkey(arg_matches, override_name, wallet_manager)
+                .map_err(|e| -> Error { e.to_string().into() })?
         {
             return Ok(address);
         }
@@ -451,8 +454,9 @@ impl<'a> Config<'a> {
         address_name: &str,
         wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
     ) -> Result<Pubkey, Error> {
-        if let Some(address) = pubkey_of_signer(arg_matches, address_name, wallet_manager)
-            .map_err(|e| -> Error { e.to_string().into() })?
+        if let Some(address) =
+            SignerSource::try_get_pubkey(arg_matches, address_name, wallet_manager)
+                .map_err(|e| -> Error { e.to_string().into() })?
         {
             return Ok(address);
         }
@@ -612,6 +616,33 @@ fn signer_from_path_with_config(
     solana_clap_v3_utils::keypair::signer_from_path_with_config(
         matches,
         path,
+        keypair_name,
+        wallet_manager,
+        config,
+    )
+}
+
+/// A wrapper function around the `solana_clap_v3_utils` `signer_from_source
+/// with_config` function. If the signer source is a pubkey, then it checks for
+/// signing-only or if null signer is allowed and creates a null signer.
+/// Otherwise, it invokes the `solana_clap_v3_utils` version of the function.
+fn signer_from_source_with_config(
+    matches: &ArgMatches,
+    source: &SignerSource,
+    keypair_name: &str,
+    wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
+    config: &SignerFromPathConfig,
+) -> Result<Box<dyn Signer>, Box<dyn std::error::Error>> {
+    if let SignerSourceKind::Pubkey(pubkey) = source.kind {
+        if matches.try_contains_id(SIGNER_ARG.name).is_err()
+            && (config.allow_null_signer || matches.try_contains_id(SIGN_ONLY_ARG.name)?)
+        {
+            return Ok(Box::new(NullSigner::new(&pubkey)));
+        }
+    }
+    solana_clap_v3_utils::keypair::signer_from_source_with_config(
+        matches,
+        source,
         keypair_name,
         wallet_manager,
         config,

@@ -1,13 +1,14 @@
 #![allow(deprecated)]
 
 use {
+    crate::print_error_and_exit,
     clap::{
         crate_description, crate_name, crate_version, App, AppSettings, Arg, ArgGroup, SubCommand,
     },
     solana_clap_v3_utils::{
         fee_payer::fee_payer_arg,
-        input_parsers::Amount,
-        input_validators::{is_pubkey, is_url_or_moniker, is_valid_pubkey, is_valid_signer},
+        input_parsers::{signer::SignerSourceParserBuilder, Amount},
+        input_validators::{is_url_or_moniker, is_valid_signer},
         memo::memo_arg,
         nonce::*,
         offline::{self, *},
@@ -187,38 +188,37 @@ impl fmt::Display for AccountMetaRole {
         write!(f, "{:?}", self)
     }
 }
-pub fn parse_transfer_hook_account<T>(string: T) -> Result<AccountMeta, String>
-where
-    T: AsRef<str> + fmt::Display,
-{
-    match string.as_ref().split(':').collect::<Vec<_>>().as_slice() {
-        [address, role] => {
-            let address = Pubkey::from_str(address).map_err(|e| format!("{e}"))?;
-            let meta = match AccountMetaRole::from_str(role).map_err(|e| format!("{e}"))? {
-                AccountMetaRole::Readonly => AccountMeta::new_readonly(address, false),
-                AccountMetaRole::Writable => AccountMeta::new(address, false),
-                AccountMetaRole::ReadonlySigner => AccountMeta::new_readonly(address, true),
-                AccountMetaRole::WritableSigner => AccountMeta::new(address, true),
-            };
-            Ok(meta)
+
+#[derive(Clone, Copy)]
+pub(crate) struct TransferHookAccount {
+    address: Pubkey,
+    role: AccountMetaRole,
+}
+impl FromStr for TransferHookAccount {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.split(':').collect::<Vec<_>>().as_slice() {
+            [address, role] => {
+                let address = Pubkey::from_str(address).map_err(|e| format!("{e}"))?;
+                let role = AccountMetaRole::from_str(role).map_err(|e| format!("{e}"))?;
+                Ok(Self { address, role })
+            }
+            _ => Err("Transfer hook account must be present as <ADDRESS>:<ROLE>".to_string()),
         }
-        _ => Err("Transfer hook account must be present as <ADDRESS>:<ROLE>".to_string()),
     }
 }
-fn validate_transfer_hook_account<T>(string: T) -> Result<(), String>
-where
-    T: AsRef<str> + fmt::Display,
-{
-    match string.as_ref().split(':').collect::<Vec<_>>().as_slice() {
-        [address, role] => {
-            is_valid_pubkey(address)?;
-            AccountMetaRole::from_str(role)
-                .map(|_| ())
-                .map_err(|e| format!("{e}"))
+impl TransferHookAccount {
+    pub(crate) fn create_account_meta(&self) -> AccountMeta {
+        match self.role {
+            AccountMetaRole::Readonly => AccountMeta::new_readonly(self.address, false),
+            AccountMetaRole::Writable => AccountMeta::new(self.address, false),
+            AccountMetaRole::ReadonlySigner => AccountMeta::new_readonly(self.address, true),
+            AccountMetaRole::WritableSigner => AccountMeta::new(self.address, true),
         }
-        _ => Err("Transfer hook account must be present as <ADDRESS>:<ROLE>".to_string()),
     }
 }
+
 #[derive(Debug, Clone, PartialEq, EnumIter, EnumString, IntoStaticStr)]
 #[strum(serialize_all = "kebab-case")]
 pub enum CliAuthorityType {
@@ -278,7 +278,7 @@ pub fn owner_address_arg<'a>() -> Arg<'a> {
         .long(OWNER_ADDRESS_ARG.long)
         .takes_value(true)
         .value_name("OWNER_ADDRESS")
-        .validator(|s| is_valid_pubkey(s))
+        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
         .help(OWNER_ADDRESS_ARG.help)
 }
 
@@ -287,7 +287,7 @@ pub fn owner_keypair_arg_with_value_name<'a>(value_name: &'static str) -> Arg<'a
         .long(OWNER_KEYPAIR_ARG.long)
         .takes_value(true)
         .value_name(value_name)
-        .validator(|s| is_valid_signer(s))
+        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
         .help(OWNER_KEYPAIR_ARG.help)
 }
 
@@ -300,7 +300,7 @@ pub fn mint_address_arg<'a>() -> Arg<'a> {
         .long(MINT_ADDRESS_ARG.long)
         .takes_value(true)
         .value_name("MINT_ADDRESS")
-        .validator(|s| is_valid_pubkey(s))
+        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
         .help(MINT_ADDRESS_ARG.help)
 }
 
@@ -329,7 +329,7 @@ pub fn delegate_address_arg<'a>() -> Arg<'a> {
         .long(DELEGATE_ADDRESS_ARG.long)
         .takes_value(true)
         .value_name("DELEGATE_ADDRESS")
-        .validator(|s| is_valid_pubkey(s))
+        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
         .help(DELEGATE_ADDRESS_ARG.help)
 }
 
@@ -365,20 +365,12 @@ fn is_multisig_minimum_signers(string: &str) -> Result<(), String> {
     }
 }
 
-fn is_valid_token_program_id<T>(string: T) -> Result<(), String>
-where
-    T: AsRef<str> + fmt::Display,
-{
-    match is_pubkey(string.as_ref()) {
-        Ok(()) => {
-            let program_id = string.as_ref().parse::<Pubkey>().unwrap();
-            if VALID_TOKEN_PROGRAM_IDS.contains(&program_id) {
-                Ok(())
-            } else {
-                Err(format!("Unrecognized token program id: {}", program_id))
-            }
-        }
-        Err(e) => Err(e),
+fn parse_token_program_id(arg: &str) -> Result<Pubkey, String> {
+    let program_id = arg.parse::<Pubkey>().unwrap_or_else(print_error_and_exit);
+    if VALID_TOKEN_PROGRAM_IDS.contains(&program_id) {
+        Ok(program_id)
+    } else {
+        Err(format!("Unrecognized token program id: {}", program_id))
     }
 }
 
@@ -462,7 +454,7 @@ impl BenchSubCommand for App<'_> {
                         .about("Create multiple token accounts for benchmarking")
                         .arg(
                             Arg::with_name("token")
-                                .validator(|s| is_valid_pubkey(s))
+                                .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                                 .value_name("TOKEN_ADDRESS")
                                 .takes_value(true)
                                 .index(1)
@@ -485,7 +477,7 @@ impl BenchSubCommand for App<'_> {
                         .about("Close multiple token accounts used for benchmarking")
                         .arg(
                             Arg::with_name("token")
-                                .validator(|s| is_valid_pubkey(s))
+                                .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                                 .value_name("TOKEN_ADDRESS")
                                 .takes_value(true)
                                 .index(1)
@@ -508,7 +500,7 @@ impl BenchSubCommand for App<'_> {
                         .about("Deposit tokens into multiple accounts")
                         .arg(
                             Arg::with_name("token")
-                                .validator(|s| is_valid_pubkey(s))
+                                .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                                 .value_name("TOKEN_ADDRESS")
                                 .takes_value(true)
                                 .index(1)
@@ -536,7 +528,7 @@ impl BenchSubCommand for App<'_> {
                         .arg(
                             Arg::with_name("from")
                                 .long("from")
-                                .validator(|s| is_valid_pubkey(s))
+                                .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                                 .value_name("SOURCE_TOKEN_ACCOUNT_ADDRESS")
                                 .takes_value(true)
                                 .help("The source token account address [default: associated token account for --owner]")
@@ -548,7 +540,7 @@ impl BenchSubCommand for App<'_> {
                         .about("Withdraw tokens from multiple accounts")
                         .arg(
                             Arg::with_name("token")
-                                .validator(|s| is_valid_pubkey(s))
+                                .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                                 .value_name("TOKEN_ADDRESS")
                                 .takes_value(true)
                                 .index(1)
@@ -576,7 +568,7 @@ impl BenchSubCommand for App<'_> {
                         .arg(
                             Arg::with_name("to")
                                 .long("to")
-                                .validator(|s| is_valid_pubkey(s))
+                                .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                                 .value_name("RECIPIENT_TOKEN_ACCOUNT_ADDRESS")
                                 .takes_value(true)
                                 .help("The recipient token account address [default: associated token account for --owner]")
@@ -638,7 +630,7 @@ pub fn app<'a>(
                 .takes_value(true)
                 .global(true)
                 .conflicts_with("program_2022")
-                .validator(|s| is_valid_token_program_id(s))
+                .value_parser(parse_token_program_id)
                 .help("SPL Token program id"),
         )
         .arg(
@@ -701,7 +693,7 @@ pub fn app<'a>(
                         .long("mint-authority")
                         .alias("owner")
                         .value_name("ADDRESS")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .takes_value(true)
                         .help(
                             "Specify the mint authority address. \
@@ -747,7 +739,7 @@ pub fn app<'a>(
                     Arg::with_name("metadata_address")
                         .long("metadata-address")
                         .value_name("ADDRESS")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .takes_value(true)
                         .conflicts_with("enable_metadata")
                         .help(
@@ -758,7 +750,7 @@ pub fn app<'a>(
                     Arg::with_name("group_address")
                         .long("group-address")
                         .value_name("ADDRESS")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_pubkey().build())
                         .takes_value(true)
                         .conflicts_with("enable_group")
                         .help(
@@ -769,7 +761,7 @@ pub fn app<'a>(
                     Arg::with_name("member_address")
                         .long("member-address")
                         .value_name("ADDRESS")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_pubkey().build())
                         .takes_value(true)
                         .conflicts_with("enable_member")
                         .help(
@@ -865,7 +857,7 @@ pub fn app<'a>(
                     Arg::with_name("transfer_hook")
                         .long("transfer-hook")
                         .value_name("TRANSFER_HOOK_PROGRAM_ID")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .takes_value(true)
                         .help("Enable the mint authority to set the transfer hook program for this mint"),
                 )
@@ -899,7 +891,7 @@ pub fn app<'a>(
                 .about("Set the interest rate for an interest-bearing token")
                 .arg(
                     Arg::with_name("token")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .required(true)
@@ -929,7 +921,7 @@ pub fn app<'a>(
                 .about("Set the transfer hook program id for a token")
                 .arg(
                     Arg::with_name("token")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .required(true)
@@ -938,7 +930,7 @@ pub fn app<'a>(
                 )
                 .arg(
                     Arg::with_name("new_program_id")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("NEW_PROGRAM_ID")
                         .takes_value(true)
                         .required_unless("disable")
@@ -967,7 +959,7 @@ pub fn app<'a>(
                 .about("Initialize metadata extension on a token mint")
                 .arg(
                     Arg::with_name("token")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .required(true)
@@ -1015,7 +1007,7 @@ pub fn app<'a>(
                     Arg::with_name("update_authority")
                         .long("update-authority")
                         .value_name("ADDRESS")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .takes_value(true)
                         .help(
                             "Specify the update authority address. \
@@ -1028,7 +1020,7 @@ pub fn app<'a>(
                 .about("Update metadata on a token mint that has the extension")
                 .arg(
                     Arg::with_name("token")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .required(true)
@@ -1075,7 +1067,7 @@ pub fn app<'a>(
                 .about("Initialize group extension on a token mint")
                 .arg(
                     Arg::with_name("token")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .required(true)
@@ -1108,7 +1100,7 @@ pub fn app<'a>(
                     Arg::with_name("update_authority")
                         .long("update-authority")
                         .value_name("ADDRESS")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .takes_value(true)
                         .help(
                             "Specify the update authority address. \
@@ -1121,7 +1113,7 @@ pub fn app<'a>(
                 .about("Updates the maximum number of members for a group.")
                 .arg(
                     Arg::with_name("token")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .required(true)
@@ -1154,7 +1146,7 @@ pub fn app<'a>(
                 .about("Initialize group member extension on a token mint")
                 .arg(
                     Arg::with_name("token")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .required(true)
@@ -1163,7 +1155,7 @@ pub fn app<'a>(
                 )
                 .arg(
                     Arg::with_name("group_token")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("GROUP_TOKEN_ADDRESS")
                         .takes_value(true)
                         .required(true)
@@ -1201,7 +1193,7 @@ pub fn app<'a>(
                 .about("Create a new token account")
                 .arg(
                     Arg::with_name("token")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1246,7 +1238,7 @@ pub fn app<'a>(
                 .arg(
                     Arg::with_name("multisig_member")
                         .value_name("MULTISIG_MEMBER_PUBKEY")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .takes_value(true)
                         .index(2)
                         .required(true)
@@ -1273,7 +1265,7 @@ pub fn app<'a>(
                 .about("Authorize a new signing keypair to a token or token account")
                 .arg(
                     Arg::with_name("address")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1294,7 +1286,7 @@ pub fn app<'a>(
                 )
                 .arg(
                     Arg::with_name("new_authority")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("AUTHORITY_ADDRESS")
                         .takes_value(true)
                         .index(3)
@@ -1335,7 +1327,7 @@ pub fn app<'a>(
                 .about("Transfer tokens between accounts")
                 .arg(
                     Arg::with_name("token")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1353,7 +1345,7 @@ pub fn app<'a>(
                 )
                 .arg(
                     Arg::with_name("recipient")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("RECIPIENT_WALLET_ADDRESS or RECIPIENT_TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(3)
@@ -1364,7 +1356,7 @@ pub fn app<'a>(
                 )
                 .arg(
                     Arg::with_name("from")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("SENDER_TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .long("from")
@@ -1436,7 +1428,7 @@ pub fn app<'a>(
                 .arg(
                     Arg::with_name("transfer_hook_account")
                         .long("transfer-hook-account")
-                        .validator(|s| validate_transfer_hook_account(s))
+                        .value_parser(clap::value_parser!(TransferHookAccount))
                         .value_name("PUBKEY:ROLE")
                         .takes_value(true)
                         .multiple(true)
@@ -1465,7 +1457,7 @@ pub fn app<'a>(
                 .about("Burn tokens from an account")
                 .arg(
                     Arg::with_name("account")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1499,7 +1491,7 @@ pub fn app<'a>(
                 .about("Mint new tokens")
                 .arg(
                     Arg::with_name("token")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1517,7 +1509,7 @@ pub fn app<'a>(
                 )
                 .arg(
                     Arg::with_name("recipient")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("RECIPIENT_TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .conflicts_with("recipient_owner")
@@ -1528,7 +1520,7 @@ pub fn app<'a>(
                 .arg(
                     Arg::with_name("recipient_owner")
                         .long("recipient-owner")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("RECIPIENT_WALLET_ADDRESS")
                         .takes_value(true)
                         .conflicts_with("recipient")
@@ -1558,7 +1550,7 @@ pub fn app<'a>(
                 .about("Freeze a token account")
                 .arg(
                     Arg::with_name("account")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1588,7 +1580,7 @@ pub fn app<'a>(
                 .about("Thaw a token account")
                 .arg(
                     Arg::with_name("account")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1661,7 +1653,7 @@ pub fn app<'a>(
                 .about("Unwrap a SOL token account")
                 .arg(
                     Arg::with_name("account")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1691,7 +1683,7 @@ pub fn app<'a>(
                 .about("Approve a delegate for a token account")
                 .arg(
                     Arg::with_name("account")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1709,7 +1701,7 @@ pub fn app<'a>(
                 )
                 .arg(
                     Arg::with_name("delegate")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("DELEGATE_TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(3)
@@ -1729,7 +1721,7 @@ pub fn app<'a>(
                 .about("Revoke a delegate's authority")
                 .arg(
                     Arg::with_name("account")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1748,7 +1740,7 @@ pub fn app<'a>(
                 .about("Close a token account")
                 .arg(
                     Arg::with_name("token")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1759,7 +1751,7 @@ pub fn app<'a>(
                 .arg(
                     Arg::with_name("recipient")
                         .long("recipient")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("REFUND_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .help("The address of the account to receive remaining SOL [default: --owner]"),
@@ -1780,7 +1772,7 @@ pub fn app<'a>(
                 .arg(
                     Arg::with_name("address")
                         .long("address")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .conflicts_with("token")
@@ -1797,7 +1789,7 @@ pub fn app<'a>(
                 .about("Close a token mint")
                 .arg(
                     Arg::with_name("token")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1807,7 +1799,7 @@ pub fn app<'a>(
                 .arg(
                     Arg::with_name("recipient")
                         .long("recipient")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("REFUND_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .help("The address of the account to receive remaining SOL [default: --owner]"),
@@ -1834,7 +1826,7 @@ pub fn app<'a>(
                 .about("Get token account balance")
                 .arg(
                     Arg::with_name("token")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1844,7 +1836,7 @@ pub fn app<'a>(
                 .arg(owner_address_arg().conflicts_with("address"))
                 .arg(
                     Arg::with_name("address")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .long("address")
@@ -1858,7 +1850,7 @@ pub fn app<'a>(
                 .about("Get token supply")
                 .arg(
                     Arg::with_name("token")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1871,7 +1863,7 @@ pub fn app<'a>(
                 .about("List all token accounts by owner")
                 .arg(
                     Arg::with_name("token")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1912,7 +1904,7 @@ pub fn app<'a>(
                 .about("Get wallet address")
                 .arg(
                     Arg::with_name("token")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .long("token")
@@ -1933,7 +1925,7 @@ pub fn app<'a>(
                 .setting(AppSettings::Hidden)
                 .arg(
                     Arg::with_name("token")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1956,7 +1948,7 @@ pub fn app<'a>(
                 )
                 .arg(
                     Arg::with_name("address")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .long("address")
@@ -1970,7 +1962,7 @@ pub fn app<'a>(
                 .setting(AppSettings::Hidden)
                 .arg(
                     Arg::with_name("address")
-                    .validator(|s| is_valid_pubkey(s))
+                    .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                     .value_name("MULTISIG_ACCOUNT_ADDRESS")
                     .takes_value(true)
                     .index(1)
@@ -1983,7 +1975,7 @@ pub fn app<'a>(
                 .about("Query details of an SPL Token mint, account, or multisig by address")
                 .arg(
                     Arg::with_name("address")
-                    .validator(|s| is_valid_pubkey(s))
+                    .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                     .value_name("TOKEN_ADDRESS")
                     .takes_value(true)
                     .index(1)
@@ -2015,7 +2007,7 @@ pub fn app<'a>(
                 )
                 .arg(
                     Arg::with_name("address")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .long("address")
@@ -2028,7 +2020,7 @@ pub fn app<'a>(
                 .about("Enable required transfer memos for token account")
                 .arg(
                     Arg::with_name("account")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2046,7 +2038,7 @@ pub fn app<'a>(
                 .about("Disable required transfer memos for token account")
                 .arg(
                     Arg::with_name("account")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2064,7 +2056,7 @@ pub fn app<'a>(
                 .about("Enable CPI Guard for token account")
                 .arg(
                     Arg::with_name("account")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2082,7 +2074,7 @@ pub fn app<'a>(
                 .about("Disable CPI Guard for token account")
                 .arg(
                     Arg::with_name("account")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2100,7 +2092,7 @@ pub fn app<'a>(
                 .about("Updates default account state for the mint. Requires the default account state extension.")
                 .arg(
                     Arg::with_name("token")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2138,7 +2130,7 @@ pub fn app<'a>(
                 .about("Updates metadata pointer address for the mint. Requires the metadata pointer extension.")
                 .arg(
                     Arg::with_name("token")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2148,7 +2140,7 @@ pub fn app<'a>(
                 .arg(
                     Arg::with_name("metadata_address")
                         .index(2)
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_pubkey().build())
                         .value_name("METADATA_ADDRESS")
                         .takes_value(true)
                         .required_unless("disable")
@@ -2181,7 +2173,7 @@ pub fn app<'a>(
                 .about("Updates group pointer address for the mint. Requires the group pointer extension.")
                 .arg(
                     Arg::with_name("token")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2191,7 +2183,7 @@ pub fn app<'a>(
                 .arg(
                     Arg::with_name("group_address")
                         .index(2)
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_pubkey().build())
                         .value_name("GROUP_ADDRESS")
                         .takes_value(true)
                         .required_unless("disable")
@@ -2224,7 +2216,7 @@ pub fn app<'a>(
                 .about("Updates group member pointer address for the mint. Requires the group member pointer extension.")
                 .arg(
                     Arg::with_name("token")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2234,7 +2226,7 @@ pub fn app<'a>(
                 .arg(
                     Arg::with_name("member_address")
                         .index(2)
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_pubkey().build())
                         .value_name("MEMBER_ADDRESS")
                         .takes_value(true)
                         .required_unless("disable")
@@ -2267,7 +2259,7 @@ pub fn app<'a>(
                 .about("Withdraw withheld transfer fee tokens from mint and / or account(s)")
                 .arg(
                     Arg::with_name("account")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2276,7 +2268,7 @@ pub fn app<'a>(
                 )
                 .arg(
                     Arg::with_name("source")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .multiple(true)
@@ -2317,7 +2309,7 @@ pub fn app<'a>(
                 .about("Set the transfer fee for a token with a configured transfer fee")
                 .arg(
                     Arg::with_name("token")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .required(true)
@@ -2357,7 +2349,7 @@ pub fn app<'a>(
                 .about("Withdraw lamports from a Token Program owned account")
                 .arg(
                     Arg::with_name("from")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("SOURCE_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .required(true)
@@ -2365,7 +2357,7 @@ pub fn app<'a>(
                 )
                 .arg(
                     Arg::with_name("recipient")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("REFUND_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .required(true)
@@ -2379,7 +2371,7 @@ pub fn app<'a>(
                 .about("Update confidential transfer configuration for a token")
                 .arg(
                     Arg::with_name("token")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2439,7 +2431,7 @@ pub fn app<'a>(
                 .about("Configure confidential transfers for token account")
                 .arg(
                     Arg::with_name("token")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2449,7 +2441,7 @@ pub fn app<'a>(
                 .arg(
                     Arg::with_name("address")
                         .long("address")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .conflicts_with("token")
@@ -2480,7 +2472,7 @@ pub fn app<'a>(
                 for the first time, use `configure-confidential-transfer-account` instead.")
                 .arg(
                     Arg::with_name("token")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2490,7 +2482,7 @@ pub fn app<'a>(
                 .arg(
                     Arg::with_name("address")
                         .long("address")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .conflicts_with("token")
@@ -2508,7 +2500,7 @@ pub fn app<'a>(
                 .about("Disable confidential transfers for token account")
                 .arg(
                     Arg::with_name("token")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2518,7 +2510,7 @@ pub fn app<'a>(
                 .arg(
                     Arg::with_name("address")
                         .long("address")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .conflicts_with("token")
@@ -2536,7 +2528,7 @@ pub fn app<'a>(
                 .about("Enable non-confidential transfers for token account.")
                 .arg(
                     Arg::with_name("token")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2546,7 +2538,7 @@ pub fn app<'a>(
                 .arg(
                     Arg::with_name("address")
                         .long("address")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .conflicts_with("token")
@@ -2564,7 +2556,7 @@ pub fn app<'a>(
                 .about("Disable non-confidential transfers for token account")
                 .arg(
                     Arg::with_name("token")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2574,7 +2566,7 @@ pub fn app<'a>(
                 .arg(
                     Arg::with_name("address")
                         .long("address")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .conflicts_with("token")
@@ -2592,7 +2584,7 @@ pub fn app<'a>(
                 .about("Deposit amounts for confidential transfers")
                 .arg(
                     Arg::with_name("token")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2611,7 +2603,7 @@ pub fn app<'a>(
                 .arg(
                     Arg::with_name("address")
                         .long("address")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .help("The address of the token account to configure confidential transfers for \
@@ -2629,7 +2621,7 @@ pub fn app<'a>(
                 .about("Withdraw amounts for confidential transfers")
                 .arg(
                     Arg::with_name("token")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2648,7 +2640,7 @@ pub fn app<'a>(
                 .arg(
                     Arg::with_name("address")
                         .long("address")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .help("The address of the token account to configure confidential transfers for \
@@ -2666,7 +2658,7 @@ pub fn app<'a>(
                 .about("Collect confidential tokens from pending to available balance")
                 .arg(
                     Arg::with_name("token")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2676,7 +2668,7 @@ pub fn app<'a>(
                 .arg(
                     Arg::with_name("address")
                         .long("address")
-                        .validator(|s| is_valid_pubkey(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .help("The address of the token account to configure confidential transfers for \
