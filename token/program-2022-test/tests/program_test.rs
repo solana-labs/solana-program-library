@@ -104,6 +104,23 @@ impl TestContext {
         extension_init_params: Vec<ExtensionInitializationParams>,
         freeze_authority: Option<Keypair>,
     ) -> TokenResult<()> {
+        let mint_authority = Keypair::new();
+        self.init_token_with_mint_keypair_and_freeze_authority_and_mint_authority(
+            mint_account,
+            extension_init_params,
+            freeze_authority,
+            mint_authority,
+        )
+        .await
+    }
+
+    pub async fn init_token_with_mint_keypair_and_freeze_authority_and_mint_authority(
+        &mut self,
+        mint_account: Keypair,
+        extension_init_params: Vec<ExtensionInitializationParams>,
+        freeze_authority: Option<Keypair>,
+        mint_authority: Keypair,
+    ) -> TokenResult<()> {
         let payer = keypair_clone(&self.context.lock().await.payer);
         let client: Arc<dyn ProgramClient<ProgramBanksClientProcessTransaction>> =
             Arc::new(ProgramBanksClient::new_from_context(
@@ -113,7 +130,6 @@ impl TestContext {
 
         let decimals: u8 = 9;
 
-        let mint_authority = Keypair::new();
         let mint_authority_pubkey = mint_authority.pubkey();
         let freeze_authority_pubkey = freeze_authority
             .as_ref()

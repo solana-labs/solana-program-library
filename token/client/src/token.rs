@@ -29,14 +29,19 @@ use {
     },
     spl_record::state::RecordData,
     spl_token_2022::{
+        error::TokenError as Token2022Error,
         extension::{
+            confidential_mint_burn::{self, account_info::SupplyAccountInfo, ConfidentialMintBurn},
             confidential_transfer::{
                 self,
                 account_info::{
-                    ApplyPendingBalanceAccountInfo, EmptyAccountAccountInfo, TransferAccountInfo,
-                    WithdrawAccountInfo,
+                    combine_balances, ApplyPendingBalanceAccountInfo, EmptyAccountAccountInfo,
+                    TransferAccountInfo, WithdrawAccountInfo,
                 },
-                ConfidentialTransferAccount, DecryptableBalance,
+                instruction::{
+                    CiphertextCiphertextEqualityProofData, ProofContextState, ZkProofData,
+                },
+                ConfidentialTransferAccount, ConfidentialTransferMint, DecryptableBalance,
             },
             confidential_transfer_fee::{
                 self, account_info::WithheldTokensInfo, ConfidentialTransferFeeAmount,
@@ -50,15 +55,16 @@ use {
         instruction, offchain,
         solana_zk_sdk::{
             encryption::{
-                auth_encryption::AeKey,
+                auth_encryption::{AeCiphertext, AeKey},
                 elgamal::{ElGamalCiphertext, ElGamalKeypair, ElGamalPubkey, ElGamalSecretKey},
-                pod::elgamal::{PodElGamalCiphertext, PodElGamalPubkey},
+                pod::{
+                    auth_encryption::PodAeCiphertext,
+                    elgamal::{PodElGamalCiphertext, PodElGamalPubkey},
+                },
             },
             zk_elgamal_proof_program::{
                 self,
                 instruction::{close_context_state, ContextStateInfo},
-                proof_data::*,
-                state::ProofContextState,
             },
         },
         state::{Account, AccountState, Mint, Multisig},
@@ -113,6 +119,13 @@ pub enum TokenError {
     MissingDecimals,
     #[error("decimals specified, but incorrect")]
     InvalidDecimals,
+    #[error("TokenProgramError: {0}")]
+    TokenProgramError(String),
+}
+impl From<Token2022Error> for TokenError {
+    fn from(e: Token2022Error) -> Self {
+        Self::TokenProgramError(e.to_string())
+    }
 }
 impl PartialEq for TokenError {
     fn eq(&self, other: &Self) -> bool {
@@ -196,6 +209,10 @@ pub enum ExtensionInitializationParams {
     PausableConfig {
         authority: Pubkey,
     },
+    ConfidentialMintBurnMint {
+        confidential_supply_pubkey: PodElGamalPubkey,
+        decryptable_supply: PodAeCiphertext,
+    },
 }
 impl ExtensionInitializationParams {
     /// Get the extension type associated with the init params
@@ -217,6 +234,7 @@ impl ExtensionInitializationParams {
             Self::GroupMemberPointer { .. } => ExtensionType::GroupMemberPointer,
             Self::ScaledUiAmountConfig { .. } => ExtensionType::ScaledUiAmount,
             Self::PausableConfig { .. } => ExtensionType::Pausable,
+            Self::ConfidentialMintBurnMint { .. } => ExtensionType::ConfidentialMintBurn,
         }
     }
     /// Generate an appropriate initialization instruction for the given mint
@@ -338,6 +356,15 @@ impl ExtensionInitializationParams {
             Self::PausableConfig { authority } => {
                 pausable::instruction::initialize(token_program_id, mint, &authority)
             }
+            Self::ConfidentialMintBurnMint {
+                confidential_supply_pubkey,
+                decryptable_supply,
+            } => confidential_mint_burn::instruction::initialize_mint(
+                token_program_id,
+                mint,
+                confidential_supply_pubkey,
+                decryptable_supply,
+            ),
         }
     }
 }
@@ -3600,6 +3627,301 @@ where
             group_update_authority,
         ));
         self.process_ixs(&instructions, signing_keypairs).await
+    }
+
+    pub async fn auditor_elgamal_pubkey(&self) -> TokenResult<Option<ElGamalPubkey>> {
+        Ok(Into::<Option<PodElGamalPubkey>>::into(
+            self.get_mint_info()
+                .await?
+                .get_extension::<ConfidentialTransferMint>()?
+                .auditor_elgamal_pubkey,
+        )
+        .map(|pk| TryInto::<ElGamalPubkey>::try_into(pk).unwrap()))
+    }
+
+    pub async fn account_elgamal_pubkey(&self, account: &Pubkey) -> TokenResult<ElGamalPubkey> {
+        TryInto::<ElGamalPubkey>::try_into(
+            self.get_account_info(account)
+                .await?
+                .get_extension::<ConfidentialTransferAccount>()?
+                .elgamal_pubkey,
+        )
+        .map_err(|_| TokenError::Program(ProgramError::InvalidAccountData))
+    }
+
+    /// Mint SPL Tokens into the pending balance of a confidential token account
+    #[allow(clippy::too_many_arguments)]
+    pub async fn confidential_mint<S: Signers>(
+        &self,
+        account: &Pubkey,
+        authority: &Pubkey,
+        supply_elgamal_pubkey: Option<ElGamalPubkey>,
+        equality_proof_account: Option<&ProofAccount>,
+        ciphertext_validity_proof_account_with_ciphertext: Option<&ProofAccountWithCiphertext>,
+        range_proof_account: Option<&ProofAccount>,
+        new_decryptable_supply: AeCiphertext,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
+        let (transfer_amount_auditor_ciphertext_lo, transfer_amount_auditor_ciphertext_hi) =
+            if let Some(proof_data_with_ciphertext) =
+                ciphertext_validity_proof_account_with_ciphertext
+            {
+                (
+                    proof_data_with_ciphertext.ciphertext_lo,
+                    proof_data_with_ciphertext.ciphertext_hi,
+                )
+            } else {
+                // unwrap is safe as long as either `proof_data_with_ciphertext`,
+                // `proof_account_with_ciphertext` is `Some(..)`, which is guaranteed by the
+                // previous check
+                (
+                    ciphertext_validity_proof_account_with_ciphertext
+                        .unwrap()
+                        .ciphertext_lo,
+                    ciphertext_validity_proof_account_with_ciphertext
+                        .unwrap()
+                        .ciphertext_hi,
+                )
+            };
+
+        if !([equality_proof_account, range_proof_account]
+            .iter()
+            .all(|proof_account| proof_account.is_some()))
+        {
+            return Err(TokenError::ProofGeneration);
+        }
+        if ciphertext_validity_proof_account_with_ciphertext.is_none() {
+            return Err(TokenError::ProofGeneration);
+        }
+
+        // cannot panic as long as either `proof_data` or `proof_account` is `Some(..)`,
+        // which is guaranteed by the previous check
+        let equality_proof_location =
+            Self::confidential_transfer_create_proof_location(None, equality_proof_account, 1)
+                .unwrap();
+        let ciphertext_validity_proof_location = Self::confidential_transfer_create_proof_location(
+            None,
+            ciphertext_validity_proof_account_with_ciphertext.map(|account| &account.proof_account),
+            2,
+        )
+        .unwrap();
+        let range_proof_location =
+            Self::confidential_transfer_create_proof_location(None, range_proof_account, 3)
+                .unwrap();
+
+        self.process_ixs(
+            &confidential_mint_burn::instruction::confidential_mint_with_split_proofs(
+                &self.program_id,
+                account,
+                &self.pubkey,
+                supply_elgamal_pubkey,
+                &transfer_amount_auditor_ciphertext_lo,
+                &transfer_amount_auditor_ciphertext_hi,
+                authority,
+                &multisig_signers,
+                equality_proof_location,
+                ciphertext_validity_proof_location,
+                range_proof_location,
+                new_decryptable_supply,
+            )?,
+            signing_keypairs,
+        )
+        .await
+    }
+
+    /// Burn SPL Tokens from the available balance of a confidential token
+    /// account
+    #[allow(clippy::too_many_arguments)]
+    pub async fn confidential_burn<S: Signers>(
+        &self,
+        ata_pubkey: &Pubkey,
+        authority: &Pubkey,
+        equality_proof_account: Option<&ProofAccount>,
+        ciphertext_validity_proof_account_with_ciphertext: Option<&ProofAccountWithCiphertext>,
+        range_proof_account: Option<&ProofAccount>,
+        amount: u64,
+        supply_elgamal_pubkey: Option<ElGamalPubkey>,
+        aes_key: &AeKey,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
+        let account = self.get_account_info(ata_pubkey).await?;
+        let confidential_transfer_account =
+            account.get_extension::<ConfidentialTransferAccount>()?;
+        let account_info = TransferAccountInfo::new(confidential_transfer_account);
+
+        let new_decryptable_available_balance: PodAeCiphertext = account_info
+            .new_decryptable_available_balance(amount, aes_key)
+            .map_err(|_| TokenError::AccountDecryption)?
+            .into();
+
+        let (transfer_amount_auditor_ciphertext_lo, transfer_amount_auditor_ciphertext_hi) =
+            if let Some(proof_data_with_ciphertext) =
+                ciphertext_validity_proof_account_with_ciphertext
+            {
+                (
+                    proof_data_with_ciphertext.ciphertext_lo,
+                    proof_data_with_ciphertext.ciphertext_hi,
+                )
+            } else {
+                // unwrap is safe as long as either `proof_data_with_ciphertext`,
+                // `proof_account_with_ciphertext` is `Some(..)`, which is guaranteed by the
+                // previous check
+                (
+                    ciphertext_validity_proof_account_with_ciphertext
+                        .unwrap()
+                        .ciphertext_lo,
+                    ciphertext_validity_proof_account_with_ciphertext
+                        .unwrap()
+                        .ciphertext_hi,
+                )
+            };
+
+        if !([equality_proof_account, range_proof_account]
+            .iter()
+            .all(|proof_account| proof_account.is_some()))
+        {
+            return Err(TokenError::ProofGeneration);
+        }
+        if ciphertext_validity_proof_account_with_ciphertext.is_none() {
+            return Err(TokenError::ProofGeneration);
+        }
+        // cannot panic as long as either `proof_data` or `proof_account` is `Some(..)`,
+        // which is guaranteed by the previous check
+        let equality_proof_location =
+            Self::confidential_transfer_create_proof_location(None, equality_proof_account, 1)
+                .unwrap();
+        let ciphertext_validity_proof_location = Self::confidential_transfer_create_proof_location(
+            None,
+            ciphertext_validity_proof_account_with_ciphertext.map(|account| &account.proof_account),
+            2,
+        )
+        .unwrap();
+        let range_proof_location =
+            Self::confidential_transfer_create_proof_location(None, range_proof_account, 3)
+                .unwrap();
+
+        self.process_ixs(
+            &confidential_mint_burn::instruction::confidential_burn_with_split_proofs(
+                &self.program_id,
+                ata_pubkey,
+                &self.pubkey,
+                supply_elgamal_pubkey,
+                new_decryptable_available_balance,
+                &transfer_amount_auditor_ciphertext_lo,
+                &transfer_amount_auditor_ciphertext_hi,
+                authority,
+                &multisig_signers,
+                equality_proof_location,
+                ciphertext_validity_proof_location,
+                range_proof_location,
+            )?,
+            signing_keypairs,
+        )
+        .await
+    }
+
+    /// Fetch confidential balance for token account
+    #[allow(clippy::too_many_arguments)]
+    pub async fn confidential_balance(
+        &self,
+        token_account: &Pubkey,
+        elgamal_keypair: &ElGamalKeypair,
+        aes_key: &AeKey,
+    ) -> TokenResult<(u64, u64)> {
+        let account = self.get_account_info(token_account).await?;
+        let confidential_transfer_account =
+            account.get_extension::<ConfidentialTransferAccount>()?;
+
+        let decryptable_available_balance = confidential_transfer_account
+            .decryptable_available_balance
+            .try_into()
+            .map_err(|_| Token2022Error::MalformedCiphertext)?;
+        let available_balance = aes_key
+            .decrypt(&decryptable_available_balance)
+            .ok_or(Token2022Error::AccountDecryption)?;
+
+        let pending_balance_lo = confidential_transfer_account
+            .pending_balance_lo
+            .try_into()
+            .map_err(|_| Token2022Error::MalformedCiphertext)?;
+        let decrypted_pending_balance_lo = elgamal_keypair
+            .secret()
+            .decrypt_u32(&pending_balance_lo)
+            .ok_or(Token2022Error::AccountDecryption)?;
+
+        let pending_balance_hi = confidential_transfer_account
+            .pending_balance_hi
+            .try_into()
+            .map_err(|_| Token2022Error::MalformedCiphertext)?;
+        let decrypted_pending_balance_hi = elgamal_keypair
+            .secret()
+            .decrypt_u32(&pending_balance_hi)
+            .ok_or(Token2022Error::AccountDecryption)?;
+        let pending_balance =
+            combine_balances(decrypted_pending_balance_lo, decrypted_pending_balance_hi)
+                .ok_or(Token2022Error::AccountDecryption)?;
+
+        Ok((available_balance, pending_balance))
+    }
+
+    /// Burn SPL Tokens from the available balance of a confidential token
+    /// account
+    #[allow(clippy::too_many_arguments)]
+    pub async fn confidential_supply(
+        &self,
+        supply_elgamal_keypair: &ElGamalKeypair,
+        supply_aes_key: &AeKey,
+    ) -> Result<u64, TokenError> {
+        let mint = self.get_mint_info().await?;
+        let mint_burn_extension = mint.get_extension::<ConfidentialMintBurn>()?;
+        let supply_account_info = SupplyAccountInfo::new(mint_burn_extension);
+
+        Ok(supply_account_info.decrypt_current_supply(supply_aes_key, supply_elgamal_keypair)?)
+    }
+
+    pub async fn supply_elgamal_pubkey(&self) -> TokenResult<Option<ElGamalPubkey>> {
+        Ok(Into::<Option<PodElGamalPubkey>>::into(
+            self.get_mint_info()
+                .await?
+                .get_extension::<ConfidentialMintBurn>()?
+                .supply_elgamal_pubkey,
+        )
+        .map(|pk| TryInto::<ElGamalPubkey>::try_into(pk).unwrap()))
+    }
+
+    /// Rotate the elgamal pubkey encrypting the confidential supply
+    #[allow(clippy::too_many_arguments)]
+    pub async fn rotate_supply_elgamal<S: Signers>(
+        &self,
+        authority: &Pubkey,
+        new_supply_elgamal_keypair: &ElGamalKeypair,
+        signing_keypairs: &S,
+        proof_data: CiphertextCiphertextEqualityProofData,
+    ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
+        let equality_proof_location =
+            Self::confidential_transfer_create_proof_location(Some(&proof_data), None, 1).unwrap();
+
+        self.process_ixs(
+            &confidential_mint_burn::instruction::rotate_supply_elgamal_pubkey(
+                &self.program_id,
+                self.get_address(),
+                authority,
+                &multisig_signers,
+                *new_supply_elgamal_keypair.pubkey(),
+                equality_proof_location,
+            )?,
+            signing_keypairs,
+        )
+        .await
     }
 }
 

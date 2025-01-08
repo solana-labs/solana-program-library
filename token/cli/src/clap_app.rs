@@ -168,6 +168,11 @@ pub enum CommandName {
     ApplyPendingBalance,
     UpdateGroupAddress,
     UpdateMemberAddress,
+    MintConfidentialTokens,
+    BurnConfidentialTokens,
+    ConfidentialBalance,
+    ConfidentialSupply,
+    RotateSupplyElgamal,
 }
 impl fmt::Display for CommandName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -889,6 +894,42 @@ pub fn app<'a>(
                         .conflicts_with("member_address")
                         .takes_value(false)
                         .help("Enables group member configurations in the mint. The mint authority must initialize the member."),
+                )
+                .arg(
+                    Arg::with_name("enable_confidential_mint_burn")
+                        .long("enable-confidential-mint-burn")
+                        .takes_value(false)
+                        .help(
+                            "Enables minting of new tokens into confidential balance and burning of tokens directly from the confidential balance"
+                        ),
+                )
+                .arg(
+                    Arg::with_name("auditor_pubkey")
+                        .long("auditor-pubkey")
+                        .value_name("AUDITOR_PUBKEY")
+                        .takes_value(true)
+                        .help(
+                            "The auditor encryption public key for mints with the confidential \
+                            transfer extension enabled. The corresponding private key for \
+                            this auditor public key can be used to decrypt all confidential \
+                            transfers involving tokens from this mint. Currently, the auditor \
+                            public key can only be specified as a direct *base64* encoding of \
+                            an ElGamal public key. More methods of specifying the auditor public \
+                            key will be supported in a future version. To disable auditability \
+                            feature for the token, use \"none\"."
+                        )
+                )
+                .arg(
+                    Arg::with_name("confidential_supply_pubkey")
+                        .long("confidential-supply-pubkey")
+                        .value_name("CONFIDENTIAL_SUPPLY_PUBKEY")
+                        .takes_value(true)
+                        .help(
+                            "The confidential supply encryption public key for mints with the \
+                            confidential transfer and confidential mint-burn extension enabled. \
+                            The corresponding private key for this supply public key can be \
+                            used  to decrypt the confidential supply of the token."
+                        )
                 )
                 .arg(multisig_signer_arg())
                 .nonce_args(true)
@@ -2686,6 +2727,221 @@ pub fn app<'a>(
                     owner_address_arg()
                 )
                 .arg(multisig_signer_arg())
+                .nonce_args(true)
+        )
+        .subcommand(
+            SubCommand::with_name(CommandName::MintConfidentialTokens.into())
+                .about("Mint tokens amounts for into confidential balance")
+                .arg(
+                    Arg::with_name("token")
+                        .long("token")
+                        .validator(|s| is_valid_pubkey(s))
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The token address with confidential transfers enabled"),
+                )
+                .arg(
+                    Arg::with_name("amount")
+                        .value_parser(Amount::parse)
+                        .value_name("TOKEN_AMOUNT")
+                        .takes_value(true)
+                        .index(2)
+                        .required(true)
+                        .help("Amount to deposit; accepts keyword ALL"),
+                )
+                .arg(
+                    Arg::with_name("address")
+                        .long("address")
+                        .validator(|s| is_valid_pubkey(s))
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .help("The address of the token account to configure confidential transfers for \
+                            [default: owner's associated token account]")
+                )
+                .arg(
+                    owner_address_arg()
+                )
+                .arg(multisig_signer_arg())
+                .arg(mint_decimals_arg())
+                .nonce_args(true)
+        )
+        .subcommand(
+            SubCommand::with_name(CommandName::BurnConfidentialTokens.into())
+                .about("Burn tokens from available confidential balance")
+                .arg(
+                    Arg::with_name("token")
+                        .long("token")
+                        .validator(|s| is_valid_pubkey(s))
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The token address with confidential transfers enabled"),
+                )
+                .arg(
+                    Arg::with_name("amount")
+                        .value_parser(Amount::parse)
+                        .value_name("TOKEN_AMOUNT")
+                        .takes_value(true)
+                        .index(2)
+                        .required(true)
+                        .help("Amount to deposit; accepts keyword ALL"),
+                )
+                .arg(
+                    Arg::with_name("address")
+                        .long("address")
+                        .validator(|s| is_valid_pubkey(s))
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .help("The address of the token account to configure confidential transfers for \
+                            [default: owner's associated token account]")
+                )
+                .arg(
+                    owner_address_arg()
+                )
+                .arg(multisig_signer_arg())
+                .arg(mint_decimals_arg())
+                .nonce_args(true)
+        )
+        .subcommand(
+            SubCommand::with_name(CommandName::ConfidentialBalance.into())
+                .about("Display confidential balance")
+                .arg(
+                    Arg::with_name("token")
+                        .long("token")
+                        .validator(|s| is_valid_pubkey(s))
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The token address with confidential transfers enabled"),
+                )
+                .arg(
+                    Arg::with_name("address")
+                        .long("address")
+                        .validator(|s| is_valid_pubkey(s))
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .index(2)
+                        .help("The address of the token account to for which to fetch the confidential balance")
+                )
+                .arg(
+                    Arg::with_name("authority")
+                        .long("authority")
+                        .alias("owner")
+                        .validator(|s| is_valid_signer(s))
+                        .value_name("SIGNER")
+                        .takes_value(true)
+                        .help("Keypair from which encryption keys for token account were derived.")
+                )
+                .arg(
+                    owner_address_arg()
+                )
+                .arg(multisig_signer_arg())
+                .arg(mint_decimals_arg())
+                .nonce_args(true)
+        )
+        .subcommand(
+            SubCommand::with_name(CommandName::ConfidentialSupply.into())
+                .about("Display supply of confidential token")
+                .arg(
+                    Arg::with_name("token")
+                        .long("token")
+                        .validator(|s| is_valid_pubkey(s))
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The token address with confidential transfers enabled"),
+                )
+                .arg(
+                    Arg::with_name("authority")
+                        .long("authority")
+                        .alias("owner")
+                        .validator(|s| is_valid_signer(s))
+                        .value_name("SIGNER")
+                        .takes_value(true)
+                        .help("Keypair from which the supply elgamal keypair is derived. \
+                              Either the authority or the confidential-supply-keypair have \
+                              to be specified in order for the supply to be decrypted.")
+                )
+                .arg(
+                    Arg::with_name("confidential_supply_keypair")
+                        .long("confidential-supply-keypair")
+                        .value_name("CONFIDENTIAL_SUPPLY_KEYPAIR")
+                        .takes_value(true)
+                        .help(
+                            "The confidential supply encryption keypair used to decrypt ElGamalCiphertext supply. \
+                              Either the authority or the confidential-supply-keypair have \
+                              to be specified in order for the supply to be decrypted."
+                        )
+                )
+                .arg(
+                    Arg::with_name("confidential_supply_aes_key")
+                        .long("confidential-supply-aes-key")
+                        .value_name("CONFIDENTIAL_SUPPLY_AES_KEY")
+                        .takes_value(true)
+                        .help(
+                            "The aes key used to decrypt the decryptable portion of the confidential supply."
+                        )
+                )
+                .nonce_args(true)
+        )
+        .subcommand(
+            SubCommand::with_name(CommandName::RotateSupplyElgamal.into())
+                .about("Display supply of confidential token")
+                .arg(
+                    Arg::with_name("token")
+                        .long("token")
+                        .validator(|s| is_valid_pubkey(s))
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The token address with confidential transfers enabled"),
+                )
+                .arg(
+                    Arg::with_name("authority")
+                        .long("authority")
+                        .alias("owner")
+                        .validator(|s| is_valid_signer(s))
+                        .value_name("SIGNER")
+                        .takes_value(true)
+                        .required(true)
+                        .help("Keypair holding the authority over the confidential-mint-burn extension.")
+                )
+                .arg(
+                    Arg::with_name("current_supply_keypair")
+                        .long("current-supply-keypair")
+                        .value_name("CURRENT_SUPPLY_KEYPAIR")
+                        .takes_value(true)
+                        .required(true)
+                        .help(
+                            "The current confidential supply encryption keypair."
+                        )
+                )
+                .arg(
+                    Arg::with_name("supply_aes_key")
+                        .long("supply-aes-key")
+                        .value_name("SUPPLY_AES_KEY")
+                        .takes_value(true)
+                        .required(true)
+                        .help(
+                            "The aes key to decrypt the decryptable confidential supply."
+                        )
+                )
+                .arg(
+                    Arg::with_name("new_supply_keypair")
+                        .long("new-supply-keypair")
+                        .value_name("NEW_SUPPLY_KEYPAIR")
+                        .takes_value(true)
+                        .required(true)
+                        .help(
+                            "The new confidential supply encryption keypair to rotate to."
+                        )
+                )
                 .nonce_args(true)
         )
 }

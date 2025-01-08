@@ -5,7 +5,9 @@
 use {
     base64::{prelude::BASE64_STANDARD, Engine},
     clap::ArgMatches,
+    solana_sdk::signer::EncodableKey,
     spl_token_2022::solana_zk_sdk::encryption::{
+        auth_encryption::AeKey,
         elgamal::{ElGamalKeypair, ElGamalPubkey},
         pod::elgamal::PodElGamalPubkey,
     },
@@ -32,6 +34,9 @@ pub(crate) fn elgamal_pubkey_or_none(
     matches: &ArgMatches,
     name: &str,
 ) -> Result<ElGamalPubkeyOrNone, String> {
+    if !matches.is_present(name) {
+        return Ok(ElGamalPubkeyOrNone::None);
+    }
     let arg_str = matches.value_of(name).unwrap();
     if arg_str == "none" {
         return Ok(ElGamalPubkeyOrNone::None);
@@ -63,6 +68,11 @@ pub(crate) fn elgamal_keypair_of(
 ) -> Result<ElGamalKeypair, String> {
     let path = matches.value_of(name).unwrap();
     ElGamalKeypair::read_json_file(path).map_err(|e| e.to_string())
+}
+
+pub(crate) fn aes_key_of(matches: &ArgMatches, name: &str) -> Result<AeKey, String> {
+    let path = matches.value_of(name).unwrap();
+    AeKey::read_from_file(path).map_err(|e| e.to_string())
 }
 
 fn elgamal_pubkey_from_str(s: &str) -> Option<PodElGamalPubkey> {
