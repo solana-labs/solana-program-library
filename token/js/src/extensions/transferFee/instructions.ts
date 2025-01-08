@@ -1,4 +1,4 @@
-import { struct, u16, u8 } from '@solana/buffer-layout';
+import { Layout, struct, u16, u8 } from '@solana/buffer-layout';
 import { u64 } from '@solana/buffer-layout-utils';
 import type { AccountMeta, Signer, PublicKey } from '@solana/web3.js';
 import { TransactionInstruction } from '@solana/web3.js';
@@ -12,7 +12,7 @@ import {
 } from '../../errors.js';
 import { addSigners } from '../../instructions/internal.js';
 import { TokenInstruction } from '../../instructions/types.js';
-import { COptionPublicKeyLayout } from '../../serialization.js';
+import { COptionPublicKeyLayout, getSetOfPossibleSpans } from '../../serialization.js';
 
 export enum TransferFeeInstruction {
     InitializeTransferFeeConfig = 0,
@@ -44,6 +44,8 @@ export const initializeTransferFeeConfigInstructionData = struct<InitializeTrans
     u16('transferFeeBasisPoints'),
     u64('maximumFee'),
 ]);
+
+const ALLOWED_SPANS = getSetOfPossibleSpans(initializeTransferFeeConfigInstructionData);
 
 /**
  * Construct an InitializeTransferFeeConfig instruction
@@ -115,8 +117,7 @@ export function decodeInitializeTransferFeeConfigInstruction(
     programId: PublicKey,
 ): DecodedInitializeTransferFeeConfigInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
-    if (instruction.data.length !== initializeTransferFeeConfigInstructionData.span)
-        throw new TokenInvalidInstructionDataError();
+    if (!ALLOWED_SPANS.has(instruction.data.length)) throw new TokenInvalidInstructionDataError();
 
     const {
         keys: { mint },

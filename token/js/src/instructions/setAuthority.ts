@@ -1,4 +1,4 @@
-import { struct, u8 } from '@solana/buffer-layout';
+import { struct, u8, Layout } from '@solana/buffer-layout';
 import { publicKey } from '@solana/buffer-layout-utils';
 import type { AccountMeta, Signer, PublicKey } from '@solana/web3.js';
 import { TransactionInstruction } from '@solana/web3.js';
@@ -11,7 +11,7 @@ import {
 } from '../errors.js';
 import { addSigners } from './internal.js';
 import { TokenInstruction } from './types.js';
-import { COptionPublicKeyLayout } from '../serialization.js';
+import { COptionPublicKeyLayout, getSetOfPossibleSpans } from '../serialization.js';
 
 /** Authority types defined by the program */
 export enum AuthorityType {
@@ -45,6 +45,8 @@ export const setAuthorityInstructionData = struct<SetAuthorityInstructionData>([
     u8('authorityType'),
     new COptionPublicKeyLayout('newAuthority'),
 ]);
+
+const ALLOWED_SPANS = getSetOfPossibleSpans(initializeTransferFeeConfigInstructionData);
 
 /**
  * Construct a SetAuthority instruction
@@ -109,7 +111,7 @@ export function decodeSetAuthorityInstruction(
     programId = TOKEN_PROGRAM_ID,
 ): DecodedSetAuthorityInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
-    if (instruction.data.length !== setAuthorityInstructionData.span) throw new TokenInvalidInstructionDataError();
+    if (!ALLOWED_SPANS.has(instruction.data.length)) throw new TokenInvalidInstructionDataError();
 
     const {
         keys: { account, currentAuthority, multiSigners },

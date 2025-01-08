@@ -1,4 +1,4 @@
-import { struct, u8 } from '@solana/buffer-layout';
+import { struct, u8, Layout } from '@solana/buffer-layout';
 import type { AccountMeta, PublicKey } from '@solana/web3.js';
 import { TransactionInstruction } from '@solana/web3.js';
 import { programSupportsExtensions } from '../constants.js';
@@ -10,7 +10,7 @@ import {
     TokenUnsupportedInstructionError,
 } from '../errors.js';
 import { TokenInstruction } from './types.js';
-import { COptionPublicKeyLayout } from '../serialization.js';
+import { COptionPublicKeyLayout, getSetOfPossibleSpans } from '../serialization.js';
 
 /** TODO: docs */
 export interface InitializeMintCloseAuthorityInstructionData {
@@ -23,6 +23,8 @@ export const initializeMintCloseAuthorityInstructionData = struct<InitializeMint
     u8('instruction'),
     new COptionPublicKeyLayout('closeAuthority'),
 ]);
+
+const ALLOWED_SPANS = getSetOfPossibleSpans(initializeTransferFeeConfigInstructionData);
 
 /**
  * Construct an InitializeMintCloseAuthority instruction
@@ -80,8 +82,7 @@ export function decodeInitializeMintCloseAuthorityInstruction(
     programId: PublicKey,
 ): DecodedInitializeMintCloseAuthorityInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
-    if (instruction.data.length !== initializeMintCloseAuthorityInstructionData.span)
-        throw new TokenInvalidInstructionDataError();
+    if (!ALLOWED_SPANS.has(instruction.data.length)) throw new TokenInvalidInstructionDataError();
 
     const {
         keys: { mint },

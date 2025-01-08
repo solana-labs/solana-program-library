@@ -1,4 +1,4 @@
-import { struct, u8 } from '@solana/buffer-layout';
+import { struct, u8, Layout } from '@solana/buffer-layout';
 import { publicKey } from '@solana/buffer-layout-utils';
 import type { AccountMeta, PublicKey } from '@solana/web3.js';
 import { SYSVAR_RENT_PUBKEY, TransactionInstruction } from '@solana/web3.js';
@@ -10,7 +10,7 @@ import {
     TokenInvalidInstructionTypeError,
 } from '../errors.js';
 import { TokenInstruction } from './types.js';
-import { COptionPublicKeyLayout } from '../serialization.js';
+import { COptionPublicKeyLayout, getSetOfPossibleSpans } from '../serialization.js';
 
 /** TODO: docs */
 export interface InitializeMintInstructionData {
@@ -27,6 +27,8 @@ export const initializeMintInstructionData = struct<InitializeMintInstructionDat
     publicKey('mintAuthority'),
     new COptionPublicKeyLayout('freezeAuthority'),
 ]);
+
+const ALLOWED_SPANS = getSetOfPossibleSpans(initializeTransferFeeConfigInstructionData);
 
 /**
  * Construct an InitializeMint instruction
@@ -93,7 +95,7 @@ export function decodeInitializeMintInstruction(
     programId = TOKEN_PROGRAM_ID,
 ): DecodedInitializeMintInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
-    if (instruction.data.length !== initializeMintInstructionData.span) throw new TokenInvalidInstructionDataError();
+    if (!ALLOWED_SPANS.has(instruction.data.length)) throw new TokenInvalidInstructionDataError();
 
     const {
         keys: { mint, rent },
