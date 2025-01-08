@@ -1,4 +1,4 @@
-# Solana Program Library
+# Solana Program Library 
 
 The Solana Program Library (SPL) is a collection of on-chain programs targeting
 the [Sealevel parallel
