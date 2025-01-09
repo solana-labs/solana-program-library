@@ -29,6 +29,19 @@ use {
     std::{process::exit, rc::Rc, str::FromStr, sync::Arc, time::Duration},
 };
 
+fn get_cli_config(matches: &ArgMatches) -> solana_cli_config::Config {
+    if let Some(config_file) = matches.value_of("config_file") {
+        solana_cli_config::Config::load(config_file).unwrap_or_else(|_| {
+            eprintln!("error: Could not find config file `{}`", config_file);
+            exit(1);
+        })
+    } else if let Some(config_file) = &*solana_cli_config::CONFIG_FILE {
+        solana_cli_config::Config::load(config_file).unwrap_or_default()
+    } else {
+        solana_cli_config::Config::default()
+    }
+}
+
 type SignersOf = Vec<(Arc<dyn Signer>, Pubkey)>;
 fn signers_of(
     matches: &ArgMatches,
@@ -84,16 +97,7 @@ impl<'a> Config<'a> {
         bulk_signers: &mut Vec<Arc<dyn Signer>>,
         multisigner_ids: &'a mut Vec<Pubkey>,
     ) -> Config<'a> {
-        let cli_config = if let Some(config_file) = matches.value_of("config_file") {
-            solana_cli_config::Config::load(config_file).unwrap_or_else(|_| {
-                eprintln!("error: Could not find config file `{}`", config_file);
-                exit(1);
-            })
-        } else if let Some(config_file) = &*solana_cli_config::CONFIG_FILE {
-            solana_cli_config::Config::load(config_file).unwrap_or_default()
-        } else {
-            solana_cli_config::Config::default()
-        };
+        let cli_config = get_cli_config(matches);
         let json_rpc_url = normalize_to_url_if_moniker(
             matches
                 .value_of("json_rpc_url")
@@ -165,16 +169,7 @@ impl<'a> Config<'a> {
         program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>>,
         websocket_url: String,
     ) -> Config<'a> {
-        let cli_config = if let Some(config_file) = matches.value_of("config_file") {
-            solana_cli_config::Config::load(config_file).unwrap_or_else(|_| {
-                eprintln!("error: Could not find config file `{}`", config_file);
-                exit(1);
-            })
-        } else if let Some(config_file) = &*solana_cli_config::CONFIG_FILE {
-            solana_cli_config::Config::load(config_file).unwrap_or_default()
-        } else {
-            solana_cli_config::Config::default()
-        };
+        let cli_config = get_cli_config(matches);
         let multisigner_pubkeys =
             Self::extract_multisig_signers(matches, wallet_manager, bulk_signers, multisigner_ids);
 
