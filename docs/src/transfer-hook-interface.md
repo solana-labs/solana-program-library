@@ -9,7 +9,7 @@ During transfers, Token-2022 calls a mint's configured transfer hook program
 using this interface, as described in the
 [Transfer Hook Extension Guide](../../token-2022/extensions#transfer-hook).
 Additionally, a
-[reference implementation](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook/example)
+[reference implementation](https://github.com/solana-program/transfer-hook/tree/main/program)
 can be found in the SPL GitHub repository, detailing
 how one might implement this interface in their own program.
 
