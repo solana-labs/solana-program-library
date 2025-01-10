@@ -13,7 +13,7 @@ solana-curve25519 = "2.1.0"
 solana-program = "2.1.0"
 solana-zk-sdk = "2.1.0"
 spl-pod = { version = "0.5.0", path = "../../../libraries/pod" }
-thiserror = "2.0.9"
+thiserror = "2.0.10"
 
 [lib]
 crate-type = ["cdylib", "lib"]

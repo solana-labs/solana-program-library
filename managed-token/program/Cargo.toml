@@ -32,7 +32,7 @@ spl-associated-token-account-client = { version = "2.0.0", path = "../../associa
 spl-token = { version = "7.0", path = "../../token/program", features = [
   "no-entrypoint",
 ] }
-thiserror = "^2.0.9"
+thiserror = "^2.0.10"
 
 [dev-dependencies]
 solana-program-test = "2.1.0"
