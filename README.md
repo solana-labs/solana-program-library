@@ -1,3 +1,31 @@
+# PLEASE READ: This repo no longer contains the SPL program implementations
+
+This repo still exists in archived form, feel free to fork any reference
+implementations it still contains.
+
+## Migrated Packages
+
+The Solana Program Library repository has been broken up into separate repos for
+each program and set of clients, under the
+[solana-program organization](https://github.com/solana-program).
+
+The following programs have been moved:
+
+* [Associated-Token-Account](https://github.com/solana-program/associated-token-account)
+* [Feature Proposal](https://github.com/solana-program/feature-proposal)
+* [Instruction Padding](https://github.com/solana-program/instruction-padding)
+* [Libraries](https://github.com/solana-program/libraries)
+* [Memo](https://github.com/solana-program/memo)
+* [Record](https://github.com/solana-program/record)
+* [Single Pool](https://github.com/solana-program/single-pool)
+* [Slashing](https://github.com/solana-program/slashing)
+* [Stake Pool](https://github.com/solana-program/stake-pool)
+* [Token](https://github.com/solana-program/token)
+* [Token-2022](https://github.com/solana-program/token-2022)
+* [Token-Group](https://github.com/solana-program/token-group)
+* [Token-Metadata](https://github.com/solana-program/token-metadata)
+* [Token-2022 Transfer Hook](https://github.com/solana-program/transfer-hook)
+
 # Solana Program Library
 
 The Solana Program Library (SPL) is a collection of on-chain programs targeting
@@ -17,22 +45,17 @@ the Solana Mainnet Beta. Currently, this includes:
 
 | Program | Version |
 | --- | --- |
-| [token](https://github.com/solana-labs/solana-program-library/tree/master/token/program) | [3.4.0](https://github.com/solana-labs/solana-program-library/releases/tag/token-v3.4.0) |
-| [associated-token-account](https://github.com/solana-labs/solana-program-library/tree/master/associated-token-account/program) | [1.1.0](https://github.com/solana-labs/solana-program-library/releases/tag/associated-token-account-v1.1.0) |
-| [token-2022](https://github.com/solana-labs/solana-program-library/tree/master/token/program-2022) | [1.0.0](https://github.com/solana-labs/solana-program-library/releases/tag/token-2022-v1.0.0) |
+| [token](https://github.com/solana-program/token/tree/main/program) | [3.4.0](https://github.com/solana-labs/solana-program-library/releases/tag/token-v3.4.0) |
+| [associated-token-account](https://github.com/solana-program/associated-token-account/tree/main/program) | [1.1.0](https://github.com/solana-labs/solana-program-library/releases/tag/associated-token-account-v1.1.0) |
+| [token-2022](https://github.com/solana-program/token-2022/tree/main/program) | [1.0.0](https://github.com/solana-labs/solana-program-library/releases/tag/token-2022-v1.0.0) |
 | [governance](https://github.com/solana-labs/solana-program-library/tree/master/governance/program) | [3.1.0](https://github.com/solana-labs/solana-program-library/releases/tag/governance-v3.1.0) |
-| [stake-pool](https://github.com/solana-labs/solana-program-library/tree/master/stake-pool/program) | [1.0.0](https://github.com/solana-labs/solana-program-library/releases/tag/stake-pool-v1.0.0) |
+| [stake-pool](https://github.com/solana-program/stake-pool/tree/main/program) | [1.0.0](https://github.com/solana-labs/solana-program-library/releases/tag/stake-pool-v1.0.0) |
 | [account-compression](https://github.com/solana-labs/solana-program-library/tree/master/account-compression/programs/account-compression) | [0.1.3](https://github.com/solana-labs/solana-program-library/releases/tag/account-compression-v0.1.3) |
 | [shared-memory](https://github.com/solana-labs/solana-program-library/tree/master/shared-memory/program) | [1.0.0](https://github.com/solana-labs/solana-program-library/commit/b40e0dd3fd6c0e509dc1e8dd3da0a6d609035bbd) |
-| [feature-proposal](https://github.com/solana-labs/solana-program-library/tree/master/feature-proposal/program) | [1.0.0](https://github.com/solana-labs/solana-program-library/releases/tag/feature-proposal-v1.0.0) |
+| [feature-proposal](https://github.com/solana-program/feature-proposal/tree/main/program) | [1.0.0](https://github.com/solana-labs/solana-program-library/releases/tag/feature-proposal-v1.0.0) |
 | [name-service](https://github.com/solana-labs/solana-program-library/tree/master/name-service/program) | [0.3.0](https://github.com/solana-labs/solana-program-library/releases/tag/name-service-v0.3.0) |
-| [memo](https://github.com/solana-program/memo/tree/master/program) | [3.0.0](https://github.com/solana-labs/solana-program-library/releases/tag/memo-v3.0.0) |
-
-In addition, one program is planned for deployment to Solana Mainnet Beta:
-
-| Program | Version |
-| --- | --- |
-| [single-pool](https://github.com/solana-labs/solana-program-library/tree/master/single-pool/program) | [1.0.1](https://github.com/solana-labs/solana-program-library/releases/tag/single-pool-v1.0.1) |
+| [memo](https://github.com/solana-program/memo/tree/main/program) | [3.0.0](https://github.com/solana-labs/solana-program-library/releases/tag/memo-v3.0.0) |
+| [single-pool](https://github.com/solana-program/single-pool/tree/main/program) | [1.0.1](https://github.com/solana-labs/solana-program-library/releases/tag/single-pool-v1.0.1) |
 
 ## Audits
 
@@ -40,13 +63,13 @@ Only a subset of programs within the Solana Program Library repo are audited. Cu
 
 | Program | Last Audit Date | Version |
 | --- | --- | --- |
-| [token](https://github.com/solana-labs/solana-program-library/tree/master/token/program) | 2022-08-04 (Peer review) | [4fadd55](https://github.com/solana-labs/solana-program-library/commit/4fadd553e1c549afd1d62aeb5ffa7ef31d1999d1) |
-| [associated-token-account](https://github.com/solana-labs/solana-program-library/tree/master/associated-token-account/program) | 2022-08-04 (Peer review) | [c00194d](https://github.com/solana-labs/solana-program-library/commit/c00194d2257302f028f44a403c6dee95c0f9c3bc) |
-| [token-2022](https://github.com/solana-labs/solana-program-library/tree/master/token/program-2022) | [2023-11-03](https://github.com/solana-labs/security-audits/blob/master/spl/OtterSecToken2022Audit-2023-11-03.pdf) | [e924132](https://github.com/solana-labs/solana-program-library/tree/e924132d65ba0896249fb4983f6f97caff15721a) |
-| [stake-pool](https://github.com/solana-labs/solana-program-library/tree/master/stake-pool/program) | [2023-12-31](https://github.com/solana-labs/security-audits/blob/master/spl/HalbornStakePoolAudit-2023-12-31.pdf) | [a17fffe](https://github.com/solana-labs/solana-program-library/commit/a17fffe70d6cc13742abfbc4a4a375b087580bc1) |
+| [token](https://github.com/solana-program/token) | 2022-08-04 (Peer review) | [4fadd55](https://github.com/solana-labs/solana-program-library/commit/4fadd553e1c549afd1d62aeb5ffa7ef31d1999d1) |
+| [associated-token-account](https://github.com/solana-program/associated-token-account) | 2022-08-04 (Peer review) | [c00194d](https://github.com/solana-labs/solana-program-library/commit/c00194d2257302f028f44a403c6dee95c0f9c3bc) |
+| [token-2022](https://github.com/solana-program/token-2022) | [2023-11-03](https://github.com/solana-labs/security-audits/blob/master/spl/OtterSecToken2022Audit-2023-11-03.pdf) | [e924132](https://github.com/solana-labs/solana-program-library/tree/e924132d65ba0896249fb4983f6f97caff15721a) |
+| [stake-pool](https://github.com/solana-program/stake-pool) | [2023-12-31](https://github.com/solana-labs/security-audits/blob/master/spl/HalbornStakePoolAudit-2023-12-31.pdf) | [a17fffe](https://github.com/solana-labs/solana-program-library/commit/a17fffe70d6cc13742abfbc4a4a375b087580bc1) |
 | [account-compression](https://github.com/solana-labs/solana-program-library/tree/master/account-compression/programs/account-compression) | [2022-12-05](https://github.com/solana-labs/security-audits/blob/master/spl/OtterSecAccountCompressionAudit-2022-12-03.pdf) | [6e81794](https://github.com/solana-labs/solana-program-library/commit/6e81794) |
 | [shared-memory](https://github.com/solana-labs/solana-program-library/tree/master/shared-memory/program) | [2021-02-25](https://github.com/solana-labs/security-audits/blob/master/spl/KudelskiTokenSwapSharedMemAudit-2021-02-25.pdf) | [b40e0dd](https://github.com/solana-labs/solana-program-library/commit/b40e0dd3fd6c0e509dc1e8dd3da0a6d609035bbd) |
-| [single-pool](https://github.com/solana-labs/solana-program-library/tree/master/single-pool/program) | [2024-01-02](https://github.com/solana-labs/security-audits/blob/master/spl/ZellicSinglePoolAudit-2024-01-02.pdf) | [ef44df9](https://github.com/solana-labs/solana-program-library/commit/ef44df985e76a697ee9a8aabb3a223610e4cf1dc) |
+| [single-pool](https://github.com/solana-program/single-pool) | [2024-01-02](https://github.com/solana-labs/security-audits/blob/master/spl/ZellicSinglePoolAudit-2024-01-02.pdf) | [ef44df9](https://github.com/solana-labs/solana-program-library/commit/ef44df985e76a697ee9a8aabb3a223610e4cf1dc) |
 
 All other programs may be updated from time to time. These programs are not
 audited, so fork and deploy them at your own risk. Here is the full list of
@@ -54,11 +77,11 @@ unaudited programs:
 
 * [binary-option](https://github.com/solana-labs/solana-program-library/tree/master/binary-option/program)
 * [binary-oracle-pair](https://github.com/solana-labs/solana-program-library/tree/master/binary-oracle-pair/program)
-* [feature-proposal](https://github.com/solana-labs/solana-program-library/tree/master/feature-proposal/program)
-* [instruction-padding](https://github.com/solana-labs/solana-program-library/tree/master/instruction-padding/program)
+* [feature-proposal](https://github.com/solana-program/feature-proposal)
+* [instruction-padding](https://github.com/solana-program/instruction-padding)
 * [managed-token](https://github.com/solana-labs/solana-program-library/tree/master/managed-token/program)
 * [name-service](https://github.com/solana-labs/solana-program-library/tree/master/name-service/program)
-* [record](https://github.com/solana-labs/solana-program-library/tree/master/record/program)
+* [record](https://github.com/solana-program/record)
 * [stateless-asks](https://github.com/solana-labs/solana-program-library/tree/master/stateless-asks/program)
 * [token-lending](https://github.com/solana-labs/solana-program-library/tree/master/token-lending/program)
 * [token-swap](https://github.com/solana-labs/solana-program-library/tree/master/token-swap/program)
@@ -69,13 +92,6 @@ More information about the repository's security policy at
 
 The [security-audits repo](https://github.com/solana-labs/security-audits) contains
 all past and present program audits.
-
-## Migrated Packages
-
-The Solana Program Library repository is being broken up into separate repos for
-each program and set of clients. The following programs have been moved:
-
-* [Memo](https://github.com/solana-program/memo)
 
 ## Program Packages
 
