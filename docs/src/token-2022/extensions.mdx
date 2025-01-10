@@ -22,7 +22,7 @@ See the [Token Setup Guide](../token#setup) to install the client utilities.
 Token-2022 shares the same CLI and NPM packages for maximal compatibility.
 
 All JS examples are adapted from the tests, and available in full at the
-[Token JS examples](https://github.com/solana-labs/solana-program-library/tree/master/token/js/examples).
+[Token JS examples](https://github.com/solana-program/token-2022/tree/main/clients/js-legacy/examples).
 
 ## Extensions
 
@@ -1528,29 +1528,29 @@ explained in detail in many of the linked `README` files below under
 #### Resources
 
 The interface description and structs exist at
-[spl-transfer-hook-interface](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook/interface),
+[spl-transfer-hook-interface](https://github.com/solana-program/transfer-hook/tree/main/interface),
 along with a sample minimal program implementation. You can find detailed
 instructions on how to implement this interface for an on-chain program or
 interact with a program that implements transfer-hook in the repository's
-[README](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook/interface/README.md).
+[README](https://github.com/solana-program/transfer-hook/tree/main/interface/README.md).
 
 The `spl-transfer-hook-interface` library provides offchain and onchain helpers
 for resolving the additional accounts required. See
-[onchain.rs](https://github.com/solana-labs/solana-program-library/blob/master/token/transfer-hook/interface/src/onchain.rs)
+[onchain.rs](https://github.com/solana-program/transfer-hook/blob/main/interface/src/onchain.rs)
 for usage on-chain, and
-[offchain.rs](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook/interface/src/offchain.rs)
+[offchain.rs](https://github.com/solana-program/transfer-hook/blob/main/interface/src/offchain.rs)
 for fetching the additional required account metas with any async off-chain client
 like `BanksClient` or `RpcClient`.
 
 A usable example program exists at
-[spl-transfer-hook-example](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook/example).
+[spl-transfer-hook-example](https://github.com/solana-program/transfer-hook/tree/main/program).
 Token-2022 uses this example program in tests to ensure that it properly uses
 the transfer hook interface.
 
 The example program and the interface are powered by the
-[spl-tlv-account-resolution](https://github.com/solana-labs/solana-program-library/tree/master/libraries/tlv-account-resolution)
+[spl-tlv-account-resolution](https://github.com/solana-program/libraries/tree/main/tlv-account-resolution)
 library, which is explained in detail in the repository's 
-[README](https://github.com/solana-labs/solana-program-library/tree/master/libraries/tlv-account-resolution/README.md)
+[README](https://github.com/solana-program/libraries/tree/main/tlv-account-resolution/README.md)
 
 #### Example: Create a mint with a transfer hook
 
@@ -1660,7 +1660,7 @@ await updateTransferHook(
 #### Example: Manage a transfer-hook program
 
 A sample CLI for managing a transfer-hook program exists at
-[spl-transfer-hook-cli](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook/cli).
+[spl-transfer-hook-cli](https://github.com/solana-program/transfer-hook/tree/main/clients/cli).
 A mint manager can fork the tool for their own program.
 
 It only contains a command to create the required transfer-hook account for the
@@ -1720,7 +1720,7 @@ To facilitate token-metadata usage, Token-2022 allows a mint creator to include
 their token's metadata directly in the mint account.
 
 Token-2022 implements all of the instructions from the
-[spl-token-metadata-interface](https://github.com/solana-labs/solana-program-library/tree/master/token-metadata/interface).
+[spl-token-metadata-interface](https://github.com/solana-program/token-metadata/tree/main/interface).
 
 The metadata extension should work directly with the metadata-pointer extension.
 During mint creation, you should also add the metadata-pointer extension, pointed
@@ -1966,7 +1966,7 @@ configurations for a group, which describe things like the update authority
 and the group's maximum size, can be stored directly in the mint itself.
 
 Token-2022 implements all of the instructions from the
-[spl-token-group-interface](https://github.com/solana-labs/solana-program-library/tree/master/token-group/interface).
+[spl-token-group-interface](https://github.com/solana-program/token-group/tree/main/interface).
 
 The group extension works directly with the group-pointer extension.
 To initialize group configurations within a mint, you must add the group-pointer

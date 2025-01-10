@@ -35,7 +35,7 @@ when appropriate.
 
 ## Source
 The Feature Proposal Program's source is available on
-[GitHub](https://github.com/solana-labs/solana-program-library)
+[GitHub](https://github.com/solana-program/feature-proposal).
 
 ## Interface
 The Feature Proposal Program is written in Rust and available on [crates.io](https://crates.io/crates/spl-feature-proposal) and [docs.rs](https://docs.rs/spl-feature-proposal).
@@ -58,7 +58,7 @@ This section describes the life cycle of a feature proposal.
 
 ### Implement the Feature
 The first step is to conceive of the new feature and realize it in the
-Solana code base, working with the core Solana developers at https://github.com/solana-labs/solana.
+Solana code base, working with the core Solana developers at https://github.com/anza-xyz/agave
 
 During the implementation, a *feature id* will be required to identify the new
 feature in the code base to avoid the new functionality until its activation.

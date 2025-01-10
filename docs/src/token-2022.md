@@ -82,7 +82,7 @@ is written after the end of the `Account` in Token, which is the byte at index
 `165`.  This means it is always possible to differentiate mints and accounts.
 
 You can read more about how this is done at the
-[source code](https://github.com/solana-labs/solana-program-library/blob/master/token/program-2022/src/extension/mod.rs).
+[source code](https://github.com/solana-program/token-2022/blob/main/program/src/extension/mod.rs).
 
 Mint extensions currently include:
 
@@ -128,7 +128,7 @@ The Token functionality will always apply to Token-2022.
 ## Source
 
 The Token-2022 Program's source is available on
-[GitHub](https://github.com/solana-labs/solana-program-library/tree/master/token/program-2022).
+[GitHub](https://github.com/solana-program/token-2022).
 
 For information about the types and instructions, the Rust docs are available at
 [docs.rs](https://docs.rs/spl-token-2022/latest/spl_token_2022/).
@@ -142,19 +142,19 @@ Here are the completed audits as of 13 December 2023:
 
 * Halborn
     - Review commit hash [`c3137a`](https://github.com/solana-labs/solana-program-library/tree/c3137af9dfa2cc0873cc84c4418dea88ac542965/token/program-2022)
-    - Final report https://github.com/solana-labs/security-audits/blob/master/spl/HalbornToken2022Audit-2022-07-27.pdf
+    - Final report https://github.com/anza-xyz/security-audits/blob/master/spl/HalbornToken2022Audit-2022-07-27.pdf
 * Zellic
     - Review commit hash [`54695b`](https://github.com/solana-labs/solana-program-library/tree/54695b233484722458b18c0e26ebb8334f98422c/token/program-2022)
-    - Final report https://github.com/solana-labs/security-audits/blob/master/spl/ZellicToken2022Audit-2022-12-05.pdf
+    - Final report https://github.com/anza-xyz/security-audits/blob/master/spl/ZellicToken2022Audit-2022-12-05.pdf
 * Trail of Bits
     - Review commit hash [`50abad`](https://github.com/solana-labs/solana-program-library/tree/50abadd819df2e406567d6eca31c213264c1c7cd/token/program-2022)
-    - Final report https://github.com/solana-labs/security-audits/blob/master/spl/TrailOfBitsToken2022Audit-2023-02-10.pdf
+    - Final report https://github.com/anza-xyz/security-audits/blob/master/spl/TrailOfBitsToken2022Audit-2023-02-10.pdf
 * NCC Group
     - Review commit hash [`4e43aa`](https://github.com/solana-labs/solana/tree/4e43aa6c18e6bb4d98559f80eb004de18bc6b418/zk-token-sdk)
-    - Final report https://github.com/solana-labs/security-audits/blob/master/spl/NCCToken2022Audit-2023-04-05.pdf
+    - Final report https://github.com/anza-xyz/security-audits/blob/master/spl/NCCToken2022Audit-2023-04-05.pdf
 * OtterSec
     - Review commit hash [`e92413`](https://github.com/solana-labs/solana-program-library/tree/e924132d65ba0896249fb4983f6f97caff15721a)
-    - Final report https://github.com/solana-labs/security-audits/blob/master/spl/OtterSecToken2022Audit-2023-11-03.pdf
+    - Final report https://github.com/anza-xyz/security-audits/blob/master/spl/OtterSecToken2022Audit-2023-11-03.pdf
 * OtterSec (ZK Token SDK)
     - Review commit hash [`9e703f8`](https://github.com/solana-labs/solana/tree/9e703f8/zk-token-sdk)
-    - Final report https://github.com/solana-labs/security-audits/blob/master/spl/OtterSecZkTokenSdkAudit-2023-11-04.pdf
+    - Final report https://github.com/anza-xyz/security-audits/blob/master/spl/OtterSecZkTokenSdkAudit-2023-11-04.pdf

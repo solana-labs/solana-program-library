@@ -3,14 +3,14 @@ title: Examples
 ---
 
 More examples can be found in the
-[Transfer Hook example tests](https://github.com/solana-labs/solana-program-library/blob/master/token/transfer-hook/example/tests/functional.rs),
+[Transfer Hook example tests](https://github.com/solana-program/transfer-hook/blob/main/program/tests/functional.rs),
 as well as the
-[TLV Account Resolution tests](https://github.com/solana-labs/solana-program-library/blob/master/libraries/tlv-account-resolution/src/state.rs).
+[TLV Account Resolution tests](https://github.com/solana-program/libraries/blob/main/tlv-account-resolution/src/state.rs).
 
 ### Initializing Extra Account Metas On-Chain
 
 The
-[`ExtraAccountMetaList`](https://github.com/solana-labs/solana-program-library/blob/65a92e6e0a4346920582d9b3893cacafd85bb017/libraries/tlv-account-resolution/src/state.rs#L167)
+[`ExtraAccountMetaList`](https://github.com/solana-program/libraries/blob/c5cc979f188ddc136de2ff556173a6f655322915/tlv-account-resolution/src/state.rs#L164)
 struct is designed to make working with extra account
 configurations as seamless as possible.
 
@@ -19,12 +19,12 @@ serialized `ExtraAccountMeta` configurations by simply providing a mutable
 reference to the buffer and a slice of `ExtraAccountMeta`. The generic `T` is
 the instruction whose discriminator the extra account configurations should be
 assigned to. In our case, this will be
-[`spl_transfer_hook_interface::instruction::ExecuteInstruction`](https://github.com/solana-labs/solana-program-library/blob/eb32c5e72c6d917e732bded9863db7657b23e428/token/transfer-hook/interface/src/instruction.rs#L68)
+[`spl_transfer_hook_interface::instruction::ExecuteInstruction`](https://github.com/solana-program/transfer-hook/blob/e00f3b5c591fd55b4aed6a1e9b1ccc502cb6da05/interface/src/instruction.rs#L67)
 from the Transfer Hook interface.
 
 > Note: All instructions from the SPL Transfer Hook interface implement the
 > trait
-> [`SplDiscriminate`](https://github.com/solana-labs/solana-program-library/blob/65a92e6e0a4346920582d9b3893cacafd85bb017/libraries/discriminator/src/discriminator.rs#L9),
+> [`SplDiscriminate`](https://github.com/solana-program/libraries/blob/c5cc979f188ddc136de2ff556173a6f655322915/discriminator/src/discriminator.rs#L10),
 > which provides a constant 8-byte discriminator that
 > can be used to create a TLV data entry.
 
@@ -83,7 +83,7 @@ program directly or for a program that will CPI to your transfer hook program,
 you must include all required accounts - including the extra accounts.
 
 Below is an example of the logic contained in the Transfer Hook interface's
-[offchain helper](https://github.com/solana-labs/solana-program-library/blob/65a92e6e0a4346920582d9b3893cacafd85bb017/token/transfer-hook/interface/src/offchain.rs#L50).
+[offchain helper](https://github.com/solana-program/transfer-hook/blob/e00f3b5c591fd55b4aed6a1e9b1ccc502cb6da05/interface/src/offchain.rs#L48).
 
 ```rust
 // You'll need to provide an "account data function", which is a function that
@@ -151,7 +151,7 @@ offchain account resolution, the executing program has to know how to build a
 CPI instruction with the proper accounts as well!
 
 Below is an example of the logic contained in the Transfer Hook interface's
-[onchain helper](https://github.com/solana-labs/solana-program-library/blob/65a92e6e0a4346920582d9b3893cacafd85bb017/token/transfer-hook/interface/src/onchain.rs#L67).
+[onchain helper](https://github.com/solana-program/transfer-hook/blob/e00f3b5c591fd55b4aed6a1e9b1ccc502cb6da05/interface/src/onchain.rs#L15).
 
 ```rust
 // Find the validation account from the list of `AccountInfo`s and load its

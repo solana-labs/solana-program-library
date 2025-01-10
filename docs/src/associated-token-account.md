@@ -38,10 +38,10 @@ document are available at:
 ## Source
 
 The Associated Token Account Program's source is available on
-[GitHub](https://github.com/solana-labs/solana-program-library).
-
+[GitHub](https://github.com/solana-program/associated-token-account).
 
 ## Interface
+
 The Associated Token Account Program is written in Rust and available on
 [crates.io](https://crates.io/crates/spl-associated-token-account) and
 [docs.rs](https://docs.rs/spl-associated-token-account).
