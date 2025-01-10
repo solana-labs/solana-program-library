@@ -1,4 +1,4 @@
-# Security Policy
+ # Security Policy
 
 1. [Reporting security problems](#reporting)
 1. [Security Bug Bounties](#bounty)
