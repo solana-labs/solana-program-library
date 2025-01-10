@@ -12,7 +12,7 @@ no-entrypoint = []
 test-sbf = []
 
 [dependencies]
-bitflags = { version = "2.6.0", features = ["serde"] }
+bitflags = { version = "2.7.0", features = ["serde"] }
 bytemuck = { version = "1.21.0", features = ["derive"] }
 num_enum = "0.7.3"
 generic-array = { version = "0.14.7", features = ["serde"], default-features = false }

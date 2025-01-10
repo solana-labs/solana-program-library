@@ -686,7 +686,7 @@ version = "0.69.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a00dc851838a2120612785d195287475a3ac45514741da670b735818822129a0"
 dependencies = [
- "bitflags 2.6.0",
+ "bitflags 2.7.0",
  "cexpr",
  "clang-sys",
  "itertools 0.12.1",
@@ -723,9 +723,9 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
 name = "bitflags"
-version = "2.6.0"
+version = "2.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b048fb63fd8b5923fc5aa7b340d8e156aec7ec02f0c78fa8a6ddc2613f6f71de"
+checksum = "1be3f42a67d6d345ecd59f675f3f012d6974981560836e938c22b424b85ce1be"
 dependencies = [
  "serde",
 ]
@@ -3405,7 +3405,7 @@ version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "71e2746dc3a24dd78b3cfcb7be93368c6de9963d30f43a6a73998a9cf4b17b46"
 dependencies = [
- "bitflags 2.6.0",
+ "bitflags 2.7.0",
  "cfg-if 1.0.0",
  "cfg_aliases",
  "libc",
@@ -3623,7 +3623,7 @@ version = "0.10.66"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9529f4786b70a3e8c61e11179af17ab6188ad8d0ded78c5529441ed39d4bd9c1"
 dependencies = [
- "bitflags 2.6.0",
+ "bitflags 2.7.0",
  "cfg-if 1.0.0",
  "foreign-types",
  "libc",
@@ -4051,7 +4051,7 @@ checksum = "14cae93065090804185d3b75f0bf93b8eeda30c7a9b4a33d3bdb3988d6229e50"
 dependencies = [
  "bit-set",
  "bit-vec",
- "bitflags 2.6.0",
+ "bitflags 2.7.0",
  "lazy_static",
  "num-traits",
  "rand 0.8.5",
@@ -4331,7 +4331,7 @@ version = "11.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ab240315c661615f2ee9f0f2cd32d5a7343a84d5ebcccb99d46e6637565e7b0"
 dependencies = [
- "bitflags 2.6.0",
+ "bitflags 2.7.0",
 ]
 
 [[package]]
@@ -4611,7 +4611,7 @@ version = "0.38.39"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "375116bee2be9ed569afe2154ea6a99dfdffd257f533f187498c2a8f5feaf4ee"
 dependencies = [
- "bitflags 2.6.0",
+ "bitflags 2.7.0",
  "errno",
  "libc",
  "linux-raw-sys",
@@ -6121,7 +6121,7 @@ checksum = "d181954a7e0ef3847ed2336adda1214cda401ac2c5557ebb63d700e409864881"
 dependencies = [
  "assert_matches",
  "bincode",
- "bitflags 2.6.0",
+ "bitflags 2.7.0",
  "byteorder",
  "bzip2",
  "chrono",
@@ -6302,7 +6302,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0dafc2d84e57dbfe32583fe915962bd2ca3af6be496628a871db3c3d697b38d7"
 dependencies = [
  "bincode",
- "bitflags 2.6.0",
+ "bitflags 2.7.0",
  "cfg_eval",
  "serde",
  "serde_derive",
@@ -6384,7 +6384,7 @@ checksum = "9040decf2f295d35da22557eeab3768ab8dfca8aed9afe668663c8fa0e97d60e"
 dependencies = [
  "base64 0.22.1",
  "bincode",
- "bitflags 2.6.0",
+ "bitflags 2.7.0",
  "blake3",
  "borsh 0.10.3",
  "borsh 1.5.3",
@@ -6927,7 +6927,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "524604d94185c189616296e5b7da1014cc96d1e446bd2b26f247f00708b9225a"
 dependencies = [
  "bincode",
- "bitflags 2.6.0",
+ "bitflags 2.7.0",
  "borsh 1.5.3",
  "bs58",
  "bytemuck",
@@ -8376,7 +8376,7 @@ name = "spl-slashing"
 version = "0.1.0"
 dependencies = [
  "bincode",
- "bitflags 2.6.0",
+ "bitflags 2.7.0",
  "bytemuck",
  "generic-array 0.14.7",
  "lazy_static",
