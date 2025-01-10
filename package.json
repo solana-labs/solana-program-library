@@ -2,13 +2,7 @@
     "private": true,
     "workspaces": [
         "account-compression/sdk",
-        "libraries/type-length-value/js",
-        "single-pool/js",
-        "stake-pool/js",
-        "token/js",
-        "token-group/js",
         "token-lending/js",
-        "token-metadata/js",
         "token-swap/js"
     ],
     "scripts": {

@@ -13,7 +13,7 @@ honggfuzz = { version = "0.5.56" }
 arbitrary = { version = "1.4", features = ["derive"] }
 solana-program = "2.1.0"
 spl-math = { version = "0.3", path = "../../../libraries/math" }
-spl-token = { version = "7.0", path = "../../../token/program", features = [ "no-entrypoint" ] }
+spl-token = { version = "7.0", features = [ "no-entrypoint" ] }
 spl-token-swap = { path = "..", features = ["fuzz", "no-entrypoint"] }
 
 [[bin]]

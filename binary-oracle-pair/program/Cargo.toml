@@ -14,7 +14,7 @@ test-sbf = []
 num-derive = "0.4"
 num-traits = "0.2"
 solana-program = "2.1.0"
-spl-token = { version = "7.0", path = "../../token/program", features = [
+spl-token = { version = "7.0", features = [
   "no-entrypoint",
 ] }
 thiserror = "2.0"

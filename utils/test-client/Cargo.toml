@@ -10,5 +10,5 @@ edition = "2021"
 [dependencies]
 solana-sdk = "2.1.0"
 spl-memo = { version = "6.0.0", features = [ "no-entrypoint" ] }
-spl-token = { path = "../../token/program", features = [ "no-entrypoint" ] }
+spl-token = { version = "7.0.0", features = [ "no-entrypoint" ] }
 spl-token-swap = { path = "../../token-swap/program", features = [ "no-entrypoint" ] }

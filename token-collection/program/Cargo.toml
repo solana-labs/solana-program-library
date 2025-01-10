@@ -13,19 +13,19 @@ test-sbf = []
 
 [dependencies]
 solana-program = "2.1.0"
-spl-pod = { version = "0.5.0", path = "../../libraries/pod" }
-spl-program-error = { version = "0.6.0", path = "../../libraries/program-error" }
-spl-token-2022 = { version = "6.0.0", path = "../../token/program-2022", features = ["no-entrypoint"] }
-spl-token-group-example = { version = "0.2", path = "../../token-group/example", features = ["no-entrypoint"] }
-spl-token-group-interface = { version = "0.5.0", path = "../../token-group/interface" }
-spl-token-metadata-interface = { version = "0.6.0", path = "../../token-metadata/interface" }
-spl-type-length-value = { version = "0.7.0", path = "../../libraries/type-length-value" }
+spl-pod = { version = "0.5.0" }
+spl-program-error = { version = "0.6.0" }
+spl-token-2022 = { version = "6.0.0", features = ["no-entrypoint"] }
+spl-token-group-example = { version = "0.2", features = ["no-entrypoint"] }
+spl-token-group-interface = { version = "0.5.0" }
+spl-token-metadata-interface = { version = "0.6.0" }
+spl-type-length-value = { version = "0.7.0" }
 
 [dev-dependencies]
 solana-program-test = "2.1.0"
 solana-sdk = "2.1.0"
-spl-discriminator = { version = "0.4.0", path = "../../libraries/discriminator" }
-spl-token-client = { version = "0.13.0", path = "../../token/client" }
+spl-discriminator = { version = "0.4.0" }
+spl-token-client = { version = "0.13.0" }
 
 [lib]
 crate-type = ["cdylib", "lib"]
