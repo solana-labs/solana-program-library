@@ -6,14 +6,12 @@ on:
     - 'libraries/**'
     - 'ci/*-version.sh'
     - '.github/workflows/pull-request-libraries.yml'
-    - '!libraries/**/js/**'
   push:
     branches: [master]
     paths:
     - 'libraries/**'
     - 'ci/*-version.sh'
     - '.github/workflows/pull-request-libraries.yml'
-    - '!libraries/**/js/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -62,22 +60,3 @@ jobs:
 
       - name: Build and test
         run: ./ci/cargo-test-sbf.sh libraries
-
-  js-test:
-    runs-on: ubuntu-latest
-    env:
-      NODE_VERSION: 20.x
-    steps:
-      - uses: actions/checkout@v4
-      - name: Use Node.js ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      - uses: pnpm/action-setup@v4
-      - uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: node-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            node-
-      - run: ./ci/js-test-libraries.sh
