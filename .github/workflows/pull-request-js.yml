@@ -4,14 +4,8 @@ on:
   pull_request:
     paths:
       - 'account-compression/sdk/**'
-      - 'libraries/type-length-value/js/**'
       - 'name-service/js/**'
-      - 'single-pool/js/**'
-      - 'stake-pool/js/**'
-      - 'token/js/**'
-      - 'token-group/js/**'
       - 'token-lending/js/**'
-      - 'token-metadata/js/**'
       - 'token-swap/js/**'
       - 'pnpm-lock.yaml'
       - '.github/workflows/pull-request-js.yml'
@@ -19,13 +13,7 @@ on:
     branches: [master]
     paths:
       - 'account-compression/sdk/**'
-      - 'libraries/type-length-value/js/**'
-      - 'single-pool/js/**'
-      - 'stake-pool/js/**'
-      - 'token/js/**'
-      - 'token-group/js/**'
       - 'token-lending/js/**'
-      - 'token-metadata/js/**'
       - 'token-swap/js/**'
       - 'pnpm-lock.yaml'
       - '.github/workflows/pull-request-js.yml'
@@ -42,24 +30,14 @@ jobs:
         package:
           [
             name-service,
-            stake-pool,
-            token,
             token-swap,
           ]
         include:
           # Restrict certain packages to supported Node.js versions.
           - package: account-compression
             node-version: 20.x
-          - package: libraries
-            node-version: 20.x
-          - package: single-pool
-            node-version: 20.5
-          - package: token-group
-            node-version: 20.x
           - package: token-lending
             node-version: 18.5
-          - package: token-metadata
-            node-version: 20.x
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
