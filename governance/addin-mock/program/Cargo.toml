@@ -20,7 +20,7 @@ num-traits = "0.2"
 serde = "1.0.217"
 serde_derive = "1.0.103"
 solana-program = "2.1.0"
-spl-token = { version = "7.0", path = "../../../token/program", features = [
+spl-token = { version = "7.0", features = [
   "no-entrypoint",
 ] }
 spl-governance-addin-api = { version = "0.1.4", path = "../../addin-api" }
