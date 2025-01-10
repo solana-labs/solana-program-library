@@ -10,7 +10,7 @@ use {
 
 #[tokio::test]
 async fn test_precise_sqrt_u64_max() {
-    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+    let mut pc = ProgramTest::new("spl_math_example", id(), processor!(process_instruction));
 
     // This is way too big!  It's possible to dial down the numbers to get to
     // something reasonable, but the better option is to do everything in u64
@@ -28,7 +28,7 @@ async fn test_precise_sqrt_u64_max() {
 
 #[tokio::test]
 async fn test_precise_sqrt_u32_max() {
-    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+    let mut pc = ProgramTest::new("spl_math_example", id(), processor!(process_instruction));
 
     pc.set_compute_max_units(170_000);
 
@@ -44,7 +44,7 @@ async fn test_precise_sqrt_u32_max() {
 
 #[tokio::test]
 async fn test_sqrt_u64() {
-    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+    let mut pc = ProgramTest::new("spl_math_example", id(), processor!(process_instruction));
 
     // Dial down the BPF compute budget to detect if the operation gets bloated in
     // the future
@@ -60,7 +60,7 @@ async fn test_sqrt_u64() {
 
 #[tokio::test]
 async fn test_sqrt_u128() {
-    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+    let mut pc = ProgramTest::new("spl_math_example", id(), processor!(process_instruction));
 
     // Dial down the BPF compute budget to detect if the operation gets bloated in
     // the future
@@ -78,7 +78,7 @@ async fn test_sqrt_u128() {
 
 #[tokio::test]
 async fn test_sqrt_u128_max() {
-    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+    let mut pc = ProgramTest::new("spl_math_example", id(), processor!(process_instruction));
 
     pc.set_compute_max_units(7_000);
 
@@ -92,7 +92,7 @@ async fn test_sqrt_u128_max() {
 
 #[tokio::test]
 async fn test_u64_multiply() {
-    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+    let mut pc = ProgramTest::new("spl_math_example", id(), processor!(process_instruction));
 
     pc.set_compute_max_units(1350);
 
@@ -106,7 +106,7 @@ async fn test_u64_multiply() {
 
 #[tokio::test]
 async fn test_u64_divide() {
-    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+    let mut pc = ProgramTest::new("spl_math_example", id(), processor!(process_instruction));
 
     pc.set_compute_max_units(1650);
 
@@ -120,7 +120,7 @@ async fn test_u64_divide() {
 
 #[tokio::test]
 async fn test_f32_multiply() {
-    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+    let mut pc = ProgramTest::new("spl_math_example", id(), processor!(process_instruction));
 
     pc.set_compute_max_units(1600);
 
@@ -136,7 +136,7 @@ async fn test_f32_multiply() {
 
 #[tokio::test]
 async fn test_f32_divide() {
-    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+    let mut pc = ProgramTest::new("spl_math_example", id(), processor!(process_instruction));
 
     pc.set_compute_max_units(1650);
 
@@ -152,7 +152,7 @@ async fn test_f32_divide() {
 
 #[tokio::test]
 async fn test_f32_exponentiate() {
-    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+    let mut pc = ProgramTest::new("spl_math_example", id(), processor!(process_instruction));
 
     pc.set_compute_max_units(1400);
 
@@ -168,7 +168,7 @@ async fn test_f32_exponentiate() {
 
 #[tokio::test]
 async fn test_f32_natural_log() {
-    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+    let mut pc = ProgramTest::new("spl_math_example", id(), processor!(process_instruction));
 
     pc.set_compute_max_units(3500);
 
@@ -184,7 +184,7 @@ async fn test_f32_natural_log() {
 
 #[tokio::test]
 async fn test_f32_normal_cdf() {
-    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+    let mut pc = ProgramTest::new("spl_math_example", id(), processor!(process_instruction));
 
     // Dial down the BPF compute budget to detect if the operation gets bloated in
     // the future
@@ -200,7 +200,7 @@ async fn test_f32_normal_cdf() {
 
 #[tokio::test]
 async fn test_f64_pow() {
-    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+    let mut pc = ProgramTest::new("spl_math_example", id(), processor!(process_instruction));
 
     pc.set_compute_max_units(30_000);
 
@@ -216,7 +216,7 @@ async fn test_f64_pow() {
 
 #[tokio::test]
 async fn test_u128_multiply() {
-    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+    let mut pc = ProgramTest::new("spl_math_example", id(), processor!(process_instruction));
 
     pc.set_compute_max_units(10000);
 
@@ -232,7 +232,7 @@ async fn test_u128_multiply() {
 
 #[tokio::test]
 async fn test_u128_divide() {
-    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+    let mut pc = ProgramTest::new("spl_math_example", id(), processor!(process_instruction));
 
     pc.set_compute_max_units(10000);
 
@@ -248,7 +248,7 @@ async fn test_u128_divide() {
 
 #[tokio::test]
 async fn test_f64_multiply() {
-    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+    let mut pc = ProgramTest::new("spl_math_example", id(), processor!(process_instruction));
 
     pc.set_compute_max_units(10000);
 
@@ -264,7 +264,7 @@ async fn test_f64_multiply() {
 
 #[tokio::test]
 async fn test_f64_divide() {
-    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+    let mut pc = ProgramTest::new("spl_math_example", id(), processor!(process_instruction));
 
     pc.set_compute_max_units(10000);
 
@@ -280,7 +280,7 @@ async fn test_f64_divide() {
 
 #[tokio::test]
 async fn test_noop() {
-    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+    let mut pc = ProgramTest::new("spl_math_example", id(), processor!(process_instruction));
 
     pc.set_compute_max_units(1200);
 
