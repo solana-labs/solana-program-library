@@ -86,6 +86,6 @@
     "ts-jest-resolver": "^2.0.1",
     "ts-node": "^10.9.2",
     "typedoc": "^0.27.6",
-    "typescript": "5.7.2"
+    "typescript": "5.7.3"
   }
 }
