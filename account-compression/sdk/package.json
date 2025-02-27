@@ -74,7 +74,7 @@
     "eslint": "^8.57.0",
     "eslint-config-turbo": "^2.3.3",
     "eslint-plugin-import": "^2.31.0",
-    "eslint-plugin-jest": "^28.10.0",
+    "eslint-plugin-jest": "^28.11.0",
     "eslint-plugin-mocha": "^10.5.0",
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "eslint-plugin-sort-keys-fix": "^1.1.2",
