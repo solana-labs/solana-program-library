@@ -23,6 +23,7 @@ members = [
   "examples/rust/transfer-tokens",
   "governance/addin-mock/program",
   "governance/addin-api",
+  "governance/cli",
   "governance/program",
   "governance/test-sdk",
   "governance/tools",
