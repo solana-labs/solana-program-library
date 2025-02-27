@@ -224,7 +224,7 @@ pub fn check_canopy_no_nodes_to_right_of_index(
     let path_len = get_cached_path_length(canopy, max_depth)?;
 
     let mut node_idx = ((1 << max_depth) + index) >> (max_depth - path_len);
-    // no need to check the node_idx as it's the leaf continaing the index underneath it
+    // no need to check the node_idx as it's the leaf containing the index underneath it
     while node_idx & (node_idx + 1) != 0 {
         // check the next node to the right
         node_idx += 1;

@@ -28,7 +28,7 @@ jobs:
           days-before-pr-stale: 14
           days-before-close: 7
           debug-only: ${{ github.event_name == 'pull_request' }} # Dry-run when true.
-          exempt-all-milestones: true # Milestones can sometimes last a month, so exempt issues attached to a milestone.
+          exempt-all-milestones: true # Milestones can sometimes last a month, so exempt issues are attached to a milestone.
           exempt-issue-labels: blocked,do-not-close,security
           exempt-pr-labels: blocked,do-not-close,security
           # No actual changes get made in debug-only mode, so we can raise the operations ceiling.
