@@ -26,6 +26,9 @@ The following programs have been moved:
 * [Token-Metadata](https://github.com/solana-program/token-metadata)
 * [Token-2022 Transfer Hook](https://github.com/solana-program/transfer-hook)
 
+The governance programs have been moved to https://github.com/Mythic-Project/solana-program-library/tree/master/governance
+
+
 # Solana Program Library
 
 The Solana Program Library (SPL) is a collection of on-chain programs targeting
