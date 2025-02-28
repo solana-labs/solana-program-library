@@ -7,7 +7,7 @@
 //! and buffer size from the header information stored on-chain. Usage of the
 //! macros directly is discouraged, as they have huge match statements with
 //! every case taking it's own stack frame. Instead, use the exported functions
-//! from this module and refenrece or Box the arguments to the functions to
+//! from this module and reference or Box the arguments to the functions to
 //! avoid the stack frame explosion.
 
 pub use crate::error::AccountCompressionError;
