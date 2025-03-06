@@ -593,7 +593,7 @@ dependencies = [
  "borsh 1.5.5",
  "solana-program",
  "spl-token 7.0.0",
- "thiserror 2.0.9",
+ "thiserror 2.0.12",
  "uint",
 ]
 
@@ -7547,7 +7547,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-token 7.0.0",
- "thiserror 2.0.9",
+ "thiserror 2.0.12",
  "uint",
 ]
 
@@ -7560,7 +7560,7 @@ dependencies = [
  "rand_distr",
  "solana-program",
  "spl-merkle-tree-reference",
- "thiserror 2.0.9",
+ "thiserror 2.0.12",
  "tokio",
 ]
 
@@ -7701,7 +7701,7 @@ dependencies = [
  "spl-governance-test-sdk",
  "spl-governance-tools",
  "spl-token 7.0.0",
- "thiserror 2.0.9",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -7733,7 +7733,7 @@ dependencies = [
  "spl-governance-test-sdk",
  "spl-governance-tools",
  "spl-token 7.0.0",
- "thiserror 2.0.9",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -7758,7 +7758,7 @@ dependencies = [
  "spl-governance-test-sdk",
  "spl-governance-tools",
  "spl-token 7.0.0",
- "thiserror 2.0.9",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -7777,7 +7777,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-token 7.0.0",
- "thiserror 2.0.9",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -7793,7 +7793,7 @@ dependencies = [
  "serde_derive",
  "solana-program",
  "spl-token 7.0.0",
- "thiserror 2.0.9",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -7808,7 +7808,7 @@ dependencies = [
  "spl-associated-token-account 6.0.0",
  "spl-associated-token-account-client",
  "spl-token 7.0.0",
- "thiserror 2.0.9",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -7832,7 +7832,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-math",
- "thiserror 2.0.9",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -7863,7 +7863,7 @@ name = "spl-merkle-tree-reference"
 version = "0.1.0"
 dependencies = [
  "solana-program",
- "thiserror 2.0.9",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -7876,7 +7876,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "thiserror 2.0.9",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -8214,7 +8214,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-token 7.0.0",
- "thiserror 2.0.9",
+ "thiserror 2.0.12",
  "uint",
 ]
 
@@ -8285,7 +8285,7 @@ dependencies = [
  "spl-token 7.0.0",
  "spl-token-2022 6.0.0",
  "test-case",
- "thiserror 2.0.9",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -8314,7 +8314,7 @@ dependencies = [
  "spl-token-2022 6.0.0",
  "spl-token-client",
  "test-case",
- "thiserror 2.0.9",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -8349,7 +8349,7 @@ dependencies = [
  "spl-associated-token-account 6.0.0",
  "spl-token 7.0.0",
  "spl-token-2022 6.0.0",
- "thiserror 2.0.9",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -8434,7 +8434,7 @@ dependencies = [
  "solana-sdk",
  "spl-associated-token-account-client",
  "spl-token 7.0.0",
- "thiserror 2.0.9",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -8738,11 +8738,11 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "2.0.9"
+version = "2.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f072643fd0190df67a8bab670c20ef5d8737177d6ac6b2e9a236cb096206b2cc"
+checksum = "567b8a2dae586314f7be2a752ec7474332959c6460e02bde30d702a66d488708"
 dependencies = [
- "thiserror-impl 2.0.9",
+ "thiserror-impl 2.0.12",
 ]
 
 [[package]]
@@ -8758,9 +8758,9 @@ dependencies = [
 
 [[package]]
 name = "thiserror-impl"
-version = "2.0.9"
+version = "2.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b50fa271071aae2e6ee85f842e2e28ba8cd2c5fb67f11fcb1fd70b276f9e7d4"
+checksum = "7f7cf42b4507d8ea322120659672cf1b9dbb93f8f2d4ecfd6e51350ff5b17a1d"
 dependencies = [
  "proc-macro2",
  "quote",
