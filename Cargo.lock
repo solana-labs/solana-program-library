@@ -590,7 +590,7 @@ name = "binary-option"
 version = "0.1.0"
 dependencies = [
  "arrayref",
- "borsh 1.5.3",
+ "borsh 1.5.5",
  "solana-program",
  "spl-token 7.0.0",
  "thiserror 2.0.9",
@@ -730,11 +730,11 @@ dependencies = [
 
 [[package]]
 name = "borsh"
-version = "1.5.3"
+version = "1.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2506947f73ad44e344215ccd6403ac2ae18cd8e046e581a441bf8d199f257f03"
+checksum = "5430e3be710b68d984d1391c854eb431a9d548640711faa54eecb1df93db91cc"
 dependencies = [
- "borsh-derive 1.5.3",
+ "borsh-derive 1.5.5",
  "cfg_aliases",
 ]
 
@@ -753,9 +753,9 @@ dependencies = [
 
 [[package]]
 name = "borsh-derive"
-version = "1.5.3"
+version = "1.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c2593a3b8b938bd68373196c9832f516be11fa487ef4ae745eb282e6a56a7244"
+checksum = "f8b668d39970baad5356d7c83a86fee3a539e6f93bf6764c97368243e17a0487"
 dependencies = [
  "once_cell",
  "proc-macro-crate 3.1.0",
@@ -2834,9 +2834,9 @@ checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 
 [[package]]
 name = "libc"
-version = "0.2.161"
+version = "0.2.170"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e9489c2807c139ffd9c1794f4af0ebe86a828db53ecdc7fea2111d0fed085d1"
+checksum = "875b3680cb2f8f71bdcf9a30f38d48282f5d3c95cbf9b3fa57269bb5d5c06828"
 
 [[package]]
 name = "libloading"
@@ -3432,9 +3432,9 @@ checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
 
 [[package]]
 name = "openssl"
-version = "0.10.66"
+version = "0.10.71"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9529f4786b70a3e8c61e11179af17ab6188ad8d0ded78c5529441ed39d4bd9c1"
+checksum = "5e14130c6a98cd258fdcb0fb6d744152343ff729cbfcb28c656a9d12b999fbcd"
 dependencies = [
  "bitflags 2.6.0",
  "cfg-if 1.0.0",
@@ -3447,13 +3447,13 @@ dependencies = [
 
 [[package]]
 name = "openssl-macros"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b501e44f11665960c7e7fcf062c7d96a14ade4aa98116c004b2e37b5be7d736c"
+checksum = "a948666b637a0f465e8564c73e89d4dde00d72d4d473cc972f390fc3dcee7d9c"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 1.0.107",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -3473,9 +3473,9 @@ dependencies = [
 
 [[package]]
 name = "openssl-sys"
-version = "0.9.103"
+version = "0.9.106"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f9e8deee91df40a943c71b917e5874b951d32a802526c85721ce3b776c929d6"
+checksum = "8bb61ea9811cc39e3c2069f40b8b8e2e70d8569b361f879786cc7ed48b777cdd"
 dependencies = [
  "cc",
  "libc",
@@ -5113,7 +5113,7 @@ version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2f857fb6590467d433f40eee507666ca496ec67907e50b7d530b6c04f6541875"
 dependencies = [
- "borsh 1.5.3",
+ "borsh 1.5.5",
  "futures 0.3.31",
  "solana-banks-interface",
  "solana-program",
@@ -5206,7 +5206,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a5d526f3525ab22a3ada3f9a1d642664dafac00dc9208326b701a2045514eb04"
 dependencies = [
  "borsh 0.10.3",
- "borsh 1.5.3",
+ "borsh 1.5.5",
 ]
 
 [[package]]
@@ -5788,7 +5788,7 @@ version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1807bc4e9e1d25271514167d5a1e698ce5a330bce547a368242dd63b355b5faa"
 dependencies = [
- "borsh 1.5.3",
+ "borsh 1.5.5",
  "bs58",
  "bytemuck",
  "bytemuck_derive",
@@ -5827,7 +5827,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bfef689e06e5c7cb6206d4dc61ac77733de4f72d754e0d531393206abc27dbe4"
 dependencies = [
  "bincode",
- "borsh 1.5.3",
+ "borsh 1.5.5",
  "getrandom 0.2.10",
  "js-sys",
  "num-traits",
@@ -6135,7 +6135,7 @@ dependencies = [
  "bitflags 2.6.0",
  "blake3",
  "borsh 0.10.3",
- "borsh 1.5.3",
+ "borsh 1.5.5",
  "bs58",
  "bv",
  "bytemuck",
@@ -6214,7 +6214,7 @@ version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dd089caeef26dd07bd12b7b67d45e92faddc2fc67a960f316df7ae4776a2f3d5"
 dependencies = [
- "borsh 1.5.3",
+ "borsh 1.5.5",
  "num-traits",
  "serde",
  "serde_derive",
@@ -6322,7 +6322,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bea3215775fcedf200d47590c7e2ce9a3a46bc2b7d3f77d0eae9c6edf0a39aec"
 dependencies = [
  "borsh 0.10.3",
- "borsh 1.5.3",
+ "borsh 1.5.5",
  "bs58",
  "bytemuck",
  "bytemuck_derive",
@@ -6676,7 +6676,7 @@ checksum = "524604d94185c189616296e5b7da1014cc96d1e446bd2b26f247f00708b9225a"
 dependencies = [
  "bincode",
  "bitflags 2.6.0",
- "borsh 1.5.3",
+ "borsh 1.5.5",
  "bs58",
  "bytemuck",
  "bytemuck_derive",
@@ -6749,7 +6749,7 @@ version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f2eef5a00a75648273c3fb6e3d85b0c8c02fcc1e36c4271664dcc39b6b128d41"
 dependencies = [
- "borsh 1.5.3",
+ "borsh 1.5.5",
  "libsecp256k1",
  "solana-define-syscall",
  "thiserror 1.0.69",
@@ -7154,7 +7154,7 @@ dependencies = [
  "Inflector",
  "base64 0.22.1",
  "bincode",
- "borsh 1.5.3",
+ "borsh 1.5.5",
  "bs58",
  "lazy_static",
  "log",
@@ -7501,7 +7501,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "68034596cf4804880d265f834af1ff2f821ad5293e41fa0f8f59086c181fc38e"
 dependencies = [
  "assert_matches",
- "borsh 1.5.3",
+ "borsh 1.5.5",
  "num-derive",
  "num-traits",
  "solana-program",
@@ -7516,7 +7516,7 @@ version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "76fee7d65013667032d499adc3c895e286197a35a0d3a4643c80e7fd3e9969e3"
 dependencies = [
- "borsh 1.5.3",
+ "borsh 1.5.5",
  "num-derive",
  "num-traits",
  "solana-program",
@@ -7540,7 +7540,7 @@ dependencies = [
 name = "spl-binary-oracle-pair"
 version = "0.1.0"
 dependencies = [
- "borsh 1.5.3",
+ "borsh 1.5.5",
  "num-derive",
  "num-traits",
  "solana-program",
@@ -7687,7 +7687,7 @@ dependencies = [
  "assert_matches",
  "base64 0.22.1",
  "bincode",
- "borsh 1.5.3",
+ "borsh 1.5.5",
  "num-derive",
  "num-traits",
  "proptest",
@@ -7708,7 +7708,7 @@ dependencies = [
 name = "spl-governance-addin-api"
 version = "0.1.4"
 dependencies = [
- "borsh 1.5.3",
+ "borsh 1.5.5",
  "solana-program",
  "spl-governance-tools",
 ]
@@ -7720,7 +7720,7 @@ dependencies = [
  "arrayref",
  "assert_matches",
  "bincode",
- "borsh 1.5.3",
+ "borsh 1.5.5",
  "num-derive",
  "num-traits",
  "proptest",
@@ -7743,7 +7743,7 @@ dependencies = [
  "arrayref",
  "assert_matches",
  "bincode",
- "borsh 1.5.3",
+ "borsh 1.5.5",
  "num-derive",
  "num-traits",
  "proptest",
@@ -7767,7 +7767,7 @@ version = "0.1.4"
 dependencies = [
  "arrayref",
  "bincode",
- "borsh 1.5.3",
+ "borsh 1.5.5",
  "lazy_static",
  "num-derive",
  "num-traits",
@@ -7786,7 +7786,7 @@ version = "0.1.4"
 dependencies = [
  "arrayref",
  "bincode",
- "borsh 1.5.3",
+ "borsh 1.5.5",
  "num-derive",
  "num-traits",
  "serde",
@@ -7800,7 +7800,7 @@ dependencies = [
 name = "spl-managed-token"
 version = "0.1.0"
 dependencies = [
- "borsh 1.5.3",
+ "borsh 1.5.5",
  "shank",
  "solana-program",
  "solana-program-test",
@@ -7825,7 +7825,7 @@ dependencies = [
 name = "spl-math-example"
 version = "0.1.0"
 dependencies = [
- "borsh 1.5.3",
+ "borsh 1.5.5",
  "num-derive",
  "num-traits",
  "solana-program",
@@ -7870,7 +7870,7 @@ dependencies = [
 name = "spl-name-service"
 version = "0.3.0"
 dependencies = [
- "borsh 1.5.3",
+ "borsh 1.5.5",
  "num-derive",
  "num-traits",
  "solana-program",
@@ -7885,7 +7885,7 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e6166a591d93af33afd75bbd8573c5fd95fb1213f1bf254f0508c89fdb5ee156"
 dependencies = [
- "borsh 1.5.3",
+ "borsh 1.5.5",
  "bytemuck",
  "bytemuck_derive",
  "solana-program",
@@ -7899,7 +7899,7 @@ version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "41a7d5950993e1ff2680bd989df298eeb169367fb2f9deeef1f132de6e4e8016"
 dependencies = [
- "borsh 1.5.3",
+ "borsh 1.5.5",
  "bytemuck",
  "bytemuck_derive",
  "num-derive",
@@ -8239,7 +8239,7 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c6c2318ddff97e006ed9b1291ebec0750a78547f870f62a69c56fe3b46a5d8fc"
 dependencies = [
- "borsh 1.5.3",
+ "borsh 1.5.5",
  "solana-program",
  "spl-discriminator 0.3.0",
  "spl-pod 0.3.0",
@@ -8253,7 +8253,7 @@ version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dfb9c89dbc877abd735f05547dcf9e6e12c00c11d6d74d8817506cab4c99fdbb"
 dependencies = [
- "borsh 1.5.3",
+ "borsh 1.5.5",
  "num-derive",
  "num-traits",
  "solana-borsh",
@@ -8428,7 +8428,7 @@ dependencies = [
 name = "stateless-asks"
 version = "0.1.0"
 dependencies = [
- "borsh 1.5.3",
+ "borsh 1.5.5",
  "solana-program",
  "solana-program-test",
  "solana-sdk",
@@ -8843,9 +8843,9 @@ checksum = "cda74da7e1a664f795bb1f8a87ec406fb89a02522cf6e50620d016add6dbbf5c"
 
 [[package]]
 name = "tokio"
-version = "1.42.0"
+version = "1.43.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5cec9b21b0450273377fc97bd4c33a8acffc8c996c987a7c5b319a0083707551"
+checksum = "3d61fa4ffa3de412bfea335c6ecff681de2b609ba3c77ef3e00e521813a9ed9e"
 dependencies = [
  "backtrace",
  "bytes",
@@ -8871,9 +8871,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-macros"
-version = "2.4.0"
+version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "693d596312e88961bc67d7f1f97af8a70227d9f90c31bba5806eec004978d752"
+checksum = "6e06d43f1345a3bcd39f6a56dbb7dcab2ba47e68e8ac134855e7e2bdbaf8cab8"
 dependencies = [
  "proc-macro2",
  "quote",
