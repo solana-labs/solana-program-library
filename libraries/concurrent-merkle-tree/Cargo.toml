@@ -14,13 +14,13 @@ sol-log = ["log"]
 [dependencies]
 solana-program = ">=1.18.11,<=2"
 bytemuck = "1.21"
-thiserror = "2.0.9"
+thiserror = "2.0.12"
 
 [dev-dependencies]
 rand_distr = "0.5.1"
 rand = "0.8"
 spl-merkle-tree-reference = { version = "0.1.0", path = "../merkle-tree-reference" }
-tokio = { version = "1.42", features = ["full"] }
+tokio = { version = "1.43", features = ["full"] }
 
 [lib]
 crate-type = ["cdylib", "lib"]

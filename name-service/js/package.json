@@ -48,7 +48,7 @@
     "@types/node": "^22.10.5",
     "@typescript-eslint/eslint-plugin": "^8.4.0",
     "@typescript-eslint/parser": "^8.4.0",
-    "eslint": "^8.57.0",
+    "eslint": "^9.21.0",
     "eslint-plugin-eslint-comments": "^3.2.0",
     "eslint-plugin-functional": "^7.2.1",
     "eslint-plugin-import": "^2.31.0",
@@ -56,7 +56,7 @@
     "start-server-and-test": "^2.0.9",
     "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",
-    "typedoc": "^0.27.6",
+    "typedoc": "^0.27.9",
     "typescript": "^5.7.2"
   },
   "dependencies": {
