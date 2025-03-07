@@ -2,10 +2,15 @@ name: Docs Publish
 
 on:
   push:
-    branches:  [master]
+    branches: [master]
     paths:
-    - 'docs/**'
-    - '.github/workflows/spl_action.yml'
+      - 'docs/**'
+      - '.github/workflows/spl_action.yml'
+  pull_request:
+    branches: [master]
+    paths:
+      - 'docs/**'
+      - '.github/workflows/spl_action.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -15,18 +20,20 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        name: "importing all the document"
-      - uses: actions/setup-node@v4
+      - name: Importing all the documents
+        uses: actions/checkout@v4
+
+      - name: Installing Node.js with version 18
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
-        name: "installing the node.js with version 18"
-      - name: "Build Docs"
-        if: ${{ github.event_name == ('push' || 'pull_request')}} && ${{github.ref == 'master'}}
+
+      - name: Build Docs
+        if: (github.event_name == 'push' || github.event_name == 'pull_request') && github.ref == 'refs/heads/master'
         run: |
-         cd docs/
-         npm ci
-         ./build.sh
+          cd docs/
+          npm ci
+          ./build.sh
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_SCOPE: ${{ secrets.VERCEL_SCOPE }}

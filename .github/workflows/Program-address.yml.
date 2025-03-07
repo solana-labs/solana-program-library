@@ -1,0 +1,29 @@
+name: Program Address Verification
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  verify-program-address:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Solana CLI
+        run: |
+          sh -c "$(curl -sSfL https://release.solana.com/v1.10.32/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+          solana --version
+
+      - name: Verify Program Address
+        env:
+          PROGRAM_ADDRESS: YUB4Lu7zZayKaxC8jaqAMaR6ZBvq9Uuz2Z1NcFesEt1
+        run: |
+          echo "Verifying program address: $PROGRAM_ADDRESS"
+          # Set the desired Solana cluster URL; adjust if necessary
+          solana config set --url https://api.mainnet-beta.solana.com
+          solana program show $PROGRAM_ADDRESS

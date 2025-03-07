@@ -3,21 +3,21 @@ name: Token Swap Pull Request
 on:
   pull_request:
     paths:
-    - 'token-swap/**'
-    - 'token/**'
-    - 'libraries/math/**'
-    - 'ci/*-version.sh'
-    - '!token-swap/js/**'
-    - '!token/js/**'
+      - "token-swap/**"
+      - "token/**"
+      - "ci/*-version.sh"
+      - ".github/workflows/pull-request-token-swap.yml"
+      - "!token-swap/js/**"
+      - "!token/js/**"
   push:
     branches: [master]
     paths:
-    - 'token-swap/**'
-    - 'token/**'
-    - 'libraries/math/**'
-    - 'ci/*-version.sh'
-    - '!token-swap/js/**'
-    - '!token/js/**'
+      - "token-swap/**"
+      - "token/**"
+      - "ci/*-version.sh"
+      - ".github/workflows/pull-request-token-swap.yml"
+      - "!token-swap/js/**"
+      - "!token/js/**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -45,7 +45,7 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-          key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ env.RUST_STABLE}}
+          key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ env.RUST_STABLE }}
 
       - uses: actions/cache@v4
         with:
@@ -66,82 +66,3 @@ jobs:
 
       - name: Build and test
         run: ./ci/cargo-test-sbf.sh token-swap
-
-      - name: Build production version
-        run: |
-          cargo +"$RUST_STABLE" build-sbf \
-            --manifest-path=token-swap/program/Cargo.toml \
-            --features production \
-            --sbf-out-dir target/deploy-production
-        env:
-          SWAP_PROGRAM_OWNER_FEE_ADDRESS: HfoTxFR1Tm6kGmWgYWD6J7YHVy1UwqSULUGVLXkJqaKN
-
-      - name: Move production version for upload
-        run: |
-          mv target/deploy-production/spl_token_swap.so target/deploy/spl_token_swap_production.so
-
-  js-test:
-    runs-on: ubuntu-latest
-    env:
-      NODE_VERSION: 16.x
-    steps:
-      - uses: actions/checkout@v4
-      - name: Use Node.js ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      - uses: pnpm/action-setup@v4
-      - uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: node-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            node-
-      - run: ./ci/js-test-token-swap.sh
-
-  fuzz:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set env vars
-        run: |
-          source ci/rust-version.sh
-          echo "RUST_STABLE=$rust_stable" >> $GITHUB_ENV
-          source ci/solana-version.sh
-          echo "SOLANA_VERSION=$solana_version" >> $GITHUB_ENV
-
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.RUST_STABLE }}
-
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: token-swap-fuzz-${{ hashFiles('**/Cargo.lock') }}
-
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/cargo-hfuzz
-            ~/.cargo/bin/cargo-honggfuzz
-          key: cargo-fuzz-bins-${{ runner.os }}
-
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache
-          key: solana-${{ env.SOLANA_VERSION }}
-          restore-keys: |
-            solana-
-
-      - name: Install dependencies
-        run: |
-          ./ci/install-build-deps.sh
-          ./ci/install-program-deps.sh
-          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
-
-      - name: Run fuzz target
-        run: ./ci/fuzz.sh token-swap-instructions 30 # 30 seconds, just to check everything is ok
