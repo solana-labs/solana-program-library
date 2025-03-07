@@ -133,8 +133,8 @@ importers:
   name-service/js:
     dependencies:
       '@solana/web3.js':
-        specifier: ^1.95.5
-        version: 1.95.5
+        specifier: ^1.98.0
+        version: 1.98.0
       bn.js:
         specifier: ^5.1.3
         version: 5.2.1
@@ -217,10 +217,10 @@ importers:
         version: 12.1.2(rollup@4.30.1)(tslib@2.8.1)(typescript@5.7.2)
       '@solana/spl-token':
         specifier: 0.4.9
-        version: 0.4.9(@solana/web3.js@1.95.5)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.7.2)
+        version: 0.4.9(@solana/web3.js@1.98.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.7.2)
       '@solana/web3.js':
-        specifier: ^1.95.5
-        version: 1.95.5
+        specifier: ^1.98.0
+        version: 1.98.0
       '@types/eslint':
         specifier: ^9.6.1
         version: 9.6.1
@@ -266,10 +266,10 @@ importers:
     devDependencies:
       '@solana/spl-token':
         specifier: 0.4.9
-        version: 0.4.9(@solana/web3.js@1.95.5)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.7.2)
+        version: 0.4.9(@solana/web3.js@1.98.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.7.2)
       '@solana/web3.js':
-        specifier: ^1.95.5
-        version: 1.95.5
+        specifier: ^1.98.0
+        version: 1.98.0
       '@types/bn.js':
         specifier: ^5.1.6
         version: 5.1.6
@@ -827,12 +827,6 @@ packages:
       '@babel/core': 7.26.9
       '@babel/helper-plugin-utils': 7.26.5
     dev: true
-
-  /@babel/runtime@7.25.0:
-    resolution: {integrity: sha512-7dRy4DwXwtzBrPbZflqxnvfxLF8kdZXPkhymtDeFoFqE6ldzjQFgYTtYIFARcLEYDrqfBfYcZt1WqFxRoyC9Rw==}
-    engines: {node: '>=6.9.0'}
-    dependencies:
-      regenerator-runtime: 0.14.0
 
   /@babel/runtime@7.26.9:
     resolution: {integrity: sha512-aA63XwOkcl4xxQa3HjPMqOP6LiK0ZDv3mUPYEFXkpHbaFjtGggE1A61FjFzJnB+p7/oy2gA8E+rcBNl/zC1tMg==}
@@ -1608,7 +1602,7 @@ packages:
     resolution: {integrity: sha512-tgyEl6dvtLln8XX81JyBvWjIiEcjTkUwZbrM5dIobTmoqMuGewSyk9CClno8qsMsFdB5T3jC91Rjeqmu/6xk2g==}
     dependencies:
       '@metaplex-foundation/beet': 0.7.2
-      '@solana/web3.js': 1.95.5
+      '@solana/web3.js': 1.98.0
       bs58: 5.0.0
       debug: 4.4.0
     transitivePeerDependencies:
@@ -1675,20 +1669,11 @@ packages:
       - utf-8-validate
     dev: true
 
-  /@noble/curves@1.4.2:
-    resolution: {integrity: sha512-TavHr8qycMChk8UwMld0ZDRvatedkzWfH8IiaeGCfymOP5i0hSCozz9vHOL0nkwk7HRMlFnAiKpS2jrUmSybcw==}
-    dependencies:
-      '@noble/hashes': 1.4.0
-
   /@noble/curves@1.8.1:
     resolution: {integrity: sha512-warwspo+UYUPep0Q+vtdVB4Ugn8GGQj8iyB3gnRWsztmUHTI3S1nhdiWNsPUGL0vud7JlRRk1XEu7Lq1KGTnMQ==}
     engines: {node: ^14.21.3 || >=16}
     dependencies:
       '@noble/hashes': 1.7.1
-
-  /@noble/hashes@1.4.0:
-    resolution: {integrity: sha512-V1JJ1WTRUqHHrOSh597hURcMqVKVGL/ea3kv0gSnEdsEZ0/+VyPghM1lMNGc00z7CIQorSvbKpuJkxvuHbvdbg==}
-    engines: {node: '>= 16'}
 
   /@noble/hashes@1.7.1:
     resolution: {integrity: sha512-B8XBPsn4vT/KJAGqDzbwztd+6Yte3P4V7iafm24bxgDe/mlRuK6xmWPuCNrKt2vDafZ8MfJLlchDG/vYafQEjQ==}
@@ -2023,7 +2008,7 @@ packages:
     engines: {node: '>= 10'}
     dependencies:
       '@solana/buffer-layout': 4.0.1
-      '@solana/web3.js': 1.95.5
+      '@solana/web3.js': 1.98.0
       bigint-buffer: 1.1.5
       bignumber.js: 9.1.2
     transitivePeerDependencies:
@@ -2183,33 +2168,33 @@ packages:
       prettier: 3.4.2
     dev: true
 
-  /@solana/spl-token-group@0.0.7(@solana/web3.js@1.95.5)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.7.2):
+  /@solana/spl-token-group@0.0.7(@solana/web3.js@1.98.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.7.2):
     resolution: {integrity: sha512-V1N/iX7Cr7H0uazWUT2uk27TMqlqedpXHRqqAbVO2gvmJyT0E0ummMEAVQeXZ05ZhQ/xF39DLSdBp90XebWEug==}
     engines: {node: '>=16'}
     peerDependencies:
       '@solana/web3.js': ^1.95.3
     dependencies:
       '@solana/codecs': 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.7.2)
-      '@solana/web3.js': 1.95.5
+      '@solana/web3.js': 1.98.0
     transitivePeerDependencies:
       - fastestsmallesttextencoderdecoder
       - typescript
     dev: true
 
-  /@solana/spl-token-metadata@0.1.6(@solana/web3.js@1.95.5)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.7.2):
+  /@solana/spl-token-metadata@0.1.6(@solana/web3.js@1.98.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.7.2):
     resolution: {integrity: sha512-7sMt1rsm/zQOQcUWllQX9mD2O6KhSAtY1hFR2hfFwgqfFWzSY9E9GDvFVNYUI1F0iQKcm6HmePU9QbKRXTEBiA==}
     engines: {node: '>=16'}
     peerDependencies:
       '@solana/web3.js': ^1.95.3
     dependencies:
       '@solana/codecs': 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.7.2)
-      '@solana/web3.js': 1.95.5
+      '@solana/web3.js': 1.98.0
     transitivePeerDependencies:
       - fastestsmallesttextencoderdecoder
       - typescript
     dev: true
 
-  /@solana/spl-token@0.4.9(@solana/web3.js@1.95.5)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.7.2):
+  /@solana/spl-token@0.4.9(@solana/web3.js@1.98.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.7.2):
     resolution: {integrity: sha512-g3wbj4F4gq82YQlwqhPB0gHFXfgsC6UmyGMxtSLf/BozT/oKd59465DbnlUK8L8EcimKMavxsVAMoLcEdeCicg==}
     engines: {node: '>=16'}
     peerDependencies:
@@ -2217,9 +2202,9 @@ packages:
     dependencies:
       '@solana/buffer-layout': 4.0.1
       '@solana/buffer-layout-utils': 0.2.0
-      '@solana/spl-token-group': 0.0.7(@solana/web3.js@1.95.5)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.7.2)
-      '@solana/spl-token-metadata': 0.1.6(@solana/web3.js@1.95.5)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.7.2)
-      '@solana/web3.js': 1.95.5
+      '@solana/spl-token-group': 0.0.7(@solana/web3.js@1.98.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.7.2)
+      '@solana/spl-token-metadata': 0.1.6(@solana/web3.js@1.98.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.7.2)
+      '@solana/web3.js': 1.98.0
       buffer: 6.0.3
     transitivePeerDependencies:
       - bufferutil
@@ -2232,43 +2217,20 @@ packages:
   /@solana/web3.js@1.95.4:
     resolution: {integrity: sha512-sdewnNEA42ZSMxqkzdwEWi6fDgzwtJHaQa5ndUGEJYtoOnM6X5cvPmjoTUp7/k7bRrVAxfBgDnvQQHD6yhlLYw==}
     dependencies:
-      '@babel/runtime': 7.25.0
-      '@noble/curves': 1.4.2
-      '@noble/hashes': 1.4.0
+      '@babel/runtime': 7.26.9
+      '@noble/curves': 1.8.1
+      '@noble/hashes': 1.7.1
       '@solana/buffer-layout': 4.0.1
-      agentkeepalive: 4.5.0
+      agentkeepalive: 4.6.0
       bigint-buffer: 1.1.5
       bn.js: 5.2.1
       borsh: 0.7.0
       bs58: 4.0.1
       buffer: 6.0.3
       fast-stable-stringify: 1.0.0
-      jayson: 4.1.1
+      jayson: 4.1.3
       node-fetch: 2.7.0
-      rpc-websockets: 9.0.2
-      superstruct: 2.0.2
-    transitivePeerDependencies:
-      - bufferutil
-      - encoding
-      - utf-8-validate
-
-  /@solana/web3.js@1.95.5:
-    resolution: {integrity: sha512-hU9cBrbg1z6gEjLH9vwIckGBVB78Ijm0iZFNk4ocm5OD82piPwuk3MeQ1rfiKD9YQtr95krrcaopb49EmQJlRg==}
-    dependencies:
-      '@babel/runtime': 7.25.0
-      '@noble/curves': 1.4.2
-      '@noble/hashes': 1.4.0
-      '@solana/buffer-layout': 4.0.1
-      agentkeepalive: 4.5.0
-      bigint-buffer: 1.1.5
-      bn.js: 5.2.1
-      borsh: 0.7.0
-      bs58: 4.0.1
-      buffer: 6.0.3
-      fast-stable-stringify: 1.0.0
-      jayson: 4.1.1
-      node-fetch: 2.7.0
-      rpc-websockets: 9.0.2
+      rpc-websockets: 9.1.1
       superstruct: 2.0.2
     transitivePeerDependencies:
       - bufferutil
@@ -2297,11 +2259,6 @@ packages:
       - bufferutil
       - encoding
       - utf-8-validate
-
-  /@swc/helpers@0.5.11:
-    resolution: {integrity: sha512-YNlnKRWF2sVojTpIyzwou9XoTNbzbzONwRhOoniEioF1AtaitTvVZblaQRrAzChWQ1bLYyYSWzM18y4WwgzJ+A==}
-    dependencies:
-      tslib: 2.8.1
 
   /@swc/helpers@0.5.15:
     resolution: {integrity: sha512-JQ5TuMi45Owi4/BIMAJBoSQoOJu12oOk/gADqlcUL9JEdHB8vyjUSsxqeNXnmXHjYKMi2WcYtezGEEhqUI/E2g==}
@@ -2512,11 +2469,6 @@ packages:
 
   /@types/ws@8.18.0:
     resolution: {integrity: sha512-8svvI3hMyvN0kKCJMvTJP/x6Y/EoQbepff882wL+Sn5QsXb3etnamgrJq4isrBxSJj5L2AuXcI0+bgkoAXGUJw==}
-    dependencies:
-      '@types/node': 22.10.5
-
-  /@types/ws@8.5.10:
-    resolution: {integrity: sha512-vmQSUcfalpIq0R9q7uTo2lXs6eGIpt9wtnLdMv9LVpIjCA/+ufZRozlVoVelIYixx1ugCBKDhn89vnsEGOCx9A==}
     dependencies:
       '@types/node': 22.13.9
 
@@ -2964,12 +2916,6 @@ packages:
     engines: {node: '>=0.4.0'}
     hasBin: true
     dev: true
-
-  /agentkeepalive@4.5.0:
-    resolution: {integrity: sha512-5GG/5IbQQpC9FpkRGsSvZI5QYeSCzlJHdpBQntCsuTOxhKD8lqKhrleg2Yi7yvMIf82Ycmmqln9U8V9qwEiJew==}
-    engines: {node: '>= 8.0.0'}
-    dependencies:
-      humanize-ms: 1.2.1
 
   /agentkeepalive@4.6.0:
     resolution: {integrity: sha512-kja8j7PjmncONqaTsB8fQ+wE2mSU2DJ9D4XKoJ5PFWIdRMa6SLSN1ff4mOr4jCbfRSsxR4keIiySJU0N9T5hIQ==}
@@ -5489,27 +5435,6 @@ packages:
       minimatch: 3.1.2
     dev: true
 
-  /jayson@4.1.1:
-    resolution: {integrity: sha512-5ZWm4Q/0DHPyeMfAsrwViwUS2DMVsQgWh8bEEIVTkfb3DzHZ2L3G5WUnF+AKmGjjM9r1uAv73SaqC1/U4RL45w==}
-    engines: {node: '>=8'}
-    hasBin: true
-    dependencies:
-      '@types/connect': 3.4.38
-      '@types/node': 12.20.55
-      '@types/ws': 7.4.7
-      JSONStream: 1.3.5
-      commander: 2.20.3
-      delay: 5.0.0
-      es6-promisify: 5.0.0
-      eyes: 0.1.8
-      isomorphic-ws: 4.0.1(ws@7.5.10)
-      json-stringify-safe: 5.0.1
-      uuid: 8.3.2
-      ws: 7.5.10
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
-
   /jayson@4.1.3:
     resolution: {integrity: sha512-LtXh5aYZodBZ9Fc3j6f2w+MTNcnxteMOrb+QgIouguGOulWi0lieEkOUg+HkjjFs0DGoWDds6bi4E9hpNFLulQ==}
     engines: {node: '>=8'}
@@ -7127,9 +7052,6 @@ packages:
       picomatch: 2.3.1
     dev: true
 
-  /regenerator-runtime@0.14.0:
-    resolution: {integrity: sha512-srw17NI0TUWHuGa5CFGGmhfNIeja30WMBfbslPNhf6JrqQlLN5gcrvig1oqPxiVaXb0oW0XRKtH6Nngs5lKCIA==}
-
   /regenerator-runtime@0.14.1:
     resolution: {integrity: sha512-dYnhHh0nJoMfnkZs6GmmhFknAGRrLznOu5nc9ML+EJxGvrx6H7teuevqVqCuPcPK//3eDrrjQhehXVx9cnkGdw==}
 
@@ -7232,20 +7154,6 @@ packages:
       '@rollup/rollup-win32-x64-msvc': 4.30.1
       fsevents: 2.3.3
     dev: true
-
-  /rpc-websockets@9.0.2:
-    resolution: {integrity: sha512-YzggvfItxMY3Lwuax5rC18inhbjJv9Py7JXRHxTIi94JOLrqBsSsUUc5bbl5W6c11tXhdfpDPK0KzBhoGe8jjw==}
-    dependencies:
-      '@swc/helpers': 0.5.11
-      '@types/uuid': 8.3.4
-      '@types/ws': 8.5.10
-      buffer: 6.0.3
-      eventemitter3: 5.0.1
-      uuid: 8.3.2
-      ws: 8.14.2(bufferutil@4.0.9)(utf-8-validate@5.0.10)
-    optionalDependencies:
-      bufferutil: 4.0.9
-      utf-8-validate: 5.0.10
 
   /rpc-websockets@9.1.1:
     resolution: {integrity: sha512-1IXGM/TfPT6nfYMIXkJdzn+L4JEsmb0FL1O2OBjaH03V3yuUDdKFulGLMFG6ErV+8pZ5HVC0limve01RyO+saA==}
@@ -8204,21 +8112,6 @@ packages:
         optional: true
       utf-8-validate:
         optional: true
-
-  /ws@8.14.2(bufferutil@4.0.9)(utf-8-validate@5.0.10):
-    resolution: {integrity: sha512-wEBG1ftX4jcglPxgFCMJmZ2PLtSbJ2Peg6TmpJFTbe9GZYOQCDPdMYu/Tm0/bGZkw8paZnJY45J4K2PZrLYq8g==}
-    engines: {node: '>=10.0.0'}
-    peerDependencies:
-      bufferutil: ^4.0.1
-      utf-8-validate: '>=5.0.2'
-    peerDependenciesMeta:
-      bufferutil:
-        optional: true
-      utf-8-validate:
-        optional: true
-    dependencies:
-      bufferutil: 4.0.9
-      utf-8-validate: 5.0.10
 
   /ws@8.18.1(bufferutil@4.0.9)(utf-8-validate@5.0.10):
     resolution: {integrity: sha512-RKW2aJZMXeMxVpnZ6bck+RswznaxmzdULiBr6KY7XkTnW8uvt0iT9H5DkHUChXrc+uurzwa0rVI16n/Xzjdz1w==}
