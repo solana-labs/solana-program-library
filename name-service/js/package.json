@@ -57,7 +57,7 @@
     "ts-jest": "^29.2.6",
     "ts-node": "^10.9.2",
     "typedoc": "^0.27.9",
-    "typescript": "^5.7.2"
+    "typescript": "^5.8.2"
   },
   "dependencies": {
     "@solana/web3.js": "^1.98.0",
