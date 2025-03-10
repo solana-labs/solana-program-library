@@ -1,4 +1,4 @@
-use solana_program::keccak::hashv;
+use solana_keccak_hasher::hashv;
 
 /// Abstract type for 32 byte leaf data
 pub type Node = [u8; 32];

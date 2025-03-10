@@ -1,6 +1,6 @@
 [package]
 name = "spl-concurrent-merkle-tree"
-version = "0.4.0"
+version = "0.5.0"
 description = "Solana Program Library Concurrent Merkle Tree"
 authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
 repository = "https://github.com/solana-labs/solana-program-library"
@@ -8,18 +8,20 @@ license = "Apache-2.0"
 edition = "2021"
 
 [features]
-log = []
-sol-log = ["log"]
+log = ["dep:solana-msg"]
+sol-log = ["log", "dep:solana-program"]
 
 [dependencies]
-solana-program = ">=1.18.11,<=2"
-bytemuck = "1.21"
-thiserror = "2.0.9"
+solana-keccak-hasher = "2.2"
+solana-program = { version = "2.2", optional = true }
+solana-msg = { version = "2.2", optional = true }
+bytemuck = "1"
+thiserror = "2"
 
 [dev-dependencies]
 rand_distr = "0.4.3"
 rand = "0.8"
-spl-merkle-tree-reference = { version = "0.1.0", path = "../merkle-tree-reference" }
+spl-merkle-tree-reference = { version = "0.2.0", path = "../merkle-tree-reference" }
 tokio = { version = "1.42", features = ["full"] }
 
 [lib]

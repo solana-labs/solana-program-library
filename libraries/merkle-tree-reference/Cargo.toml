@@ -1,6 +1,6 @@
 [package]
 name = "spl-merkle-tree-reference"
-version = "0.1.0"
+version = "0.2.0"
 description = "Reference implementation of a merkle tree"
 authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
 repository = "https://github.com/solana-labs/solana-program-library"
@@ -8,8 +8,8 @@ license = "Apache-2.0"
 edition = "2021"
 
 [dependencies]
-solana-program = ">=1.18.11,<=2"
-thiserror = "2.0.9"
+solana-keccak-hasher = "2.2"
+thiserror = "2"
 
 [lib]
 crate-type = ["cdylib", "lib"]
