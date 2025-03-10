@@ -1,3 +1,5 @@
+> This repo still exists in archived form, but the maintained version has now relocated to: https://github.com/Mythic-Project/solana-program-library/tree/master/governance
+
 # SPL Governance
 
 SPL Governance is a program the chief purpose of which is to provide core building blocks and primitives to create
