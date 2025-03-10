@@ -1,6 +1,6 @@
 #![allow(clippy::arithmetic_side_effects)]
 use {
-    solana_program::keccak::hashv,
+    solana_keccak_hasher::hashv,
     std::{cell::RefCell, collections::VecDeque, iter::FromIterator, rc::Rc},
 };
 

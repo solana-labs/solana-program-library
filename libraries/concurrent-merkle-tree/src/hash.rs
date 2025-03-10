@@ -1,6 +1,6 @@
 use {
     crate::node::{empty_node, Node},
-    solana_program::keccak::hashv,
+    solana_keccak_hasher::hashv,
 };
 
 /// Recomputes root of the Merkle tree from Node & proof

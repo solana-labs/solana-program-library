@@ -1,11 +1,11 @@
 macro_rules! solana_logging {
     ($message:literal, $($arg:tt)*) => {
         #[cfg(feature = "log")]
-        ::solana_program::msg!($message, $($arg)*);
+        ::solana_msg::msg!($message, $($arg)*);
     };
     ($message:literal) => {
         #[cfg(feature = "log")]
-        ::solana_program::msg!($message);
+        ::solana_msg::msg!($message);
     };
 }
 
