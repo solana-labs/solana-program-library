@@ -637,7 +637,7 @@ mod tests {
     };
 
     #[test]
-    fn pack_intialize() {
+    fn pack_initialize() {
         let trade_fee_numerator: u64 = 1;
         let trade_fee_denominator: u64 = 4;
         let owner_trade_fee_numerator: u64 = 2;
