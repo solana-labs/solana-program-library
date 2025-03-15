@@ -81,7 +81,7 @@
     "gh-pages": "^6.3.0",
     "jest": "^29.0.1",
     "jest-config": "^29.0.1",
-    "start-server-and-test": "^2.0.9",
+    "start-server-and-test": "^2.0.10",
     "ts-jest": "^29.2.5",
     "ts-jest-resolver": "^2.0.1",
     "ts-node": "^10.9.2",
