@@ -3,17 +3,17 @@ name: Binary Oracle Pair Pull Request
 on:
   pull_request:
     paths:
-    - 'binary-oracle-pair/**'
-    - 'token/**'
-    - 'ci/*-version.sh'
-    - '!token/js/**'
+      - 'binary-oracle-pair/**'
+      - 'token/**'
+      - 'ci/*-version.sh'
+      - '!token/js/**'
   push:
     branches: [master]
     paths:
-    - 'binary-oracle-pair/**'
-    - 'token/**'
-    - 'ci/*-version.sh'
-    - '!token/js/**'
+      - 'binary-oracle-pair/**'
+      - 'token/**'
+      - 'ci/*-version.sh'
+      - '!token/js/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

@@ -22,7 +22,7 @@ default = []
 test = []
 
 [dependencies]
-borsh = "1.5.3"
+borsh = "1.5.5"
 shank = "^0.4.2"
 solana-program = "2.1.0"
 spl-associated-token-account = { version = "6.0.0", features = [
@@ -32,7 +32,7 @@ spl-associated-token-account-client = { version = "2.0.0" }
 spl-token = { version = "7.0", features = [
   "no-entrypoint",
 ] }
-thiserror = "^2.0.9"
+thiserror = "^2.0.12"
 
 [dev-dependencies]
 solana-program-test = "2.1.0"

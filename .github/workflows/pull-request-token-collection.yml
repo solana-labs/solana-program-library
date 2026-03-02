@@ -3,27 +3,27 @@ name: Token Collection Pull Request
 on:
   pull_request:
     paths:
-    - 'token-collection/**'
-    - 'token/**'
-    - 'token-group/**'
-    - 'token-metadata/**'
-    - 'ci/*-version.sh'
-    - '.github/workflows/pull-request-token-collection.yml'
-    - '!token/js/**'
-    - '!token-group/js/**'
-    - '!token-metadata/js/**'
+      - 'token-collection/**'
+      - 'token/**'
+      - 'token-group/**'
+      - 'token-metadata/**'
+      - 'ci/*-version.sh'
+      - '.github/workflows/pull-request-token-collection.yml'
+      - '!token/js/**'
+      - '!token-group/js/**'
+      - '!token-metadata/js/**'
   push:
     branches: [master]
     paths:
-    - 'token-collection/**'
-    - 'token/**'
-    - 'token-group/**'
-    - 'token-metadata/**'
-    - 'ci/*-version.sh'
-    - '.github/workflows/pull-request-token-collection.yml'
-    - '!token/js/**'
-    - '!token-group/js/**'
-    - '!token-metadata/js/**'
+      - 'token-collection/**'
+      - 'token/**'
+      - 'token-group/**'
+      - 'token-metadata/**'
+      - 'ci/*-version.sh'
+      - '.github/workflows/pull-request-token-collection.yml'
+      - '!token/js/**'
+      - '!token-group/js/**'
+      - '!token-metadata/js/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

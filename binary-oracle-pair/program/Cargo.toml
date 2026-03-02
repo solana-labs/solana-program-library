@@ -19,7 +19,7 @@ spl-token = { version = "7.0", features = [
 ] }
 thiserror = "2.0"
 uint = "0.10"
-borsh = "1.5.3"
+borsh = "1.5.5"
 
 [dev-dependencies]
 solana-program-test = "2.1.0"

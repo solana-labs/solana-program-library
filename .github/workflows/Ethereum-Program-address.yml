@@ -1,0 +1,38 @@
+name: Ethereum Program Address Verification
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  verify-ethereum-program:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Verify Ethereum Program Address
+        env:
+          ETH_PROVIDER_URL: ${{ secrets.ETH_PROVIDER_URL }}
+          PROGRAM_ADDRESS: "0x97293CeAB815896883e8200AEf5a4581a70504b2"
+        run: |
+          npx -p ethers node <<'EOF'
+          const { ethers } = require('ethers');
+          (async () => {
+            const provider = new ethers.providers.JsonRpcProvider(process.env.ETH_PROVIDER_URL);
+            const code = await provider.getCode(process.env.PROGRAM_ADDRESS);
+            console.log('Contract code at address ' + process.env.PROGRAM_ADDRESS + ': ' + code);
+            if (code === '0x') {
+              throw new Error('No contract code found at address ' + process.env.PROGRAM_ADDRESS);
+            } else {
+              console.log('Contract code exists at address ' + process.env.PROGRAM_ADDRESS);
+            }
+          })();
+          EOF

@@ -3,19 +3,19 @@ name: Token Upgrade Pull Request
 on:
   pull_request:
     paths:
-    - 'token-upgrade/**'
-    - 'token/**'
-    - 'ci/*-version.sh'
-    - '.github/workflows/pull-request-token-upgrade.yml'
-    - '!token/js/**'
+      - 'token-upgrade/**'
+      - 'token/**'
+      - 'ci/*-version.sh'
+      - '.github/workflows/pull-request-token-upgrade.yml'
+      - '!token/js/**'
   push:
     branches: [master]
     paths:
-    - 'token-upgrade/**'
-    - 'token/**'
-    - 'ci/*-version.sh'
-    - '.github/workflows/pull-request-token-upgrade.yml'
-    - '!token/js/**'
+      - 'token-upgrade/**'
+      - 'token/**'
+      - 'ci/*-version.sh'
+      - '.github/workflows/pull-request-token-upgrade.yml'
+      - '!token/js/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

@@ -3,13 +3,13 @@ name: Shared Memory Pull Request
 on:
   pull_request:
     paths:
-    - 'shared-memory/**'
-    - 'ci/*-version.sh'
+      - 'shared-memory/**'
+      - 'ci/*-version.sh'
   push:
     branches: [master]
     paths:
-    - 'shared-memory/**'
-    - 'ci/*-version.sh'
+      - 'shared-memory/**'
+      - 'ci/*-version.sh'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
